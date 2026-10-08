@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -23,8 +23,13 @@ jobs:
           variant: CS
           distribution: minimal
 
+      - uses: actions/cache@v6
+        with:
+          path: ~/.local/share/racket
+          key: racket-9.3-${{ hashFiles('.github/workflows/deploy.yml') }}
+
       - name: Install Pollen
-        run: raco pkg install --auto --batch --skip-installed pollen
+        run: raco pkg install --auto --batch --skip-installed --no-docs pollen
 
       - name: Check Racket and Pollen
         run: racket -l racket/base -l pollen/decode -e '(displayln (version))'
@@ -40,7 +45,7 @@ jobs:
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
