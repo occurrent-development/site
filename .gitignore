@@ -2,5 +2,18 @@
 node_modules/
 .DS_Store
 
-# Once the Pollen build writes into public/, add:
-# public/
+# Build output (BUILD-1): CI renders and deploys; nothing generated is committed.
+public/
+compiled/
+/index.html
+/pages/*.html
+/essays/**/*.html
+/assets/fonts/*.woff2
+/assets/fonts/fonts.rktd
+
+# Never published (BUILD-3a)
+*-Notes.md
+*.docx
+*.graffle
+*.tex
+__pycache__/

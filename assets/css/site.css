@@ -1,0 +1,274 @@
+/* occurrentdevelopment.com — inlined into every page (§14). IDs refer to SPEC.md. */
+
+/* ── Colour tokens (THEME-3/4) ─────────────────────────────────────────────
+   The only colour literals in the stylesheet. Each token is light-dark(light, dark);
+   color-scheme picks the half: Auto follows the system, data-theme forces one. */
+:root {
+  color-scheme: light dark;
+  --bg:             light-dark(#EFE7D4, #121212);
+  --text:           light-dark(#000000, #D2D2D0);
+  --text-muted:     light-dark(#5A5244, #9C9A95);
+  --accent:         light-dark(#8A3A26, #D49A7E);
+  --accent-visited: light-dark(#8A5344, #B08C7C);
+  --rule:           light-dark(#B5A88C, #3D3B38);
+  --popup-bg:       light-dark(#F5EFE2, #1B1A18);
+  --popup-border:   light-dark(#C8BBA0, #3D3B38);
+  --selection:      light-dark(#D9C7A2, #4A3B32);
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+/* ── Fallback metrics (TYPE-10) ────────────────────────────────────────────
+   Georgia scaled to Libertinus Serif's average width and vertical metrics
+   (computed from the font files), so the swap causes no reflow. */
+@font-face {
+  font-family: "Libertinus Fallback";
+  src: local("Georgia");
+  size-adjust: 93.13%; ascent-override: 96%; descent-override: 26.42%; line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Libertinus Fallback";
+  font-style: italic;
+  src: local("Georgia Italic"), local("Georgia-Italic");
+  size-adjust: 87.73%; ascent-override: 101.9%; descent-override: 28.04%; line-gap-override: 0%;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; text-decoration: none; } /* MARK-4 */
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Libertinus Serif", "Libertinus Fallback", Georgia, serif;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body { margin: 0; background: var(--bg); }
+::selection { background: var(--selection); }
+
+a, a:visited { color: inherit; }
+a:hover, a:focus-visible { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 1px; }
+
+/* ── Page and width tiers (LAYOUT-6/7) ─────────────────────────────────────
+   Tiers are container queries on .page, whose font size is the body size, so
+   `em` in the queries tracks the text: zoom or a larger default font moves the
+   breakpoints with it.
+
+     --measure   calibrated column width (TYPE-1): mean ≤ 90 characters a line
+     S   below  M                 ragged right, column = container − gutters
+     M   ≥ measure + 2 gutters    justified, no margin
+     L   ≥ M + gap + margin       justified, right margin reserved for asides
+   Query values must be literal; keep them in step with the variables. */
+.page {
+  container: page / inline-size;
+  --measure: 36.5em;   /* calibrated: mean 88.6 characters over 20 full lines */
+  --gutter: 1.25em;
+  --gap: 2.5em;
+  --margin: 13em;
+  font-size: 1.25rem;          /* TYPE-2: 20px at the default 16px */
+  line-height: 1.5;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures contextual;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  font-synthesis: none;        /* no faked bold or italic */
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  text-align: left;
+  padding-block: 1em 4em;
+}
+
+.page > * {
+  width: 100%;
+  max-width: calc(var(--measure) + 2 * var(--gutter));
+  padding-inline: var(--gutter);
+  margin-inline: auto;
+}
+
+/* M: the column fits at full measure (36.5 + 2 × 1.25 = 39em). */
+@container page (min-width: 39em) {
+  .page > * { max-width: none; width: calc(var(--measure) + 2 * var(--gutter)); }
+  article { text-align: justify; }  /* TYPE-3 */
+}
+
+/* L: column + gap + right margin fit (39 + 2.5 + 13 = 54.5em). The column
+   moves left so the column and margin together are centred. */
+@container page (min-width: 54.5em) {
+  .page > * {
+    width: calc(var(--measure) + var(--gap) + var(--margin));
+    padding-inline: 0 calc(var(--gap) + var(--margin));
+  }
+}
+
+/* ── Running text (§10.1) ──────────────────────────────────────────────── */
+p { margin: 0; text-wrap: pretty; hanging-punctuation: first; }
+p + p { text-indent: 1.5em; }
+
+em, i { font-style: italic; }
+strong, b { font-weight: 600; }
+.sc {                                   /* TYPE-11: ◊sc{WHO} */
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.04em;
+}
+code {
+  font-family: "Libertinus Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.86em;                    /* Mono's x-height is larger than the text face's */
+  hyphens: manual;
+  -webkit-hyphens: manual;
+}
+
+blockquote { margin: 1em 0 1em 1.5em; }
+blockquote + p { text-indent: 0; }
+blockquote.epigraph {
+  margin: 0 0 2em auto;
+  max-width: 24em;
+  font-style: italic;
+  font-size: 0.9em;
+  text-align: left;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+}
+blockquote.epigraph em { font-style: normal; }
+blockquote.epigraph footer { font-style: normal; text-align: right; margin-top: 0.25em; }
+blockquote.epigraph footer::before { content: "— "; }
+
+/* ── Essay header (LAYOUT-1) ───────────────────────────────────────────── */
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+  margin-bottom: 2.5em;
+}
+.site-name { font-size: 0.85em; font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
+
+.theme-toggle {                          /* THEME-6 */
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-right: -0.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.theme-toggle:hover { color: var(--accent); }
+.theme-toggle svg { display: none; width: 100%; height: 100%; }
+.theme-toggle[data-choice="auto"]  .icon-auto,
+.theme-toggle[data-choice="light"] .icon-light,
+.theme-toggle[data-choice="dark"]  .icon-dark { display: block; }
+
+.essay-header p { text-indent: 0; }
+.essay-header { text-align: center; margin-bottom: 2.5em; hyphens: manual; -webkit-hyphens: manual; }
+.essay-header h1 {
+  font-size: 2.1em;
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0 0 0.3em;
+  text-wrap: balance;
+}
+.subtitle { font-style: italic; font-size: 1.15em; margin: 0 0 1em; text-wrap: balance; }
+.dates, .epistemic { font-size: 0.85em; color: var(--text-muted); margin: 0; }
+.epistemic { font-style: italic; margin-top: 0.25em; }
+.abstract {
+  font-size: 0.95em;
+  margin: 1.75em 0 0;
+  text-align: inherit;
+}
+@container page (min-width: 39em) {
+  .abstract { text-align: justify; }
+}
+
+/* ── Headings (LAYOUT-2, SECT-7) ───────────────────────────────────────── */
+section h2, section h3, section h4 { position: relative; font-weight: 400; hyphens: manual; -webkit-hyphens: manual; }
+section h2 {                               /* level 1 */
+  font-size: 1.3em;
+  line-height: 1.25;
+  text-align: right;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--rule);   /* a border, not an underline (MARK-8) */
+  padding-bottom: 0.2em;
+  margin: 2.25em 0 0.9em;
+  text-wrap: balance;
+}
+section h3 {                               /* level 2 */
+  font-size: 1.1em;
+  line-height: 1.3;
+  text-align: left;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.03em;
+  margin: 1.75em 0 0.6em;
+  text-wrap: balance;
+}
+section h4 {                               /* level 3: italic, run in */
+  font-size: 1em;
+  line-height: inherit;
+  font-style: italic;
+  float: left;
+  margin: 0 0.75em 0 0;
+}
+section.level-3 { margin-top: 1em; }
+section.level-3 > h4 + p { text-indent: 0; }
+section.level-3::after { content: ""; display: table; clear: both; }
+section > h2 + p, section > h3 + p { text-indent: 0; }
+
+.self {                                    /* § self-link, shown on hover */
+  position: absolute;
+  margin-left: 0.35em;
+  font-size: 0.8em;
+  font-style: normal;
+  font-variant-caps: normal;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:focus-visible { opacity: 1; }
+
+/* ── Table of contents (TOC-1) ─────────────────────────────────────────── */
+.toc {
+  font-size: 0.85em;
+  line-height: 1.45;
+  text-align: left;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  margin: 0 0 2.5em;
+}
+.toc-title {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.4em;
+}
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc ul ul { padding-left: 1.25em; }
+.toc li { margin: 0.15em 0; }
+.toc + p, .toc + .intro { text-indent: 0; }
+
+/* ── Intro paragraph (LAYOUT-3): first line in small caps, narrow tiers only ── */
+.intro::first-line { font-variant-caps: small-caps; letter-spacing: 0.03em; }
+@container page (min-width: 54.5em) {
+  .intro::first-line { font-variant-caps: normal; letter-spacing: normal; }
+}
+
+/* ── Section break (LAYOUT-4) ──────────────────────────────────────────── */
+hr.break {
+  border: 0;
+  color: inherit;                  /* the UA sets hr to grey */
+  height: 0.9em;
+  margin: 1.75em auto;
+  background-color: currentColor;
+  -webkit-mask: url(/assets/icons/asterism.svg) center / contain no-repeat;
+  mask: url(/assets/icons/asterism.svg) center / contain no-repeat;
+}
+hr.break + p { text-indent: 0; }
+@container page (min-width: 39em) {
+  hr.break { height: 1.1em; margin: 2em auto; }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
