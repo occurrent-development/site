@@ -1,0 +1,6 @@
+.wrangler/
+node_modules/
+.DS_Store
+
+# Once the Pollen build writes into public/, add:
+# public/
