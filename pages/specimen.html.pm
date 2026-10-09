@@ -140,8 +140,8 @@ Colour in running text is reserved for one thing: the small marks that show
 a word is a link, a citation, a definition or an aside. Nothing is
 underlined, anywhere. Link text stays in the colour and weight of the text
 around it, and the mark after it is the only signal, as on Matthew Butterick's
-◊em{Practical Typography}. Those marks arrive in the next phase, so this
-page has none yet.
+◊em{Practical Typography}. The marks are shown in the section on
+◊link["#marks"]{marks and links} below.
 
 ◊section[#:id "furniture" #:short "Furniture"]{Page furniture}
 ◊summary{Headings, breaks, quotations and the intro paragraph.}
@@ -184,13 +184,139 @@ line is set in small capitals, a quiet signal that the essay has begun. On a
 wide screen, where the margin will carry notes and asides, the first line is
 set like any other.
 
-◊section[#:id "to-come" #:short "Still to come"]{Still to come}
-◊summary{What this page will show once later phases are built.}
+◊section[#:id "marks" #:short "Marks and links"]{Marks and links}
+◊summary{The small signs that say a word leads somewhere, and where.}
 
-This page will grow with the site. The next phase adds the marks for links,
-citations, definitions and asides; numbered notes and a bibliography at the
-foot of each essay; asides in the right margin, collapsed to a single line
-until opened; margin notes that summarise a paragraph for a reader who is
-skimming; lists, nested and numbered; figures, with captions and credits; and
-tables, sortable when they are long enough to need it. Each will be added
-here as it is built, and checked here after every change to the stylesheet.
+◊margin{The mark is the only signal.} Every annotation carries a small mark
+after its last word, and the mark says what kind of thing it is. A link to
+another site, such as ◊link["https://plato.stanford.edu/entries/process-philosophy/"
+#:note "Standard overview; good on Whitehead's debt to Bergson."]{the
+◊em{Stanford Encyclopedia} entry on process philosophy}, ends in a north-east
+arrow. A link to another page of this site, such as the
+◊link["/colophon#type"]{colophon's note on type}, ends in a plain arrow. A
+link within the page points up or down to its target: back to
+◊link["#measure"]{the section on measure}, or on to
+◊link["#lists"]{the section on lists}. The text itself keeps the colour of the
+words around it, and takes the accent only on hover or focus.
+
+Definitions are marked with three bars. The first time a defined word
+appears, such as ◊term["occurrent"]{occurrent} or
+◊term["looping-effect"]{looping effects}, it is marked and leads to its
+definition; later uses, like this second ◊term["occurrent"]{occurrent}, are
+plain text. Once popups arrive, a definition will open where the reader is;
+until then, and whenever scripts are off, it is collected under Terms at the
+end of the page.
+
+◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
+◊summary{Numbered notes for sources; roman numerals for digressions.}
+
+Citations become numbered notes, collected at the end. The first note for a
+work gives it in full: Hacking's account of how classifications change the
+people classified first appeared in the ◊em{London Review of
+Books} ◊cite["hackingMakingPeople2006" #:loc "p. 23"] and is developed at
+length elsewhere ◊cite["hackingSocialConstructionWhat2000" #:loc "pp. 31-34"].
+Later notes for the same work use the short form, with their own
+page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and a note may carry a
+remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
+is shorter and sharper."].
+
+◊margin{Asides can be skipped.} An aside is a digression the argument does
+not need◊aside{An aside may cite, too: Hacking's essay on
+◊term["looping-effect"]{looping} is the fuller version of the
+argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered here, at
+its place in the argument.} and is marked with a roman numeral. On a wide
+screen it will sit in the right margin, collapsed to its first line until
+opened; on a phone it will open over the text. Without scripts, as now, each
+aside is collected at the end, with a link back.◊aside{A second aside, to show
+the numbering.}
+
+◊section[#:id "lists" #:short "Lists"]{Lists}
+◊summary{Bullets by level, and numbers that follow the nesting.}
+
+A list is for items that are truly parallel. Bullets change by level, and
+numbers follow the nesting:
+
+◊list{
+- A first-level item, marked by a small hollow circle
+  - A second-level item, marked by an angle quote
+    - A third-level item, marked by an en dash
+- Numbers and bullets mix:
+  1. a numbered item under a bullet starts at one
+  2. and its children carry the chain
+     1. so this is 2.1
+        1. and this is 2.1.1
+- An item can run to a second paragraph.
+
+  Indented after a blank line, the paragraph stays in the item.
+}
+
+Short items can be set in columns on a wide screen, reading down and then
+across:
+
+◊list[#:columns 2]{
+1. occurrent
+2. continuant
+3. process
+4. disposition
+5. function
+6. role
+}
+
+◊section[#:id "images" #:short "Figures"]{Figures}
+◊summary{Images at three widths, with captions, credits and both themes.}
+
+A figure sits at the width of the column, of the column and margin together,
+or of the page. Line art is drawn as SVG in the text colour, so it follows the
+theme without any inversion:
+
+◊figure["img/occurrent-continuant.svg" #:alt "Three identical circles at
+three moments, labelled continuant, above a single wavy band stretched across
+the same three moments and divided into parts, labelled occurrent."
+#:licence "own"]{The ◊term["continuant"]{continuant} and the occurrent,
+drawn for this page.}
+
+A photograph or a rendering is served in several sizes and formats, and the
+browser picks the smallest that will look sharp. This one is wide:
+
+◊figure["img/landscape.jpg" #:alt "A grey surface sloping away from the
+viewer, its single valley dividing into three as it descends." #:licence "own"
+#:width "wide" #:invert #t]{A developmental landscape in the manner of
+C. H. Waddington's, rendered for this page: one valley that divides as it
+descends, so that a ball rolling down it ends in one of three places.}
+
+◊section[#:id "tables" #:short "Tables"]{Tables}
+◊summary{Rules above and below, lining figures, numbers aligned right.}
+
+Tables follow the booktabs convention: no vertical rules, a heavier rule above
+the header and at the foot, a hairline under the header. Figures are lining
+and of equal width, and columns of numbers align right on their own. This one
+records the measure calibration, and is long enough to be sortable once the
+script for that arrives:
+
+◊table[#:caption "Measure against characters per line, Libertinus Serif at 20
+px" #:source "Measured on this page in Chrome, October 2026."]{
+| Measure (em) | Width (px) | Mean characters | Longest line |
+|---|---|---|---|
+| 34.5 | 690 | 83.0 | 89 |
+| 35.5 | 710 | 85.1 | 94 |
+| 36.0 | 720 | 87.5 | 94 |
+| 36.5 | 730 | 88.6 | 94 |
+| 37.0 | 740 | 89.8 | 99 |
+| 37.5 | 750 | 90.4 | 99 |
+}
+
+A table can also come from a file, and be set smaller:
+
+◊table-csv["data/budget.csv" #:caption "The performance budget" #:size
+"small"]
+
+◊section[#:id "to-come" #:short "Still to come"]{Still to come}
+◊summary{What this page will show once the interactive phase is built.}
+
+Everything above works without scripts. The next phase adds the behaviour:
+popups for notes, definitions and links, with the definitions embedded in
+the page; asides in the right margin, collapsed to a single line until
+opened; margin notes lifted out of the text into the margin; a slim bar at
+the top of the screen naming the current section; sortable tables; and
+images classified once for dark mode. Each will be checked here as it is
+built.

@@ -268,6 +268,223 @@ hr.break + p { text-indent: 0; }
   hr.break { height: 1.1em; margin: 2em auto; }
 }
 
+/* ── Marks (§4.1, MARK-1…7) ────────────────────────────────────────────
+   A symbol mark is an empty inline span: no break opportunity of its own
+   (with the word joiner, MARK-3) and the same line box as the text (MARK-2).
+   The glyph is a mask over the accent colour, raised to cap height. */
+.vh {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+[hidden] { display: none !important; }
+.nw { white-space: nowrap; }            /* the last word and its mark (MARK-3) */
+
+.mark {
+  padding-left: 0.5em;
+  margin-left: 0.06em;
+  background-color: var(--accent);
+  -webkit-mask: var(--m) no-repeat 50% 0.17em / 0.48em 0.48em;
+  mask: var(--m) no-repeat 50% 0.17em / 0.48em 0.48em;
+}
+.m-ext  { --m: var(--m-ext); }
+.m-xref { --m: var(--m-xref); }
+.m-up   { --m: var(--m-up); }
+.m-down { --m: var(--m-down); }
+.m-term { --m: var(--m-term); }
+.m-ref  { --m: var(--m-ref); padding-left: 0.6em; -webkit-mask-size: 0.58em 0.58em; mask-size: 0.58em 0.58em; }
+a:visited .mark { background-color: var(--accent-visited); }   /* MARK-5 */
+
+/* Numeral marks: notes (arabic) and asides (roman). line-height 0 keeps
+   the line exactly as tall as one without a mark (MARK-2). */
+sup.note-ref, sup.aside-ref {
+  font-size: 0.68em;
+  line-height: 0;
+  vertical-align: 0.6em;
+  font-variant-numeric: lining-nums proportional-nums;
+  margin-left: 0.04em;
+}
+sup.note-ref a, sup.aside-ref a, a.cite-ref { color: var(--accent); }
+sup.note-ref a:visited, sup.aside-ref a:visited { color: var(--accent-visited); }
+sup.aside-ref { font-style: italic; }
+sup.note-ref + .ref sup, .ref + .ref sup { margin-left: 0.15em; }
+
+/* MARK-6: an invisible hit area of at least 24 × 24 px around annotated text. */
+a.link, a.term, sup a, a.cite-ref, a.back { position: relative; }
+a.link::after, a.term::after, a.cite-ref::after, a.back::after, sup a::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: max(100%, 24px); height: max(100%, 24px);
+  transform: translate(-50%, -50%);
+}
+a.link:hover, a.link:focus-visible, a.term:hover, a.term:focus-visible { color: var(--accent); }
+
+/* ── Margin notes (MNOTE-3): run in, italic, until Phase 2 lifts them ── */
+.margin-note { font-style: italic; }
+.margin-note em { font-style: normal; }
+
+/* ── Lists (LIST-1…7) ──────────────────────────────────────────────── */
+.list {
+  list-style: none;
+  margin: 0.75em 0;
+  padding: 0 0 0 1.4em;
+  text-align: left;                       /* LIST-7: ragged even when justified */
+}
+.list .list { margin: 0.15em 0 0.25em; }
+.list li { position: relative; margin: 0.15em 0; }
+.list li > p { margin: 0; text-indent: 0; }
+.list li > p + p { margin-top: 0.4em; }
+p + .list, .list + p { text-indent: 0; }
+.list + p { margin-top: 0; }
+
+/* LIST-2: ○ › – by level; markers muted, never the accent. */
+ul.list > li::before {
+  position: absolute;
+  color: var(--text-muted);
+  left: -1.4em; width: 1.4em;
+  text-align: center;
+}
+ul.list[data-depth="1"] > li::before {
+  content: "";
+  left: calc(-0.7em - 0.16em);
+  top: calc(0.86em - 0.16em);              /* centred on the x-height */
+  width: 0.32em; height: 0.32em;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+ul.list[data-depth="2"] > li::before { content: "›"; }
+ul.list[data-depth="3"] > li::before { content: "–"; }
+
+/* LIST-3/4: numbers from the build, right-aligned in a gutter that widens
+   with the depth of the chain. */
+ol.list { padding-left: 1.75em; }
+ol.list ol.list { padding-left: 2.5em; }
+ol.list ol.list ol.list { padding-left: 3.25em; }
+ol.list > li::before {
+  content: attr(data-n);
+  position: absolute;
+  right: calc(100% + 0.4em);
+  color: var(--text-muted);
+  font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
+}
+
+/* LIST-5: columns on wide tiers only; items never split. */
+.list li { break-inside: avoid; }
+@container page (min-width: 39em) {
+  .list.cols-2 { columns: 2; column-gap: 2em; }
+  .list.cols-3 { columns: 3; column-gap: 2em; }
+}
+
+/* ── Figures and tables: widths (IMG-2) ────────────────────────────────
+   Narrow tiers: everything is column width. L: wide adds the margin; full
+   spans the page minus gutters. */
+@container page (min-width: 54.5em) {
+  .w-wide { width: calc(var(--measure) + var(--gap) + var(--margin)); }
+  .w-full {
+    width: calc(100cqi - 2 * var(--gutter));
+    margin-left: calc((var(--measure) + var(--gap) + var(--margin) - 100cqi) / 2 + var(--gutter));
+  }
+}
+
+/* ── Figures (§9.1) ─────────────────────────────────────────────────── */
+figure.figure { margin: 1.75em 0; text-align: left; }
+figure.figure img, figure.figure svg { display: block; width: 100%; height: auto; }
+figure.figure .figure-svg { color: var(--text); }
+figcaption {
+  font-size: 0.85em;                        /* IMG-3: aside size, ragged */
+  line-height: 1.4;
+  margin-top: 0.6em;
+  text-align: left;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+}
+figcaption .credit { color: var(--text-muted); }
+figure + p { text-indent: 0; }
+
+/* IMG-4: in dark mode, invertible images are inverted; others dimmed.
+   Invertible images are blended, so their white (black once inverted)
+   becomes the page background in either theme. */
+figure[data-invert="yes"] img { mix-blend-mode: multiply; }
+:root[data-theme="dark"] figure[data-invert="yes"] img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+:root[data-theme="dark"] figure:not([data-invert="yes"]) img { filter: brightness(0.9); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) figure[data-invert="yes"] img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+  :root:not([data-theme="light"]) figure:not([data-invert="yes"]) img { filter: brightness(0.9); }
+}
+
+/* ── Tables (§9.2): booktabs ────────────────────────────────────────── */
+.table-wrap { margin: 1.75em 0; }
+.table-wrap + p { text-indent: 0; }
+.table-scroll {
+  overflow-x: auto;
+  container-type: inline-size;            /* lets the caption stay in view */
+  /* TABLE-4: an edge fade where the table overflows (scroll-shadow technique) */
+  background:
+    linear-gradient(to right, var(--bg) 30%, transparent) left / 2em 100% no-repeat local,
+    linear-gradient(to left, var(--bg) 30%, transparent) right / 2em 100% no-repeat local,
+    linear-gradient(to right, var(--rule), transparent) left / 0.6em 100% no-repeat scroll,
+    linear-gradient(to left, var(--rule), transparent) right / 0.6em 100% no-repeat scroll;
+}
+.table-wrap table {
+  border-collapse: collapse;
+  min-width: 100%;
+  text-align: left;
+  line-height: 1.35;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  font-variant-numeric: lining-nums tabular-nums;   /* TABLE-3 */
+}
+.table-wrap caption {
+  caption-side: top;
+  text-align: left;
+  position: sticky;                       /* stays put while a wide table scrolls */
+  left: 0;
+  max-width: 100cqi;
+  font-size: 0.85em;
+  margin-bottom: 0.5em;
+}
+.table-wrap thead tr { border-top: 1.5px solid var(--text); border-bottom: 1px solid var(--rule); }
+.table-wrap tbody tr:last-child { border-bottom: 1.5px solid var(--text); }
+.table-wrap th, .table-wrap td { padding: 0.3em 0.75em; vertical-align: top; }
+.table-wrap th:first-child, .table-wrap td:first-child { padding-left: 0; }
+.table-wrap th:last-child, .table-wrap td:last-child { padding-right: 0; }
+.table-wrap thead th { font-weight: 400; font-variant-caps: small-caps; letter-spacing: 0.03em; vertical-align: bottom; }
+.table-wrap tbody th { font-weight: 400; font-style: italic; }
+.table-wrap tbody tr:hover { background: color-mix(in srgb, var(--selection) 45%, transparent); }
+.a-right { text-align: right; }
+.a-center { text-align: center; }
+.size-small table { font-size: 0.85em; }
+.size-tiny table { font-size: max(0.7em, 12px); }
+.table-source { font-size: 0.85em; text-align: left; color: var(--text-muted); margin-top: 0.4em; text-indent: 0; }
+
+/* ── End matter (CITE-10) ──────────────────────────────────────────── */
+.endmatter {
+  font-size: 0.9em;
+  line-height: 1.45;
+  text-align: left;
+}
+.endmatter h2 { font-size: 1.45em; }       /* matches level-1 headings at body size */
+.endmatter p { text-indent: 0; }
+ol.notes, ol.asides { margin: 0; padding-left: 2em; }
+ol.notes { font-variant-numeric: oldstyle-nums proportional-nums; }
+ol.notes > li::marker { font-variant-numeric: lining-nums tabular-nums; color: var(--text-muted); }
+ol.asides { list-style: lower-roman; }
+ol.asides > li::marker { color: var(--text-muted); font-style: italic; }
+ol.notes > li, ol.asides > li { margin: 0.35em 0; padding-left: 0.25em; }
+ol.notes > li:target, ol.asides > li:target, .term-entry:target, .bibliography li:target {
+  background: color-mix(in srgb, var(--selection) 45%, transparent);
+}
+a.back { color: var(--text-muted); text-decoration: none; margin-left: 0.15em; }
+a.back:hover, a.back:focus-visible { color: var(--accent); }
+ul.bibliography { list-style: none; margin: 0; padding: 0; }
+ul.bibliography li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.35em 0; }
+.term-entry { margin: 0 0 0.9em; }
+.term-entry p { margin: 0.25em 0; }
+.term-entry dfn { font-style: normal; font-weight: 600; }
+.term-entry .see-also { color: var(--text-muted); font-size: 0.95em; }
+
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

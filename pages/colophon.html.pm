@@ -19,3 +19,10 @@ Body text is set at 20 pixels (at the browser's default size) on a line height
 of 1.5. The column is 36.5 em wide, 730 pixels at the default size, which
 gives a mean of 88.6 characters a line over twenty full lines of ordinary
 prose; the limit is 90.
+
+◊section[#:id "citations" #:short "Citations"]{Citations}
+
+References are kept in Zotero and formatted by pandoc with the Chicago Manual
+of Style, eighteenth edition, notes and bibliography style, from the Citation
+Style Language project, under a Creative Commons Attribution-ShareAlike 3.0
+licence.

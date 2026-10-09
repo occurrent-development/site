@@ -37,8 +37,15 @@ jobs:
       - name: Install Pollen
         run: raco pkg install --auto --batch --skip-installed --no-docs pollen
 
-      - name: Install fonttools
-        run: python3 -m pip install --user -r tools/requirements.txt
+      - name: Install fonttools, Pillow and avifenc
+        run: |
+          python3 -m pip install --user -r tools/requirements.txt
+          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends libavif-bin
+
+      # VAL-3: the anchors published by the last deploy. A failed fetch only
+      # skips the check; it never fails the build.
+      - name: Fetch deployed anchors
+        run: curl -sf https://occurrentdevelopment.com/data/anchors.json -o data/anchors-deployed.json || true
 
       - name: Build (tests, fonts, render, assemble)
         run: make

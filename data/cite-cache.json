@@ -1,0 +1,138 @@
+{
+ "hackingLoopingEffectsHuman1996": {
+  "full": {
+   "": [
+    "Ian Hacking, “The Looping Effects of Human Kinds,” in ",
+    [
+     "em",
+     {},
+     "Causal Cognition"
+    ],
+    " (Oxford University Press, 1996), ",
+    [
+     "a",
+     {
+      "href": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012"
+     },
+     "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012"
+    ],
+    "."
+   ]
+  },
+  "short": {
+   "": [
+    "Hacking, “The Looping Effects of Human Kinds.”"
+   ]
+  },
+  "bib": [
+   "Hacking, Ian. “The Looping Effects of Human Kinds.” In ",
+   [
+    "em",
+    {},
+    "Causal Cognition"
+   ],
+   ". Oxford University Press, 1996. ",
+   [
+    "a",
+    {
+     "href": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012"
+    },
+    "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012"
+   ],
+   "."
+  ],
+  "order": 1,
+  "doi": "10.1093/acprof:oso/9780198524021.003.0012",
+  "url": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012"
+ },
+ "hackingMakingPeople2006": {
+  "full": {
+   "p. 23": [
+    "Ian Hacking, “Making Up People,” ",
+    [
+     "em",
+     {},
+     "London Review of Books"
+    ],
+    " 28, no. 16 (2006): 23."
+   ],
+   "p. 24": [
+    "Ian Hacking, “Making Up People,” ",
+    [
+     "em",
+     {},
+     "London Review of Books"
+    ],
+    " 28, no. 16 (2006): 24."
+   ],
+   "": [
+    "Ian Hacking, “Making Up People,” ",
+    [
+     "em",
+     {},
+     "London Review of Books"
+    ],
+    " 28, no. 16 (2006)."
+   ]
+  },
+  "short": {
+   "p. 23": [
+    "Hacking, “Making Up People,” 23."
+   ],
+   "p. 24": [
+    "Hacking, “Making Up People,” 24."
+   ],
+   "": [
+    "Hacking, “Making Up People.”"
+   ]
+  },
+  "bib": [
+   "Hacking, Ian. “Making Up People.” ",
+   [
+    "em",
+    {},
+    "London Review of Books"
+   ],
+   " 28, no. 16 (2006)."
+  ],
+  "order": 0,
+  "doi": null,
+  "url": null
+ },
+ "hackingSocialConstructionWhat2000": {
+  "full": {
+   "pp. 31-34": [
+    "Ian Hacking, ",
+    [
+     "em",
+     {},
+     "The Social Construction of What?"
+    ],
+    " (Harvard University Press, 2000), 31–34."
+   ]
+  },
+  "short": {
+   "pp. 31-34": [
+    "Hacking, ",
+    [
+     "em",
+     {},
+     "The Social Construction of What?"
+    ],
+    ", 31–34."
+   ]
+  },
+  "bib": [
+   "Hacking, Ian. ",
+   [
+    "em",
+    {},
+    "The Social Construction of What?"
+   ],
+   " Harvard University Press, 2000."
+  ],
+  "order": 2,
+  "doi": null,
+  "url": null
+ }
+}

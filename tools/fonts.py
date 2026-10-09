@@ -49,7 +49,7 @@ FEATURES = [
     "smcp", "c2sc", "onum", "lnum", "pnum", "tnum",
 ]
 
-SOURCE_GLOBS = ["**/*.pm", "**/*.p", "*.rkt"]
+SOURCE_GLOBS = ["**/*.pm", "**/*.p", "*.rkt", "lib/*.rkt", "**/*.svg", "**/*.csv", "data/*.json"]
 SKIP_DIRS = {"public", "compiled", ".git", "node_modules"}
 
 

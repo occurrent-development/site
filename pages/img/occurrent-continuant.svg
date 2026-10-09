@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" font-family="inherit" font-size="15" fill="currentColor">
+  <!-- Drawn for this site. Strokes and text use currentColor so the figure follows the theme. -->
+  <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- time axis -->
+    <path d="M40 222H600M592 216l8 6-8 6"/>
+    <path d="M150 216v12M320 216v12M490 216v12" stroke-width="1"/>
+    <!-- continuant: the same whole thing at each moment -->
+    <circle cx="150" cy="58" r="22"/>
+    <circle cx="320" cy="58" r="22"/>
+    <circle cx="490" cy="58" r="22"/>
+    <path d="M172 58H298M342 58H468" stroke-dasharray="2 5" stroke-width="1"/>
+    <!-- occurrent: one thing spread through time, a part at each moment -->
+    <path d="M70 142C140 120 220 166 320 142S500 120 570 142V172C500 150 420 196 320 172S140 150 70 172Z"/>
+    <path d="M150 128V180M320 138V176M490 128V182" stroke-dasharray="3 3" stroke-width="1"/>
+  </g>
+  <text x="40" y="20">A continuant is wholly present at each moment</text>
+  <text x="40" y="108">An occurrent has a different part at each moment</text>
+  <text x="600" y="244" text-anchor="end" font-style="italic">time</text>
+  <text x="150" y="244" text-anchor="middle">t₁</text>
+  <text x="320" y="244" text-anchor="middle">t₂</text>
+  <text x="490" y="244" text-anchor="middle">t₃</text>
+</svg>

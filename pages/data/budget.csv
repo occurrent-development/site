@@ -1,0 +1,7 @@
+Resource,Budget,This page
+Critical CSS (gzipped),≤ 14 KB,inlined
+Total CSS (gzipped),≤ 25 KB,inlined
+JavaScript (gzipped),≤ 30 KB,under 1 KB
+Fonts,"≤ 3 files, ≤ 120 KB","3 files, 104 KB"
+Third-party requests,0,0
+Cumulative layout shift,< 0.02,0

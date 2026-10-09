@@ -5,7 +5,7 @@
 (require rackunit
          racket/list
          txexpr
-         "pollen.rkt")
+         (except-in "pollen.rkt" list))
 
 (define (fails? thunk) (with-handlers ([exn:fail? (λ (e) #t)]) (thunk) #f))
 
@@ -90,3 +90,94 @@
 (test-case "the TOC follows an epigraph"
   (define doc (apply root (cons (epigraph "Motto.") (cons "\n\n" three-sections))))
   (check-equal? (map get-tag (take (get-elements doc) 2)) '(blockquote nav)))
+
+;; ---------------------------------------------------------------------------
+;; Fixtures rendered through Pollen itself (tests/*.html.pm)
+
+(require pollen/core)
+
+(define (fixture name) (get-doc (build-path "tests" name)))
+(define (by-id doc id) (findf (λ (x) (and (attrs-have-key? x 'id) (equal? (attr-ref x 'id) id)))
+                              (find-all doc txexpr?)))
+(define (text x) (cond [(string? x) x] [(txexpr? x) (apply string-append (map text (get-elements x)))] [else ""]))
+
+(test-case "LIST-1…3: nesting, mixed markers, continuation paragraphs"
+  (define doc (fixture "lists.html.pm"))
+  (define top (car (get-elements doc)))
+  (check-equal? (get-tag top) 'ul)
+  (check-equal? (map (λ (li) (attr-ref li 'data-n)) (find-all doc (λ (x) (and (eq? (get-tag x) 'li) (attrs-have-key? x 'data-n)))))
+                '("1." "2." "2.1."))
+  (check-equal? (length (find-all doc (tag? 'p))) 2))
+
+(test-case "CITE-8: notes numbered once, in reading order, asides included"
+  (define doc (fixture "citations.html.pm"))
+  (define refs (find-all doc (λ (x) (and (eq? (get-tag x) 'sup) (equal? (attr-ref x 'class #f) "note-ref")))))
+  ;; the hidden inline copies of the asides repeat their numerals without ids
+  (check-equal? (remove-duplicates (map text refs)) '("1" "2" "3" "4" "5"))
+  (define notes (find-all (by-id doc "notes") (tag? 'li)))
+  (check-equal? (length notes) 5)                       ; not double-counted (CITE-2)
+  (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "note-~a" n))) " "))
+  ;; CITE-3: full form first, short form after, each with its own locator
+  (check-regexp-match #rx"^Ian Hacking, “Making Up People,” London Review of Books 28, no. 16 \\(2006\\): 23\\." (note 1))
+  (check-regexp-match #rx"^Ian Hacking, The Social Construction of What\\? \\(Harvard" (note 2))  ; inside aside i
+  (check-regexp-match #rx"^Hacking, “Making Up People,” 24\\." (note 3))                         ; inside aside i
+  (check-regexp-match #rx"^Hacking, The Social Construction of What\\?, 31–34\\." (note 4))       ; body
+  (check-regexp-match #rx"^Hacking, “Making Up People\\.” With a remark\\." (note 5))
+  ;; CITE-4: back-links; a numeral inside an aside resolves to the aside's end copy
+  (define backs (find-all (by-id doc "notes") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
+  (check-equal? (map (λ (a) (attr-ref a 'href)) backs) '("#nref-1" "#nref-2" "#nref-3" "#nref-4" "#nref-5"))
+  (check-not-false (findf (λ (x) (equal? (attr-ref x 'id #f) "nref-2")) (find-all (by-id doc "asides") txexpr?)))
+  ;; CITE-7: the definition's citation is unnumbered and reaches the bibliography
+  (define terms (by-id doc "terms"))
+  (check-not-false (findf (λ (x) (equal? (attr-ref x 'href #f) "#bib-hackingLoopingEffectsHuman1996")) (find-all terms txexpr?)))
+  (check-equal? (map (λ (li) (attr-ref li 'id)) (find-all (by-id doc "bibliography") (tag? 'li)))
+                '("bib-hackingMakingPeople2006" "bib-hackingLoopingEffectsHuman1996" "bib-hackingSocialConstructionWhat2000"))
+  ;; CITE-10: end matter order
+  (check-equal? (map (λ (s) (attr-ref s 'id)) (find-all doc (λ (x) (equal? (attr-ref x 'class #f) "endmatter"))))
+                '("terms" "asides" "notes" "bibliography")))
+
+(define (classes x) (if (attrs-have-key? x 'class) (attr-ref x 'class) ""))
+(define (marks-in doc) (map classes (find-all doc (λ (x) (regexp-match? #rx"^mark " (classes x))))))
+
+(test-case "LINK-1/2: link types, directions and broken targets"
+  (define doc (root (section #:id "a" "A") "\n\n"
+                    (link "https://example.org" "out") " " (link "/colophon" "across") " "
+                    (link "#a" "up") " " (link "#b" "down") "\n\n"
+                    (section #:id "b" "B")))
+  (check-equal? (marks-in doc) '("mark m-ext" "mark m-xref" "mark m-up" "mark m-down"))
+  (check-true (fails? (λ () (root (link "#nowhere" "x")))))
+  (check-true (fails? (λ () (root (link "mailto:x@y" "x"))))))
+
+(test-case "MARK-3: the last word and its mark never part"
+  (define doc (root (link "https://example.org" "two words")))
+  (define nw (car (find-all doc (λ (x) (equal? (classes x) "nw")))))
+  (check-equal? (car (get-elements nw)) "words"))
+
+(test-case "TERM-5/6: first use marked, later uses plain, unknown ids fail"
+  (define doc (root (term "occurrent" "occurrent") " and " (term "occurrent" "again")
+                    " and " (term "occurrent" #:mark #t "forced")))
+  (define body (txexpr 'root null (filter (λ (x) (not (equal? (classes x) "endmatter"))) (get-elements doc))))
+  (check-equal? (length (filter (λ (c) (equal? c "mark m-term")) (marks-in body))) 2)
+  (check-not-false (by-id doc "term-occurrent"))
+  (check-not-false (by-id doc "term-continuant"))   ; reached through the definition (TERM-7)
+  (check-true (fails? (λ () (root (term "no-such-term" "x"))))))
+
+(test-case "MNOTE-3/5: margin notes open a paragraph and hold no annotations"
+  (define doc (root (margin "Gloss.") " Text."))
+  (check-equal? (car (get-elements (car (get-elements doc)))) '(span ((class "margin-note")) "Gloss."))
+  (check-true (fails? (λ () (root "Text " (margin "late")))))
+  (check-true (fails? (λ () (root (margin (link "https://example.org" "x")) " Text."))))
+  (check-true (fails? (λ () (root "x" (aside "nested " (aside "no")))))))
+
+(test-case "TABLE-1/5/6: semantic tables, wrong cell counts fail"
+  (define t (table #:caption "C" "\n" "| a | b |" "\n" "|---|---|" "\n"
+                   "| 1 | x |" "\n" "| 2 | y |" "\n" "| 3 | z |" "\n" "| 4 | w |" "\n" "| 5 | v |" "\n"))
+  (check-not-false (findf (λ (x) (attrs-have-key? x 'data-sortable)) (find-all t (tag? 'table))))
+  (check-equal? (length (find-all t (λ (x) (equal? (attr-ref x 'scope #f) "col")))) 2)
+  (check-equal? (classes (car (find-all t (tag? 'td)))) "a-right")
+  (check-true (fails? (λ () (table "| a | b |" "\n" "|---|---|" "\n" "| 1 |" "\n")))))
+
+(test-case "IMG-3/6: figures need alt text and a licence"
+  (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:licence "own" "c"))))
+  (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:alt "a" "c"))))
+  (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:alt "a" #:licence "cc-by-4.0" "c")))))
