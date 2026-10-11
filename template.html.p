@@ -15,18 +15,30 @@
 <div class="page">
 <header class="site-header">
 <a class="site-name" href="/">Occurrent Development</a>
-<button id="theme" class="theme-toggle" type="button" aria-label="Theme" hidden>
+<button class="theme-toggle" type="button" data-theme-toggle aria-label="Theme" hidden>
 <svg class="icon-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4.5a7.5 7.5 0 0 0 0 15z" fill="currentColor"/></svg>
 <svg class="icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
 <svg class="icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.6A7.5 7.5 0 1 1 9.4 4.5a6 6 0 0 0 10.1 10.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
 </button>
 </header>
+<div class="bar" id="bar" hidden>
+<button class="bar-section" type="button" aria-haspopup="dialog"><span class="vh">Contents. Current section: </span><span class="bar-title"></span></button>
+<div class="bar-controls">
+<button class="size-down" type="button" aria-label="Smaller text"><span aria-hidden="true">A</span></button>
+<button class="size-up" type="button" aria-label="Larger text"><span aria-hidden="true">A</span></button>
+<button class="theme-toggle" type="button" data-theme-toggle aria-label="Theme">
+<svg class="icon-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4.5a7.5 7.5 0 0 0 0 15z" fill="currentColor"/></svg>
+<svg class="icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+<svg class="icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.6A7.5 7.5 0 1 1 9.4 4.5a6 6 0 0 0 10.1 10.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+</button>
+</div>
+</div>
 <article>
 ◊(if (select-from-metas 'title metas) (->html (essay-header metas)) "")
 ◊(doc-body doc)
 </article>
 ◊when/splice[(specimen? metas)]{<div class="tier" aria-hidden="true"></div>}
 </div>
-<script>◊(theme-script)</script>
+<script type="module" src="◊(asset-url "assets/js/site.js")" data-tables="◊(asset-url "assets/js/tables.js")"></script>
 </body>
 </html>

@@ -1,1 +1,1 @@
-try{var t=localStorage.getItem("theme");if(t=="light"||t=="dark")document.documentElement.dataset.theme=t}catch(e){}
+(function(d){d.classList.add("js");try{var t=localStorage.getItem("theme"),s=localStorage.getItem("size");if(t=="light"||t=="dark")d.dataset.theme=t;if(/^[0-4]$/.test(s)&&s!="2")d.dataset.size=s}catch(e){}})(document.documentElement)

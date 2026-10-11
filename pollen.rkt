@@ -9,6 +9,8 @@
          racket/runtime-path
          racket/system
          racket/port
+         file/sha1
+         json
          txexpr
          pollen/decode
          pollen/core
@@ -34,7 +36,7 @@
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv figure
          ;; used by the template
-         site-css font-preloads head-script theme-script specimen? specimen-css
+         site-css font-preloads head-script asset-url specimen? specimen-css
          page-title essay-header doc-body format-date revised-date)
 
 (module setup racket/base
@@ -44,9 +46,10 @@
   (define-runtime-path fonts "assets/fonts/fonts.rktd")
   (define-runtime-path images "assets/img/images.json")
   (define-runtime-path cite-cache "data/cite-cache.json")
+  (define-runtime-path link-meta "data/link-meta.json")
   (define-runtime-path typography "typography.rkt")
   (define-runtime-path head-js "assets/js/theme-head.js")
-  (define-runtime-path theme-js "assets/js/theme.js")
+  (define-runtime-path site-js "assets/js/site.js")
   (define-runtime-path specimen-css "assets/css/specimen.css")
   (define-runtime-path marks-dir "assets/icons/marks")
   ;; SRC-2: an unknown tag is an unbound identifier, so the build fails.
@@ -56,7 +59,7 @@
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
       od-summary od-more))
   (define cache-watchlist
-    (list css fonts images cite-cache typography head-js theme-js specimen-css)))
+    (list css fonts images cite-cache link-meta typography head-js site-js specimen-css)))
 
 (require (prefix-in files: (submod "." setup)))
 
@@ -334,6 +337,19 @@
       (txexpr (get-tag x) (filter (λ (a) (not (eq? (car a) 'id))) (get-attrs x)) (map strip-ids (get-elements x)))
       x))
 
+;; CARD-4: card facts entered by hand, keyed by URL.
+(define link-meta-cache #f)
+(define (link-meta url)
+  (unless link-meta-cache
+    (define f (project-file "data" "link-meta.json"))
+    (set! link-meta-cache (if (file-exists? f) (call-with-input-file f read-json) (hasheq))))
+  (define fields '(title author publisher date type doi wayback dead))
+  (define m (hash-ref link-meta-cache (string->symbol url) (hasheq)))
+  (for/hasheq ([(k v) (in-hash m)])
+    (unless (memq k fields)
+      (build-error "data/link-meta.json: ~a has unknown field ~a (allowed: ~a)" url k fields))
+    (values k v)))
+
 (define (back-link href label) `(a ((class "back") (href ,href) (aria-label ,label)) "↩"))
 
 ;; ◊link: external ↗, cross-essay →, same-page ↑/↓ (direction set later).
@@ -342,7 +358,11 @@
   (define data (filter (λ (a) (regexp-match? #rx"^data-" (symbol->string (car a)))) (get-attrs x)))
   (cond
     [(regexp-match? #rx"^https?://" href)
-     `(a ((class "link ext") (href ,href) ,@data) ,@(with-mark kids 'ext))]
+     ;; CARD-4: facts from data/link-meta.json; attributes in the tag win
+     (define meta (for/list ([(k v) (in-hash (link-meta href))]
+                             #:unless (assq (string->symbol (format "data-~a" k)) data))
+                    (list (string->symbol (format "data-~a" k)) (format "~a" v))))
+     `(a ((class "link ext") (href ,href) ,@data ,@meta) ,@(with-mark kids 'ext))]
     [(regexp-match? #px"^/[a-z0-9-]*(#[a-z0-9-]+)?$" href)
      `(a ((class "link xref") (href ,href)) ,@(with-mark kids 'xref))]
     [(regexp-match? #px"^#[a-z0-9-]+$" href)
@@ -372,7 +392,8 @@
        (hash-set! bib-keys key #t)
        (define commentary (and (attrs-have-key? x 'note) (typeset-string (attr-ref x 'note))))
        (set! notes (cons (list n (append (note-form key loc first?)
-                                         (if commentary (list " " commentary) null)))
+                                         (if commentary (list " " commentary) null))
+                               key)
                          notes))
        ;; CITE-1: the number belongs to the note; the text gets a circle.
        `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
@@ -435,8 +456,8 @@
          (define see (hash-ref t 'see-also))
          (define entry
            `(div ((class "term-entry") (id ,(string-append "term-" id)))
-                 (p (dfn ,(hash-ref t 'term)) ". " ,@definition)
-                 ,@(or more null)
+                 (p ((class "definition")) (dfn ,(hash-ref t 'term)) ". " ,@definition)
+                 ,@(if more `((div ((class "term-more")) ,@more)) null)
                  ,@(if (null? see) null
                        `((p ((class "see-also")) "See also: "
                             ,@(add-between
@@ -465,8 +486,9 @@
                   (endmatter "notes" "Notes"
                              `(ol ((class "notes"))
                                   ,@(for/list ([nt (in-list (reverse notes))])
-                                      (match-define (list n elems) nt)
-                                      `(li ((id ,(format "note-~a" n)) (value ,(number->string n)))
+                                      (match-define (list n elems key) nt)
+                                      `(li ((id ,(format "note-~a" n)) (value ,(number->string n))
+                                            (data-bib ,(string-append "bib-" key)))
                                            ,@elems " "
                                            (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
              (and (positive? (hash-count bib-keys))
@@ -716,7 +738,10 @@
    "\n"))
 
 (define (head-script) (string-trim (file->string files:head-js)))
-(define (theme-script) (string-trim (file->string files:theme-js)))
+;; PERF-2: scripts are cached for a year, so their URL carries a content hash.
+(define (asset-url rel)
+  (define f (project-file rel))
+  (format "/~a?v=~a" rel (substring (call-with-input-file f sha1) 0 10)))
 
 (define (specimen? metas) (and (select-from-metas 'specimen metas) #t))
 (define (specimen-css) (file->string files:specimen-css))

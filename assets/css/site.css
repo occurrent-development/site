@@ -44,6 +44,13 @@
   }
 }
 
+/* ── Text size (THEME-5): five steps; the middle one is the calibrated default ── */
+:root { --size: 1; }
+:root[data-size="0"] { --size: 0.85; }
+:root[data-size="1"] { --size: 0.92; }
+:root[data-size="3"] { --size: 1.1; }
+:root[data-size="4"] { --size: 1.2; }
+
 /* ── Fallback metrics (TYPE-10) ────────────────────────────────────────────
    Georgia scaled to Libertinus Serif's average width and vertical metrics
    (computed from the font files), so the swap causes no reflow. */
@@ -92,7 +99,7 @@ a:hover, a:focus-visible { color: var(--accent); }
   --gutter: 1.25em;
   --gap: 2.5em;
   --margin: 13em;
-  font-size: 1.25rem;          /* TYPE-2: 20px at the default 16px */
+  font-size: calc(1.25rem * var(--size)); /* TYPE-2: 20px at the default 16px; THEME-5 steps */
   line-height: 1.5;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures contextual;
@@ -116,6 +123,10 @@ a:hover, a:focus-visible { color: var(--accent); }
   .page > * { max-width: none; width: calc(var(--measure) + 2 * var(--gutter)); }
   article { text-align: justify; }  /* TYPE-3 */
 }
+
+article { --tier: S; }
+@container page (min-width: 39em)   { article { --tier: M; } }
+@container page (min-width: 54.5em) { article { --tier: L; position: relative; } }
 
 /* L: column + gap + right margin fit (39 + 2.5 + 13 = 54.5em). The column
    moves left so the column and margin together are centred. */
@@ -516,7 +527,197 @@ ul.bibliography li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.35em 0;
 .term-entry dfn { font-style: normal; font-weight: 600; }
 .term-entry .see-also { color: var(--text-muted); font-size: 0.95em; }
 
+/* ── Table sorting and pinned headers (TABLE-4/5) ──────────────────────── */
+.table-wrap th button.sort {
+  appearance: none; border: 0; background: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; letter-spacing: inherit; text-align: inherit;
+  width: 100%; cursor: pointer;
+}
+.table-wrap th button.sort:hover, .table-wrap th button.sort:focus-visible { color: var(--accent); }
+.sort-mark { font-size: 0.7em; margin-left: 0.3em; color: var(--accent); }
+.table-wrap { position: relative; }
+.sticky-head {
+  position: fixed; z-index: 10; overflow: hidden; display: none;
+  background: var(--bg); border-bottom: 1px solid var(--rule);
+}
+.sticky-head.is-shown { display: block; }
+.sticky-head table { border-collapse: collapse; }
+
+/* The contents, opened from the reading bar */
+.toc-list { list-style: none; margin: 0; padding: 0; }
+.toc-list ul { list-style: none; margin: 0; padding-left: 1.2em; }
+.toc-list li { margin: 0.2em 0; }
+.toc-list a[aria-current] { color: var(--accent); }
+.toc-list a[aria-current]::before { content: "▸ "; }
+
+/* ── With JS (CITE-10): Terms and Asides are for readers without scripts ── */
+.js #terms, .js #asides { display: none; }
+
+/* ── Reading bar (BAR-1) ───────────────────────────────────────────────
+   Fixed, overlaying the page: it never moves content. Shown on scroll-up. */
+.bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-inline: auto;
+  height: 2.6rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+  color: var(--text-muted);
+  transform: translateY(-100%);
+  transition: transform 0.2s ease;
+}
+.bar.is-shown { transform: none; }
+.bar > * { font-size: 0.8em; }   /* not on .bar itself: its width is set in em (.page > *) */
+.bar button {
+  appearance: none; border: 0; background: none; color: inherit; font: inherit;
+  cursor: pointer; padding: 0.25rem 0.4rem; border-radius: 3px;
+}
+.bar button:hover, .bar button:focus-visible { color: var(--accent); }
+.bar button:disabled { opacity: 0.35; cursor: default; color: inherit; }
+.bar-section {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+.bar-controls { display: flex; align-items: center; gap: 0.15rem; flex: none; }
+.size-down span { font-size: 0.8em; }
+.size-up span { font-size: 1.15em; }
+.bar .theme-toggle { width: 2rem; height: 2rem; margin: 0; padding: 0.4rem; }
+
+/* ── Popups and popins (§11) ───────────────────────────────────────────── */
+.popup {
+  position: absolute;
+  z-index: 30;
+  width: min(26em, calc(100vw - 2rem));
+  max-height: min(70vh, 32em);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85em;
+  line-height: 1.45;
+  text-align: left;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  background: var(--popup-bg);
+  border: 1px solid var(--popup-border);
+  border-radius: 4px;
+  box-shadow: 0 0.4em 1.6em rgb(0 0 0 / 0.14);
+}
+.popup-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+  padding: 0.45em 0.6em 0.4em 0.9em;
+  border-bottom: 1px solid var(--popup-border);
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+.popup-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.05em;
+}
+.popup-bar a, .popup-bar button {
+  appearance: none; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0;
+}
+.popup-bar a:hover, .popup-bar button:hover, .popup-bar a:focus-visible, .popup-bar button:focus-visible { color: var(--accent); }
+.popup-close { font-size: 1.3em; line-height: 1; padding: 0 0.15em; }
+.popup-body { overflow: auto; padding: 0.7em 0.9em 0.8em; overscroll-behavior: contain; }
+.popup-body > :first-child { margin-top: 0; }
+.popup-body > :last-child { margin-bottom: 0; }
+.popup-body p { margin: 0 0 0.5em; text-indent: 0; }
+.popup-body h2, .popup-body h3, .popup-body h4 {
+  font-size: 1.05em; margin: 0 0 0.4em; text-align: left; border: 0; padding: 0; float: none;
+}
+.popup-body section { margin: 0; }
+.popup-sep { border: 0; border-top: 1px solid var(--popup-border); margin: 0.7em 0; }
+.popup-item-head { font-variant-caps: all-small-caps; letter-spacing: 0.05em; color: var(--text-muted); margin: 0 0 0.2em; }
+.popup-bib { color: var(--text-muted); }
+.popup .term-more { margin-top: 0.5em; }
+.popup-more, .popup-back {
+  appearance: none; border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; padding: 0;
+}
+.card-domain { color: var(--text-muted); }
+.card-facts { color: var(--text-muted); margin: 0.2em 0 0.6em; }
+.card-note { margin-top: 0.5em; }
+.popup:focus { outline: none; }
+
+/* POP-5: on touch devices, a sheet anchored to the bottom. */
+.popup.is-popin {
+  position: fixed;
+  left: 0; right: 0; bottom: 0; top: auto;
+  width: auto;
+  max-height: 60vh;
+  border-radius: 8px 8px 0 0;
+  border-width: 1px 0 0;
+  font-size: 0.95em;
+}
+.popin-shade { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / 0.25); }
+
+/* ── The margin, tier L (POP-8, ASIDE-3/4, MNOTE-2/4) ───────────────────
+   Margin notes, aside stubs and opened notes stay where they are in the
+   text (A11Y-2) and are positioned into the right margin by the script. */
+.in-margin {
+  position: absolute;
+  left: var(--mx);
+  width: var(--mw);
+  font-size: 0.85em;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: 0;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  font-style: normal;
+  white-space: normal;
+}
+.margin-note.in-margin { font-style: italic; color: var(--text-muted); }
+.stub {
+  display: block;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  border-radius: 2px;
+}
+.stub.is-full { white-space: normal; }
+.stub:hover, .stub.hl, .stub:focus-visible { color: var(--accent); }
+.stub.is-open {
+  z-index: 15;
+  white-space: normal;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  padding: 0.4em 0.6em;
+  margin: -0.45em -0.65em;
+  max-height: 70vh;
+  overflow: auto;
+}
+.margin-panel {
+  z-index: 16;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  padding: 0.4em 0.6em;
+  margin: -0.45em -0.65em;
+  max-height: 70vh;
+  overflow: auto;
+}
+.margin-panel .popup-item-head:first-child { margin-top: 0; }
+.circle-link.hl .circle { background: var(--accent); }
+
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  * { transition: none !important; animation: none !important; }
 }

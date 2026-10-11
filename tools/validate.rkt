@@ -7,6 +7,8 @@
 ;; - VAL-3: a section id published in the last deploy (data/anchors-deployed.json,
 ;;   fetched by CI) must not disappear while a page links to it.
 ;; - TERM-6: warns about glossary terms no page uses.
+;; - POP-7: writes build/_x/<slug>/<id>.html, one fragment per section (and
+;;   index.html with the title and abstract), fetched by cross-page popups.
 ;; - DRAFT-2: writes data/publish.txt, the pages `make` copies into public/:
 ;;   every page, and essays whose status is not draft. A published page may
 ;;   not link to a draft.
@@ -20,6 +22,7 @@
          txexpr
          pollen/core
          pollen/pagetree
+         (only-in pollen/template ->html)
          (only-in "../lib/util.rkt" text-of published?))
 
 (define errors 0)
@@ -61,7 +64,7 @@
     (define terms (for/list ([a (in-list (find-all doc (λ (x) (and (eq? (get-tag x) 'div) (class? x "term-entry")))))])
                     (substring (attr-ref a 'id) 5)))
     (define status (let ([s (select-from-metas 'status (get-metas src))]) (and s (string-trim (format "~a" s)))))
-    (hasheq 'url url 'src src 'out (symbol->string node) 'title (or (select-from-metas 'title (get-metas src)) "")
+    (hasheq 'url url 'src src 'doc doc 'out (symbol->string node) 'title (or (select-from-metas 'title (get-metas src)) "")
             'published (published? src status)
             'sections sections 'ids ids 'xrefs xrefs 'terms terms)))
 
@@ -115,6 +118,34 @@
                    (values (string->symbol (hash-ref p 'url))
                            (hasheq 'title (hash-ref p 'title) 'sections (hash-ref p 'sections)))))
 (write-json-file (build-path "data" "links.json") links)
+
+;; POP-7: section fragments for cross-page popups. Circles, self-links and
+;; hidden aside copies are dropped: a fragment is read, not explored.
+(define (fragment-clean x)
+  (cond
+    [(txexpr? x)
+     (cond
+       [(or (class? x "circle-link") (class? x "circle") (class? x "self") (class? x "vh")
+            (attrs-have-key? x 'hidden))
+        #f]
+       [else (txexpr (get-tag x) (filter (λ (a) (not (eq? (car a) 'id))) (get-attrs x))
+                     (filter values (map fragment-clean (get-elements x))))])]
+    [else x]))
+
+(define x-dir (build-path "build" "_x"))
+(when (directory-exists? x-dir) (delete-directory/files x-dir))
+(for ([p (in-list pages)] #:unless (equal? (hash-ref p 'url) "/"))
+  (define dir (build-path x-dir (substring (hash-ref p 'url) 1)))
+  (make-directory* dir)
+  (define metas (get-metas (hash-ref p 'src)))
+  (define (meta k) (let ([v (select-from-metas k metas)]) (and v (format "~a" v))))
+  (call-with-output-file (build-path dir "index.html") #:exists 'replace
+    (λ (o) (write-string (->html `(div (h1 ,(or (meta 'title) "")) ,@(filter values (list (and (meta 'subtitle) `(p ((class "subtitle")) ,(meta 'subtitle)))
+                                                                                          (and (meta 'abstract) `(p ((class "abstract")) ,(meta 'abstract))))))) o)))
+  (for ([sec (in-list (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'section) (attrs-have-key? x 'id)
+                                                               (not (class? x "endmatter"))))))])
+    (call-with-output-file (build-path dir (string-append (attr-ref sec 'id) ".html")) #:exists 'replace
+      (λ (o) (write-string (->html (fragment-clean sec)) o)))))
 
 ;; DRAFT-2: what `make` publishes, as "rendered-file public-name" lines.
 (call-with-output-file (build-path "data" "publish.txt") #:exists 'replace

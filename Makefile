@@ -53,12 +53,14 @@ render: $(FONTS) $(IMAGES)
 # Pages render beside their sources; public/ gets them flattened to /<name>.
 publish: render
 	rm -rf public
-	mkdir -p public/assets/fonts public/assets/icons public/assets/img public/data
+	mkdir -p public/assets/fonts public/assets/icons public/assets/img public/assets/js public/data
 	while read src dest; do cp "$$src" "public/$$dest"; done < data/publish.txt
 	cp assets/fonts/*.woff2 public/assets/fonts/
 	cp assets/icons/*.svg public/assets/icons/
+	cp assets/js/site.js assets/js/tables.js public/assets/js/
 	find assets/img -type f ! -name images.json -exec cp {} public/assets/img/ \;
 	cp data/anchors.json public/data/
+	cp -R build/_x public/_x
 	cp _headers public/
 	@bad=$$(find public $(FORBIDDEN)); \
 	  if [ -n "$$bad" ]; then echo "Refusing to publish: $$bad"; exit 1; fi
@@ -73,4 +75,4 @@ clean:
 	$(RACO) pollen reset
 	rm -rf public
 	rm -f index.html pages/*.html assets/fonts/*.woff2 $(FONTS)
-	rm -rf assets/img data/anchors.json data/links.json data/publish.txt
+	rm -rf assets/img build data/anchors.json data/links.json data/publish.txt
