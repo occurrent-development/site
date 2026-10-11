@@ -1,26 +1,21 @@
 #lang racket/base
-;; Marks (§4.1): the small superscript sign after annotated text.
-;;
-;; Symbol marks are empty inline spans drawn by CSS (mask-image +
-;; currentColor, MARK-1); an inline span adds no line-break opportunity, so
-;; with the word joiner before it a mark never wraps alone (MARK-3), and it
-;; cannot change the line height (MARK-2). Each carries visually hidden text
-;; naming it (MARK-7). Numeral marks (notes, asides) are <sup> text.
+;; Marks (§4.1): the arrows after links. An arrow is an inline box exactly
+;; filled by its SVG mask (MARK-1), bound to its last word (MARK-3), with
+;; visually hidden text naming it (MARK-7). Circles (notes, definitions,
+;; asides) are made by the root pass in pollen.rkt.
 
 (require racket/list
          racket/match
          txexpr
          "util.rkt")
 
-(provide mark with-mark numeral-mark mark-kinds split-last-word)
+(provide mark with-mark mark-kinds split-last-word)
 
 (define mark-kinds
   (hash 'ext  "external link"
         'xref "link to another page"
         'up   "link to an earlier section"
         'down "link to a later section"
-        'term "definition"
-        'ref  "reference"
         'od-dir "link"))   ; placeholder until the root pass knows up or down
 
 (define (mark kind)
@@ -48,8 +43,3 @@
 (define (with-mark elems kind)
   (define-values (init word) (split-last-word elems))
   (append init (list `(span ((class "nw")) ,@word ,WJ ,(mark kind)))))
-
-;; A numbered mark: <sup> holding a link. `label` names it ("note 3").
-(define (numeral-mark class href id text label)
-  `(sup ((class ,class))
-        (a ((href ,href) ,@(if id `((id ,id)) null) (aria-label ,label)) ,text)))

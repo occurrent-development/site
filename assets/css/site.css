@@ -294,10 +294,13 @@ hr.break + p { text-indent: 0; }
   hr.break { height: 1.1em; margin: 2em auto; }
 }
 
-/* ── Marks (§4.1, MARK-1…7) ────────────────────────────────────────────
-   A symbol mark is an empty inline span: no break opportunity of its own
-   (with the word joiner, MARK-3) and the same line box as the text (MARK-2).
-   The glyph is a mask over the accent colour, raised to cap height. */
+/* ── Marks (§4.1, MARK-1…8) ────────────────────────────────────────────
+   Two signs. An arrow (a link away) is an atomic inline box exactly filled
+   by its SVG mask, so no browser has an empty box to paint (MARK-1). A circle
+   (a note, definition or aside, opened in place) is a ring drawn with a
+   border. Both sit above the baseline inside the line's own ascent, so a line
+   with a mark is exactly as tall as one without (MARK-2); each is bound to
+   its last word by a no-wrap span (MARK-3). */
 .vh {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -306,37 +309,40 @@ hr.break + p { text-indent: 0; }
 .nw { white-space: nowrap; }            /* the last word and its mark (MARK-3) */
 
 .mark {
-  padding-left: 0.5em;
-  margin-left: 0.06em;
+  display: inline-block;
+  width: 0.58em;                          /* MARK-1a: 20% larger than Phase 1 */
+  height: 0.58em;
+  margin-left: 0.04em;
+  vertical-align: 0.36em;
   background-color: var(--accent);
-  -webkit-mask: var(--m) no-repeat 50% 0.17em / 0.48em 0.48em;
-  mask: var(--m) no-repeat 50% 0.17em / 0.48em 0.48em;
+  -webkit-mask: var(--m) center / 100% 100% no-repeat;
+  mask: var(--m) center / 100% 100% no-repeat;
 }
 .m-ext  { --m: var(--m-ext); }
 .m-xref { --m: var(--m-xref); }
 .m-up   { --m: var(--m-up); }
 .m-down { --m: var(--m-down); }
-.m-term { --m: var(--m-term); }
-.m-ref  { --m: var(--m-ref); padding-left: 0.6em; -webkit-mask-size: 0.58em 0.58em; mask-size: 0.58em 0.58em; }
 a:visited .mark { background-color: var(--accent-visited); }   /* MARK-5 */
 
-/* Numeral marks: notes (arabic) and asides (roman). line-height 0 keeps
-   the line exactly as tall as one without a mark (MARK-2). */
-sup.note-ref, sup.aside-ref {
-  font-size: 0.68em;
-  line-height: 0;
-  vertical-align: 0.6em;
-  font-variant-numeric: lining-nums proportional-nums;
-  margin-left: 0.04em;
+.circle {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 0.4em;
+  height: 0.4em;
+  margin-left: 0.08em;
+  vertical-align: 0.5em;
+  border: 0.085em solid var(--accent);
+  border-radius: 50%;
 }
-sup.note-ref a, sup.aside-ref a, a.cite-ref { color: var(--accent); }
-sup.note-ref a:visited, sup.aside-ref a:visited { color: var(--accent-visited); }
-sup.aside-ref { font-style: italic; }
-sup.note-ref + .ref sup, .ref + .ref sup { margin-left: 0.15em; }
+a.circle-link { color: var(--accent); }
+a.circle-link + a.circle-link .circle, .nw + a.circle-link .circle { margin-left: 0.2em; }
+/* Hovered or focused, the circle fills (and so does an aside's stub, ASIDE-2). */
+a.circle-link:hover .circle, a.circle-link:focus-visible .circle,
+a.term:hover .circle, a.term:focus-visible .circle, .circle.is-open { background: var(--accent); }
 
 /* MARK-6: an invisible hit area of at least 24 × 24 px around annotated text. */
-a.link, a.term, sup a, a.cite-ref, a.back { position: relative; }
-a.link::after, a.term::after, a.cite-ref::after, a.back::after, sup a::after {
+a.link, a.term, a.circle-link, a.back { position: relative; }
+a.link::after, a.term::after, a.circle-link::after, a.back::after {
   content: "";
   position: absolute;
   left: 50%; top: 50%;
@@ -492,13 +498,13 @@ figure[data-invert="yes"] img { mix-blend-mode: multiply; }
 }
 .endmatter h2 { font-size: 1.45em; }       /* matches level-1 headings at body size */
 .endmatter p { text-indent: 0; }
-ol.notes, ol.asides { margin: 0; padding-left: 2em; }
+ol.notes { margin: 0; padding-left: 2em; }
+ul.asides { margin: 0; padding: 0; list-style: none; }
 ol.notes { font-variant-numeric: oldstyle-nums proportional-nums; }
 ol.notes > li::marker { font-variant-numeric: lining-nums tabular-nums; color: var(--text-muted); }
-ol.asides { list-style: lower-roman; }
-ol.asides > li::marker { color: var(--text-muted); font-style: italic; }
-ol.notes > li, ol.asides > li { margin: 0.35em 0; padding-left: 0.25em; }
-ol.notes > li:target, ol.asides > li:target, .term-entry:target, .bibliography li:target {
+ol.notes > li { margin: 0.35em 0; padding-left: 0.25em; }
+ul.asides > li { margin: 0.5em 0; }
+ol.notes > li:target, ul.asides > li:target, .term-entry:target, .bibliography li:target {
   background: color-mix(in srgb, var(--selection) 45%, transparent);
 }
 a.back { color: var(--text-muted); text-decoration: none; margin-left: 0.15em; }

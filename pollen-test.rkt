@@ -3,6 +3,7 @@
 ;; tree (SECT-1…6), the table of contents (TOC-1) and the intro paragraph.
 
 (require rackunit
+         racket/string
          racket/list
          txexpr
          (except-in "pollen.rkt" list))
@@ -16,6 +17,8 @@
         null)))
 
 (define (tag? t) (λ (x) (eq? (get-tag x) t)))
+(define (classes x) (if (attrs-have-key? x 'class) (attr-ref x 'class) ""))
+(define (has-class* x c) (member c (string-split (classes x))))
 
 (test-case "SRC-3: a single newline is a space; a blank line is a paragraph"
   (check-equal? (root "one" "\n" "two")
@@ -111,32 +114,59 @@
 
 (test-case "CITE-8: notes numbered once, in reading order, asides included"
   (define doc (fixture "citations.html.pm"))
-  (define refs (find-all doc (λ (x) (and (eq? (get-tag x) 'sup) (equal? (attr-ref x 'class #f) "note-ref")))))
-  ;; the hidden inline copies of the asides repeat their numerals without ids
-  (check-equal? (remove-duplicates (map text refs)) '("1" "2" "3" "4" "5"))
+  (define (targets x) (string-split (attr-ref x 'data-targets "")))
+  (define openers (find-all doc (λ (x) (attrs-have-key? x 'data-targets))))
+  ;; CITE-1: no numerals in the text; circles open notes 1–5 in reading order
+  (check-equal? (filter (λ (t) (regexp-match? #rx"^note-" t)) (remove-duplicates (append-map targets openers)))
+                '("note-1" "note-2" "note-3" "note-4" "note-5"))
+  (check-equal? (find-all doc (tag? 'sup)) '())
   (define notes (find-all (by-id doc "notes") (tag? 'li)))
   (check-equal? (length notes) 5)                       ; not double-counted (CITE-2)
   (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "note-~a" n))) " "))
   ;; CITE-3: full form first, short form after, each with its own locator
   (check-regexp-match #rx"^Ian Hacking, “Making Up People,” London Review of Books 28, no. 16 \\(2006\\): 23\\." (note 1))
-  (check-regexp-match #rx"^Ian Hacking, The Social Construction of What\\? \\(Harvard" (note 2))  ; inside aside i
-  (check-regexp-match #rx"^Hacking, “Making Up People,” 24\\." (note 3))                         ; inside aside i
-  (check-regexp-match #rx"^Hacking, The Social Construction of What\\?, 31–34\\." (note 4))       ; body
+  (check-regexp-match #rx"^Ian Hacking, The Social Construction of What\\? \\(Harvard" (note 2))  ; inside the first aside
+  (check-regexp-match #rx"^Hacking, “Making Up People,” 24\\." (note 3))                           ; inside the first aside
+  (check-regexp-match #rx"^Hacking, The Social Construction of What\\?, 31–34\\." (note 4))         ; body
   (check-regexp-match #rx"^Hacking, “Making Up People\\.” With a remark\\." (note 5))
-  ;; CITE-4: back-links; a numeral inside an aside resolves to the aside's end copy
+  ;; CITE-4: each note's ↩ goes to the circle that opens it; for a note inside
+  ;; an aside that circle is in the aside's end copy (the inline copy has no ids)
   (define backs (find-all (by-id doc "notes") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
-  (check-equal? (map (λ (a) (attr-ref a 'href)) backs) '("#nref-1" "#nref-2" "#nref-3" "#nref-4" "#nref-5"))
-  (check-not-false (findf (λ (x) (equal? (attr-ref x 'id #f) "nref-2")) (find-all (by-id doc "asides") txexpr?)))
+  (for ([b (in-list backs)] [n (in-naturals 1)])
+    (define circle (by-id doc (substring (attr-ref b 'href) 1)))
+    (check-not-false (member (format "note-~a" n) (targets circle))))
+  (define opener-2 (by-id doc (substring (attr-ref (list-ref backs 1) 'href) 1)))
+  (check-not-false (memq opener-2 (find-all (by-id doc "asides") txexpr?)))
+  ;; ASIDE-2: asides are unnumbered and named "aside"
+  (check-true (for/and ([o (in-list openers)] #:when (member "aside-1" (targets o)))
+                (regexp-match? #rx"aside" (attr-ref o 'aria-label ""))))
   ;; CITE-7: the definition's citation is unnumbered and reaches the bibliography
   (define terms (by-id doc "terms"))
-  (check-not-false (findf (λ (x) (equal? (attr-ref x 'href #f) "#bib-hackingLoopingEffectsHuman1996")) (find-all terms txexpr?)))
+  (check-not-false (findf (λ (x) (member "bib-hackingLoopingEffectsHuman1996" (targets x)))
+                          (find-all terms (λ (x) (attrs-have-key? x 'data-targets)))))
   (check-equal? (map (λ (li) (attr-ref li 'id)) (find-all (by-id doc "bibliography") (tag? 'li)))
                 '("bib-hackingMakingPeople2006" "bib-hackingLoopingEffectsHuman1996" "bib-hackingSocialConstructionWhat2000"))
   ;; CITE-10: end matter order
   (check-equal? (map (λ (s) (attr-ref s 'id)) (find-all doc (λ (x) (equal? (attr-ref x 'class #f) "endmatter"))))
                 '("terms" "asides" "notes" "bibliography")))
 
-(define (classes x) (if (attrs-have-key? x 'class) (attr-ref x 'class) ""))
+(test-case "MARK-1c: annotations at the same point share one circle"
+  (define doc (root "Claim" (cite "hackingMakingPeople2006" #:loc "p. 23")
+                    (cite "hackingSocialConstructionWhat2000" #:loc "pp. 31-34") ", then "
+                    (term "occurrent" "occurrent") " " (cite "hackingMakingPeople2006" #:loc "p. 24")
+                    " and apart" (cite "hackingMakingPeople2006") "."))
+  (define body (txexpr 'root null (filter (λ (x) (not (equal? (attr-ref x 'class #f) "endmatter"))) (get-elements doc))))
+  (define circles (find-all body (λ (x) (has-class* x "circle"))))
+  (check-equal? (length circles) 3)
+  (define openers (find-all body (λ (x) (attrs-have-key? x 'data-targets))))
+  (check-equal? (map (λ (o) (attr-ref o 'data-targets)) openers)
+                '("note-1 note-2" "term-occurrent note-3" "note-4"))
+  (check-equal? (attr-ref (car openers) 'aria-label) "note 1, note 2")
+  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, note 3")
+  ;; D8: without JS a shared circle links to its first item
+  (check-equal? (attr-ref (car openers) 'href) "#note-1")
+  (check-equal? (attr-ref (cadr openers) 'href) "#term-occurrent"))
+
 (define (marks-in doc) (map classes (find-all doc (λ (x) (regexp-match? #rx"^mark " (classes x))))))
 
 (test-case "LINK-1/2: link types, directions and broken targets"
@@ -157,7 +187,7 @@
   (define doc (root (term "occurrent" "occurrent") " and " (term "occurrent" "again")
                     " and " (term "occurrent" #:mark #t "forced")))
   (define body (txexpr 'root null (filter (λ (x) (not (equal? (classes x) "endmatter"))) (get-elements doc))))
-  (check-equal? (length (filter (λ (c) (equal? c "mark m-term")) (marks-in body))) 2)
+  (check-equal? (length (find-all body (λ (x) (and (has-class* x "term") (attrs-have-key? x 'data-targets))))) 2)
   (check-not-false (by-id doc "term-occurrent"))
   (check-not-false (by-id doc "term-continuant"))   ; reached through the definition (TERM-7)
   (check-true (fails? (λ () (root (term "no-such-term" "x"))))))
@@ -195,4 +225,12 @@
 (test-case "VAL-1: essays need title, a known status and a published date"
   (check-not-false (fixture "essays/draft-essay/draft-essay.html.pm"))
   (check-true (fails? (λ () (fixture "essays/bad-status/bad-status.html.pm"))))
-  (check-true (fails? (λ () (fixture "essays/no-date/no-date.html.pm")))))
+  (check-true (fails? (λ () (fixture "essays/no-date/no-date.html.pm"))))
+  ;; a fixture that fails leaves Pollen's current-metas pointing at it
+  (current-metas #f))
+
+(test-case "MARK-3: a circle after an inline element is bound to it"
+  (define doc (root (em "Books") " " (cite "hackingMakingPeople2006" #:loc "p. 23") " and on."))
+  (define nw (find-all doc (λ (x) (has-class* x "nw"))))
+  (check-equal? (length nw) 1)
+  (check-equal? (get-tag (car (get-elements (car nw)))) 'em))

@@ -311,7 +311,10 @@
              (let loop ([els (map close-up-refs (get-elements x))])
                (match els
                  [(list* (? string? s) (? (tag? 'od-cite 'od-aside) r) rest)
-                  (cons (string-trim s #:left? #f) (loop (cons r rest)))]
+                  (define trimmed (string-trim s #:left? #f))
+                  (if (equal? trimmed "")
+                      (loop (cons r rest))
+                      (cons trimmed (loop (cons r rest))))]
                  [(cons e rest) (cons e (loop rest))]
                  ['() '()])))]
     [else x]))
@@ -325,13 +328,6 @@
        (when (> (words m) 12) (warn "margin note over 12 words: ~s" (string-trim (text-of m))))
        (txexpr 'p attrs (list* `(span ((class "margin-note")) ,@(get-elements m)) rest))]
       [_ x])))
-
-(define (roman n)
-  (let loop ([n n] [pairs '((1000 "m") (900 "cm") (500 "d") (400 "cd") (100 "c") (90 "xc")
-                            (50 "l") (40 "xl") (10 "x") (9 "ix") (5 "v") (4 "iv") (1 "i"))])
-    (cond [(zero? n) ""]
-          [(>= n (caar pairs)) (string-append (cadar pairs) (loop (- n (caar pairs)) pairs))]
-          [else (loop n (cdr pairs))])))
 
 (define (strip-ids x)
   (if (txexpr? x)
@@ -378,21 +374,18 @@
        (set! notes (cons (list n (append (note-form key loc first?)
                                          (if commentary (list " " commentary) null)))
                          notes))
-       `(span ((class "ref")) ,WJ
-              ,(numeral-mark "note-ref" (format "#note-~a" n) (format "nref-~a" n)
-                             (number->string n) (format "note ~a" n)))]
+       ;; CITE-1: the number belongs to the note; the text gets a circle.
+       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
       [(? (tag? 'od-aside))
        (set! aside-n (add1 aside-n))
        (define i aside-n)
-       (define numeral (roman i))
-       ;; numbering continues inside the aside, at its place in the argument
+       ;; note numbering continues inside the aside, at its place in the argument
        (define body (map walk (get-elements x)))
-       (set! asides (cons (list i numeral body) asides))
-       `(span ((class "ref")) ,WJ
-              ,(numeral-mark "aside-ref" (format "#aside-~a" i) (format "aside-ref-~a" i)
-                             numeral (format "aside ~a" numeral))
-              ;; ASIDE-1: the inline copy, lifted into the margin in Phase 2
-              (span ((class "aside") (hidden "")) ,@(map strip-ids body)))]
+       (set! asides (cons (list i body) asides))
+       ;; ASIDE-2: unnumbered. ASIDE-1: the inline copy, which the script lifts
+       ;; into the margin, travels with the circle.
+       `(od-ann ((kind "aside") (target ,(format "aside-~a" i)) (label "aside"))
+                (span ((class "aside") (id ,(format "aside-text-~a" i)) (hidden "")) ,@(map strip-ids body)))]
       [(? (tag? 'od-term))
        (define id (attr-ref x 'ref))
        (term-ref id)
@@ -400,7 +393,7 @@
        (when first? (hash-set! term-seen id #t) (set! term-order (cons id term-order)))
        (define kids (map walk (get-elements x)))
        (if (or first? (attrs-have-key? x 'force))  ; TERM-5
-           `(a ((class "term") (href ,(format "#term-~a" id))) ,@(with-mark kids 'term))
+           (term-link id kids)
            `(span ((class "term")) ,@kids))]
       [(? (tag? 'od-link)) (resolve-link x (map walk (get-elements x)))]
       [(? txexpr?) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
@@ -425,13 +418,12 @@
               (define key (attr-ref x 'key))
               (bib-entry key)
               (hash-set! bib-keys key #t)
-              `(span ((class "ref")) ,WJ
-                     (a ((class "cite-ref") (href ,(string-append "#bib-" key))) ,(mark 'ref)))]
+              `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")))]
              [(? (tag? 'od-term))   ; TERM-7
               (define tid (attr-ref x 'ref))
               (term-ref tid)
               (set! more-ids (cons tid more-ids))
-              `(a ((class "term") (href ,(format "#term-~a" tid))) ,@(with-mark (map def-walk (get-elements x)) 'term))]
+              (term-link tid (map def-walk (get-elements x)))]
              [(? (tag? 'od-link))
               (when (regexp-match? #rx"^#" (attr-ref x 'href))
                 (build-error "glossary/~a.pm: a definition cannot link within a page" id))
@@ -449,8 +441,7 @@
                        `((p ((class "see-also")) "See also: "
                             ,@(add-between
                                (for/list ([s (in-list see)])
-                                 `(a ((class "term") (href ,(format "#term-~a" s)))
-                                     ,@(with-mark (list (hash-ref (term-ref s) 'term)) 'term)))
+                                 (term-link s (list (hash-ref (term-ref s) 'term))))
                                ", "))))))
          (loop (append rest (reverse more-ids) see) (cons id done) (cons (cons (hash-ref t 'term) entry) entries))])))
 
@@ -464,12 +455,12 @@
                   (endmatter "terms" "Terms" `(div ((class "terms")) ,@(map cdr term-entries))))
              (and (pair? asides)
                   (endmatter "asides" "Asides"
-                             `(ol ((class "asides"))
+                             `(ul ((class "asides"))
                                   ,@(for/list ([a (in-list (reverse asides))])
-                                      (match-define (list i numeral elems) a)
-                                      `(li ((id ,(format "aside-~a" i)) (value ,(number->string i)))
+                                      (match-define (list i elems) a)
+                                      `(li ((id ,(format "aside-~a" i)))
                                            ,@elems " "
-                                           ,(back-link (format "#aside-ref-~a" i) (format "Back to aside ~a in the text" numeral)))))))
+                                           (od-back ((target ,(format "aside-~a" i)) (label "Back to the aside in the text"))))))))
              (and (pair? notes)
                   (endmatter "notes" "Notes"
                              `(ol ((class "notes"))
@@ -477,7 +468,7 @@
                                       (match-define (list n elems) nt)
                                       `(li ((id ,(format "note-~a" n)) (value ,(number->string n)))
                                            ,@elems " "
-                                           ,(back-link (format "#nref-~a" n) (format "Back to note ~a in the text" n)))))))
+                                           (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
              (and (positive? (hash-count bib-keys))
                   (endmatter "bibliography" "Bibliography"
                              `(ul ((class "bibliography"))
@@ -485,19 +476,117 @@
                                       `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k)))))))))
   (append body end))
 
-;; MARK-3: bind each note or aside numeral to the word before it.
-(define (bind-refs x)
+;; A first-use term: its text links to its definition, with a circle.
+(define (term-link id kids)
+  `(a ((class "term") (href ,(format "#term-~a" id))) ,@kids
+      (od-ann ((kind "term") (target ,(format "term-~a" id)) (label "definition")))))
+
+(define (ann? x) ((tag? 'od-ann) x))
+(define (term-with-ann? x)
+  (and ((tag? 'a) x) (has-class? x "term") (pair? (get-elements x)) (ann? (last (get-elements x)))))
+(define (annotation? x) (or (ann? x) (term-with-ann? x)))
+(define (blank? x) (and (string? x) (regexp-match? #px"^\\s*$" x)))
+
+;; MARK-1/1b/1c: turn annotation placeholders into circles. Annotations with
+;; nothing but whitespace between them share one circle, which names and
+;; opens all of them; without JS it links to the first (D8). Each visible
+;; circle gets an id, and the ↩ back-links in the end matter point to it
+;; (CITE-4). Circles inside the hidden inline copies of asides get no ids.
+(define (render-circles doc)
+  (define circle-ids (make-hash))   ; target → id of the circle that opens it
+  (define counter 0)
+  (define (circle-span) '(span ((class "circle"))))
+  (define (walk x hidden?)
+    (if (txexpr? x)
+        (let ([h (or hidden? (attrs-have-key? x 'hidden))])
+          (txexpr (get-tag x) (get-attrs x) (process (get-elements x) h)))
+        x))
+  (define (process els hidden?)
+    (let loop ([els els] [out '()])
+      (match els
+        ['() (reverse out)]
+        [(cons (? annotation? a) rest)
+         (define-values (members rest*) (collect (list a) rest))
+         (loop rest* (append (reverse (render-group members hidden?)) out))]
+        [(cons e rest) (loop rest (cons (walk e hidden?) out))])))
+  ;; members: annotations, with any whitespace strings between them kept
+  (define (collect acc rest)
+    (match rest
+      [(list* (? blank? b) (? annotation? next) more) (collect (append acc (list b next)) more)]
+      [(cons (? annotation? next) more) (collect (append acc (list next)) more)]
+      [_ (values acc rest)]))
+  (define (ann-of m) (if (ann? m) m (last (get-elements m))))
+  (define (register! anns hidden?)
+    (cond
+      [hidden? #f]
+      [else (set! counter (add1 counter))
+            (define cid (format "ref-~a" counter))
+            (for ([a (in-list anns)]) (hash-ref! circle-ids (attr-ref a 'target) cid))
+            cid]))
+  (define (render-group members hidden?)
+    (define anns (map ann-of (filter annotation? members)))
+    (define targets (string-join (map (λ (a) (attr-ref a 'target)) anns)))
+    (define label (string-join (map (λ (a) (attr-ref a 'label)) anns) ", "))
+    (define kinds (string-join (remove-duplicates (map (λ (a) (attr-ref a 'kind)) anns))))
+    (define extras (append-map (λ (a) (map (λ (e) (walk e #t)) (get-elements a))) anns)) ; hidden aside copies
+    (define cid (register! anns hidden?))
+    (cond
+      ;; a lone term: text and circle are one link (MARK-6)
+      [(and (= (length members) 1) (term-with-ann? (car members)))
+       (define t (car members))
+       (define kids (map (λ (e) (walk e hidden?)) (drop-right (get-elements t) 1)))
+       (define-values (init word) (split-last-word kids))
+       (list (txexpr 'a (append (get-attrs t) `((data-targets ,targets) (data-kinds ,kinds))
+                                (if cid `((id ,cid)) null))
+                     (append init
+                             (list `(span ((class "nw")) ,@word ,WJ ,(circle-span)
+                                          ,(visually-hidden " (definition)"))))))]
+      [else
+       ;; terms keep their text links; one circle follows the group
+       (define shown
+         (for/list ([m (in-list members)])
+           (if (term-with-ann? m)
+               (txexpr 'a (get-attrs m) (map (λ (e) (walk e hidden?)) (drop-right (get-elements m) 1)))
+               m)))
+       (define visible (filter (λ (m) (not (ann? m))) shown))
+       (define circle
+         `(a ((class "circle-link") (href ,(string-append "#" (attr-ref (car anns) 'target)))
+              ,@(if cid `((id ,cid)) null)
+              (aria-label ,label) (data-targets ,targets) (data-kinds ,kinds))
+             ,(circle-span)))
+       (append (drop-right-blank visible) (list (od-bind circle)) extras)]))
+  (define (drop-right-blank xs) (if (and (pair? xs) (blank? (last xs))) (drop-right xs 1) xs))
+  (define rendered (walk doc #f))
+  ;; CITE-4: back-links to the circle that opens each item
+  (let fix ([x rendered])
+    (cond
+      [((tag? 'od-back) x)
+       (define target (attr-ref x 'target))
+       (back-link (string-append "#" (hash-ref circle-ids target
+                                               (λ () (build-error "no circle for ~a" target))))
+                  (attr-ref x 'label))]
+      [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map fix (get-elements x)))]
+      [else x])))
+
+;; A circle to be bound to the word before it.
+(define (od-bind circle) `(od-bind () ,circle))
+
+;; MARK-3: bind each circle to the word before it, so it never wraps alone.
+(define (bind-circles x)
   (cond
     [(txexpr? x)
-     (define els (map bind-refs (get-elements x)))
+     (define els (map bind-circles (get-elements x)))
      (txexpr (get-tag x) (get-attrs x)
              (let loop ([done '()] [rest els])
                (match rest
                  ['() (reverse done)]
-                 [(cons (? (λ (e) (has-class? e "ref")) r) more)
-                  #:when (and (pair? done) (not (block-txexpr? (car done))))
-                  (define-values (init word) (split-last-word (list (car done))))
-                  (loop (cons `(span ((class "nw")) ,@word ,r) (append (reverse init) (cdr done))) more)]
+                 [(cons (? (tag? 'od-bind) b) more)
+                  (define circle (car (get-elements b)))
+                  (cond
+                    [(and (pair? done) (not (block-txexpr? (car done))) (not (blank? (car done))))
+                     (define-values (init word) (split-last-word (list (car done))))
+                     (loop (cons `(span ((class "nw")) ,@word ,WJ ,circle) (append (reverse init) (cdr done))) more)]
+                    [else (loop (cons circle done) more)])]
                  [(cons e more) (loop (cons e done) more)])))]
     [else x]))
 
@@ -575,7 +664,7 @@
   (define-values (epigraphs body)
     (splitf-at nested (λ (x) (has-class? x "epigraph"))))
   (define annotated (annotate (append epigraphs (if toc (list toc) null) body)))
-  (define doc (eager-first-image (bind-refs (set-directions (txexpr 'root null annotated)))))
+  (define doc (eager-first-image (bind-circles (render-circles (set-directions (txexpr 'root null annotated))))))
   (check-unique-ids doc)
   doc)
 

@@ -187,47 +187,48 @@ set like any other.
 ◊summary{The small signs that say a word leads somewhere, and where.}
 
 ◊margin{The mark is the only signal.} Every annotation carries a small mark
-after its last word, and the mark says what kind of thing it is. A link to
-another site, such as ◊link["https://plato.stanford.edu/entries/process-philosophy/"
+after its last word, and there are only two kinds. An arrow takes the reader
+away from where they are reading, and points the way it goes: to another
+site, such as ◊link["https://plato.stanford.edu/entries/process-philosophy/"
 #:note "Standard overview; good on Whitehead's debt to Bergson."]{the
-◊em{Stanford Encyclopedia} entry on process philosophy}, ends in a north-east
-arrow. A link to another page of this site, such as the
-◊link["/colophon#type"]{colophon's note on type}, ends in a plain arrow. A
-link within the page points up or down to its target: back to
-◊link["#measure"]{the section on measure}, or on to
-◊link["#lists"]{the section on lists}. The text itself keeps the colour of the
-words around it, and takes the accent only on hover or focus.
+◊em{Stanford Encyclopedia} entry on process philosophy}; to another page of
+this site, such as the ◊link["/colophon#type"]{colophon's note on type}; or
+within this page, back to ◊link["#measure"]{the section on measure} or on to
+◊link["#lists"]{the section on lists}. The text itself keeps the colour of
+the words around it, and takes the accent only on hover or focus.
 
-Definitions are marked with three bars. The first time a defined word
-appears, such as ◊term["occurrent"]{occurrent} or
-◊term["looping-effect"]{looping effects}, it is marked and leads to its
-definition; later uses, like this second ◊term["occurrent"]{occurrent}, are
-plain text. Once popups arrive, a definition will open where the reader is;
-until then, and whenever scripts are off, it is collected under Terms at the
-end of the page.
+A circle opens something where the reader is, without moving the page: a
+definition, a note or an aside. The first time a defined word appears, such
+as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects},
+it carries a circle; later uses, like this second
+◊term["occurrent"]{occurrent}, are plain text. Without scripts, a circle is a
+link to the end of the page, where definitions are collected under Terms.
 
 ◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
-◊summary{Numbered notes for sources; roman numerals for digressions.}
+◊summary{Circles for sources and digressions; the numbers stay with the notes.}
 
-Citations become numbered notes, collected at the end. The first note for a
-work gives it in full: Hacking's account of how classifications change the
-people classified first appeared in the ◊em{London Review of
+Citations become numbered notes, collected at the end, but the number belongs
+to the note and is never printed in the text. The first note for a work gives
+it in full: Hacking's account of how classifications change the people
+classified first appeared in the ◊em{London Review of
 Books} ◊cite["hackingMakingPeople2006" #:loc "p. 23"] and is developed at
 length elsewhere ◊cite["hackingSocialConstructionWhat2000" #:loc "pp. 31-34"].
 Later notes for the same work use the short form, with their own
 page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and a note may carry a
 remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
-is shorter and sharper."].
+is shorter and sharper."]. Two citations at the same point share one
+circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructionWhat2000"
+#:loc "pp. 31-34"], which opens both.
 
 ◊margin{Asides can be skipped.} An aside is a digression the argument does
 not need◊aside{An aside may cite, too: Hacking's essay on
 ◊term["looping-effect"]{looping} is the fuller version of the
-argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered here, at
-its place in the argument.} and is marked with a roman numeral. On a wide
-screen it will sit in the right margin, collapsed to its first line until
-opened; on a phone it will open over the text. Without scripts, as now, each
-aside is collected at the end, with a link back.◊aside{A second aside, to show
-the numbering.}
+argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered at its
+place in the argument.} and is unnumbered. On a wide screen it sits in the
+right margin, collapsed to its first line until opened; on a phone it opens
+over the text. Without scripts each aside is collected at the end, with a
+link back.◊aside{A second aside, to show that asides are told apart by where
+they sit, not by a number.}
 
 ◊section[#:id "lists" #:short "Lists"]{Lists}
 ◊summary{Bullets by level, and numbers that follow the nesting.}
