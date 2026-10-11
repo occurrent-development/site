@@ -671,8 +671,9 @@ ul.bibliography li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.35em 0;
    text (A11Y-2) and are positioned into the right margin by the script. */
 .in-margin {
   position: absolute;
-  left: var(--mx);
-  width: var(--mw);
+  /* the column and gap, in this element's own em (it is set at 0.85) */
+  left: calc((var(--measure) + var(--gap)) / 0.85);
+  width: calc(var(--margin) / 0.85);
   font-size: 0.85em;
   line-height: 1.4;
   text-align: left;
@@ -683,6 +684,20 @@ ul.bibliography li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.35em 0;
   white-space: normal;
 }
 .margin-note.in-margin { font-style: italic; color: var(--text-muted); }
+/* With JS on a wide page, margin notes start in the margin, so lifting them
+   moves nothing (CLS, §14). */
+@container page (min-width: 54.5em) {
+  .js article .margin-note {
+    position: absolute;
+    left: calc((var(--measure) + var(--gap)) / 0.85);
+    width: calc(var(--margin) / 0.85);
+    font-size: 0.85em;
+    line-height: 1.4;
+    text-align: left;
+    text-indent: 0;
+    color: var(--text-muted);
+  }
+}
 .stub {
   display: block;
   cursor: pointer;

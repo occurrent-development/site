@@ -11,7 +11,7 @@ const MONTHS = ["january", "february", "march", "april", "may", "june", "july",
 // A comparable value: numbers (with separators, %, currency, units and
 // ranges, which sort by their first number), dates, or text.
 function value(cell) {
-  const raw = (cell.dataset.sort ?? cell.textContent).trim();
+  const raw = (cell.querySelector("[data-sort]")?.dataset.sort ?? cell.dataset.sort ?? cell.textContent).trim();
   const iso = raw.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
   if (iso) return { kind: 1, v: Date.UTC(+iso[1], +iso[2] - 1, +(iso[3] || 1)) };
   const dmy = raw.match(/^(\d{1,2}) ([A-Za-z]+) (\d{4})$/);

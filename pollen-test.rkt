@@ -234,3 +234,7 @@
   (define nw (find-all doc (λ (x) (has-class* x "nw"))))
   (check-equal? (length nw) 1)
   (check-equal? (get-tag (car (get-elements (car nw)))) 'em))
+
+(test-case "TABLE-5: ◊sort-key gives a cell the value it sorts by"
+  (define t (table "| Year | Event |" "\n" "|---|---|" "\n" "| " (sort-key "2004" "c. 2004") " | x |" "\n"))
+  (check-not-false (findf (λ (x) (equal? (attr-ref x 'data-sort #f) "2004")) (find-all t txexpr?))))

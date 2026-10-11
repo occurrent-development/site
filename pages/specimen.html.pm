@@ -280,7 +280,7 @@ browser picks the smallest that will look sharp. This one is wide:
 
 ◊figure["img/landscape.jpg" #:alt "A grey surface sloping away from the
 viewer, its single valley dividing into three as it descends." #:licence "own"
-#:width "wide" #:invert #t]{A developmental landscape in the manner of
+#:width "wide"]{A developmental landscape in the manner of
 C. H. Waddington's, rendered for this page: one valley that divides as it
 descends, so that a ball rolling down it ends in one of three places.}
 
@@ -290,8 +290,8 @@ descends, so that a ball rolling down it ends in one of three places.}
 Tables follow the booktabs convention: no vertical rules, a heavier rule above
 the header and at the foot, a hairline under the header. Figures are lining
 and of equal width, and columns of numbers align right on their own. This one
-records the measure calibration, and is long enough to be sortable once the
-script for that arrives:
+records the measure calibration, and like any table of five rows or more it
+can be sorted by clicking a column's heading:
 
 ◊table[#:caption "Measure against characters per line, Libertinus Serif at 20
 px" #:source "Measured on this page in Chrome, October 2026."]{
@@ -305,18 +305,48 @@ px" #:source "Measured on this page in Chrome, October 2026."]{
 | 37.5 | 750 | 90.4 | 99 |
 }
 
+A long table keeps its header row in view while it passes beneath the top of
+the window. These are the twenty full lines counted for the calibration above,
+in the order they appear on this page:
+
+◊table[#:caption "The twenty lines counted, at 36.5 em" #:size "small"
+#:source "Mean 88.6 characters. Lines beginning mid-word continue a hyphenated word."]{
+| Line | Opens with | Characters |
+|---|---|---|
+| 1 | The width of | 88 |
+| 2 | forever jumping back | 87 |
+| 3 | at the right. | 87 |
+| 4 | hunt for the | 89 |
+| 5 | ninety characters a | 93 |
+| 6 | long, the sentences | 87 |
+| 7 | A browser offers | 91 |
+| 8 | the width of | 93 |
+| 9 | not, because a | 89 |
+| 10 | narrow letters like | 93 |
+| 11 | hundred and ten | 90 |
+| 12 | of the type, | 87 |
+| 13 | default font, the | 87 |
+| 14 | ters. The layout | 87 |
+| 15 | tainer queries rather | 87 |
+| 16 | At full measure | 88 |
+| 17 | between words stay | 86 |
+| 18 | duces rivers, those | 85 |
+| 19 | in a row | 87 |
+| 20 | can break a | 91 |
+}
+
 A table can also come from a file, and be set smaller:
 
 ◊table-csv["data/budget.csv" #:caption "The performance budget" #:size
 "small"]
 
 ◊section[#:id "to-come" #:short "Still to come"]{Still to come}
-◊summary{What this page will show once the interactive phase is built.}
+◊summary{What later phases add to the site, and to this page.}
 
-Everything above works without scripts. The next phase adds the behaviour:
-popups for notes, definitions and links, with the definitions embedded in
-the page; asides in the right margin, collapsed to a single line until
-opened; margin notes lifted out of the text into the margin; a slim bar at
-the top of the screen naming the current section; sortable tables; and
-images classified once for dark mode. Each will be checked here as it is
-built.
+Everything above works without scripts, and everything interactive is an
+addition to it: the circles and stubs, the margin, the bar that appears at the
+top of the window when you scroll back up, the text size and theme controls,
+and the sortable tables. What remains is around the essays rather than in
+them: interactive figures, backlinks between essays, a changelog and a feed,
+a page for correspondence, and a stylesheet for print. Each will be checked
+here as it is built.

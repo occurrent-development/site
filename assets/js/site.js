@@ -509,13 +509,6 @@ function setupMargin() {
 
 function positionMargin() {
   if (tier() !== "L" || !article) return;
-  const cs = getComputedStyle(article);
-  const fs = parseFloat(getComputedStyle(page).fontSize);
-  const padL = parseFloat(cs.paddingLeft), padR = parseFloat(cs.paddingRight);
-  const measure = article.clientWidth - padL - padR;
-  article.style.setProperty("--mx", `${padL + measure + 2.5 * fs}px`);
-  article.style.setProperty("--mw", `${13 * fs}px`);
-
   const items = [...article.querySelectorAll(".in-margin.stub, .in-margin.margin-note")];
   for (const it of items) it.style.transform = "";
   // ASIDE-3: an aside that fits in two margin lines is shown in full

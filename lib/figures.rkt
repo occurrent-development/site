@@ -9,6 +9,7 @@
          racket/file
          json
          xml
+         file/sha1
          txexpr
          "util.rkt")
 
@@ -33,6 +34,16 @@
     [(equal? l "cc0") "CC0"]
     [else (let ([m (regexp-match #px"^cc-(.*)-(\\d\\.\\d)$" l)])
             (string-append "CC " (string-upcase (string-replace (cadr m) "-" " ")) " " (caddr m)))]))
+
+;; IMG-4: classifications from `make refresh`, keyed by SHA-256.
+(define invert-cache #f)
+(define (classified path)
+  (unless invert-cache
+    (define f (project-file "data" "invert.json"))
+    (set! invert-cache (if (file-exists? f) (call-with-input-file f read-json) (hasheq))))
+  (define key (string->symbol (bytes->hex-string (call-with-input-file path sha256-bytes))))
+  (define entry (hash-ref invert-cache key #f))
+  (and entry (if (hash-ref entry 'invert #f) "yes" "no")))
 
 (define manifest #f)
 (define (the-manifest)
@@ -61,7 +72,9 @@
     (filter values (list (and credit (if (string? credit) credit (text-of credit)))
                          label)))
   `(figure ((class ,(format "figure w-~a" width))
-            (data-invert ,(case invert [(#t) "yes"] [(#f) "no"] [else "auto"])))
+            ;; #:invert wins; else the cached classification; else dimmed
+           (data-invert ,(case invert [(#t) "yes"] [(#f) "no"]
+                           [else (or (and (not (hash-ref entry 'svg #f)) (classified path)) "auto")])))
            ,(if (hash-ref entry 'svg #f)
                 (inline-svg path alt)
                 (picture entry alt width))

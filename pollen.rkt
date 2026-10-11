@@ -34,7 +34,7 @@
          ;; annotations (§4–7)
          link cite term aside margin more
          ;; lists, tables, figures (§3.4, §9)
-         (rename-out [od-list list]) table table-csv figure
+         (rename-out [od-list list]) table table-csv sort-key figure
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
          page-title essay-header doc-body format-date revised-date)
@@ -47,6 +47,7 @@
   (define-runtime-path images "assets/img/images.json")
   (define-runtime-path cite-cache "data/cite-cache.json")
   (define-runtime-path link-meta "data/link-meta.json")
+  (define-runtime-path invert "data/invert.json")
   (define-runtime-path typography "typography.rkt")
   (define-runtime-path head-js "assets/js/theme-head.js")
   (define-runtime-path site-js "assets/js/site.js")
@@ -59,7 +60,7 @@
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
       od-summary od-more))
   (define cache-watchlist
-    (list css fonts images cite-cache link-meta typography head-js site-js specimen-css)))
+    (list css fonts images cite-cache link-meta invert typography head-js site-js specimen-css)))
 
 (require (prefix-in files: (submod "." setup)))
 
@@ -142,6 +143,11 @@
   (make-table header aligns body
               #:caption (and caption (list (norm caption))) #:source (and source (list (norm source)))
               #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers))
+
+;; TABLE-5: the value a cell sorts by, when its text would mislead.
+(define (sort-key value . display)
+  (unless (string? value) (build-error "◊sort-key needs a value, as in ◊sort-key[\"2004\"]{c. 2004}"))
+  (txexpr 'span `((data-sort ,value)) display))
 
 (define (figure src #:alt [alt #f] #:licence [licence #f] #:credit [credit #f]
                 #:width [width "column"] #:invert [invert 'auto] . caption)

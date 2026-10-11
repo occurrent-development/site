@@ -3,7 +3,7 @@
 #   make           test, subset fonts, render, assemble public/   (offline; BUILD-2)
 #   make test      typography rules (TYPE-14) and the root pass
 #   make serve     Pollen project server on http://localhost:8080
-#   make refresh   update the committed caches (BUILD-3): refs.bib and cite-cache.json
+#   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json, invert.json
 #   make clean     remove everything the build generates
 #
 # Needs: Racket with the pollen package; Python 3 with fonttools, brotli and
@@ -70,6 +70,7 @@ serve: $(FONTS) $(IMAGES)
 
 refresh:
 	ZOTERO_BIB="$(ZOTERO_BIB)" $(PYTHON) tools/refs.py
+	$(PYTHON) tools/invert.py
 
 clean:
 	$(RACO) pollen reset
