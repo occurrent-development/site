@@ -28,6 +28,5 @@
 ◊when/splice[(specimen? metas)]{<div class="tier" aria-hidden="true"></div>}
 </div>
 <script>◊(theme-script)</script>
-◊when/splice[(specimen? metas)]{<script>◊(specimen-script)</script>}
 </body>
 </html>

@@ -118,7 +118,7 @@ None of this happens inside code, so ◊code{"10 kg" -- 3 x 4...} is left
 exactly as typed.
 
 ◊section[#:id "themes" #:short "Themes"]{Colour and themes}
-◊summary{Light and dark, and the candidate colours still to be chosen.}
+◊summary{Light and dark, and how the two are related.}
 
 The site follows the reader's system setting for light or dark, and the
 control at the top right of the page can fix it to either. The light theme is
@@ -128,11 +128,10 @@ near-black, never pure white, which halates and seems to vibrate when read
 for any length of time. The two themes are related by a slight warmth in the
 dark background.
 
-The exact colours are still to be chosen, and the small panel at the bottom
-right of this page cycles through the candidates for whichever theme is
-showing, with the contrast ratio of each pair. Every pair passes the
-◊sc{WCAG} AA standard by a wide margin; the choice between them is one of
-feel, and should be made by reading this page for a while in each.
+The colours were chosen by reading this page for a while in each theme:
+black on #EFE7D4, and #D2D2D0 on #121212. Both pairs pass the ◊sc{WCAG} AA
+standard by a wide margin, as does every colour the page uses for marks,
+rules and quieter text.
 
 ◊break{}
 

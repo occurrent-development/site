@@ -6,8 +6,8 @@
 #   make refresh   update the committed caches (BUILD-3): refs.bib and cite-cache.json
 #   make clean     remove everything the build generates
 #
-# Needs: Racket with the pollen package; Python 3 with fonttools and brotli;
-# ImageMagick, cwebp and avifenc for figures; pandoc for `make refresh`.
+# Needs: Racket with the pollen package; Python 3 with fonttools, brotli and
+# Pillow (tools/requirements.txt); avifenc for figures; pandoc for `make refresh`.
 
 # Machine-specific settings, not committed. Set ZOTERO_BIB there to the Better
 # BibTeX auto-export of your Zotero library, e.g.

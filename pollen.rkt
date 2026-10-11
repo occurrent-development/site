@@ -34,7 +34,7 @@
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv figure
          ;; used by the template
-         site-css font-preloads head-script theme-script specimen? specimen-css specimen-script
+         site-css font-preloads head-script theme-script specimen? specimen-css
          page-title essay-header doc-body format-date revised-date)
 
 (module setup racket/base
@@ -48,7 +48,6 @@
   (define-runtime-path head-js "assets/js/theme-head.js")
   (define-runtime-path theme-js "assets/js/theme.js")
   (define-runtime-path specimen-css "assets/css/specimen.css")
-  (define-runtime-path specimen-js "assets/js/specimen.js")
   (define-runtime-path marks-dir "assets/icons/marks")
   ;; SRC-2: an unknown tag is an unbound identifier, so the build fails.
   (define allow-unbound-ids? #f)
@@ -57,7 +56,7 @@
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
       od-summary od-more))
   (define cache-watchlist
-    (list css fonts images cite-cache typography head-js theme-js specimen-css specimen-js)))
+    (list css fonts images cite-cache typography head-js theme-js specimen-css)))
 
 (require (prefix-in files: (submod "." setup)))
 
@@ -628,7 +627,6 @@
 
 (define (specimen? metas) (and (select-from-metas 'specimen metas) #t))
 (define (specimen-css) (file->string files:specimen-css))
-(define (specimen-script) (string-trim (file->string files:specimen-js)))
 
 (define (page-title metas)
   (define title (select-from-metas 'title metas))

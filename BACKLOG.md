@@ -8,7 +8,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 
 ## 1. Running map (left margin)
 
-*Deferred: needs a very wide window to appear at all, and the positioning wants iteration. The section bar (BAR-1) covers navigation in v1.*
+*Deferred: needs a very wide window to appear at all, and the positioning wants iteration. The reading bar (BAR-1) covers navigation in v1.*
 
 A compact outline of the essay, pinned in the left margin, showing where the reader is.
 
@@ -88,7 +88,7 @@ If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown
 
 ## 12. Text-size control
 
-*Cut in v1: browser zoom does the same job.* If revisited: five steps on one root variable, stored in `localStorage`; the tiers are already container queries (LAYOUT-7), so the layout would follow correctly.
+*Moved into v1 on 2026-10-12: see SPEC THEME-5 and BAR-1.* Kept here so the numbering of later items does not shift.
 
 ## 13. Glossary term pages
 
