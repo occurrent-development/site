@@ -153,7 +153,7 @@ A block quotation is `◊blockquote`, not `◊quote`: Racket's `quote` would swa
 
 ```
 ◊list{
-- First-level bullet (hollow circle)
+- First-level bullet (small solid dot)
   - Second level (›)
     - Third level (–)
 - Numbers and bullets mix:
@@ -168,7 +168,7 @@ A block quotation is `◊blockquote`, not `◊quote`: Racket's `quote` would swa
 ```
 
 - **LIST-1 (MUST)** `- ` starts a bullet, `1. ` a numbered item; the digits typed are ignored (numbering is automatic). Two spaces per level of nesting. An indented paragraph after a blank line continues the item.
-- **LIST-2 (MUST)** Bullets by level: **1** small hollow circle drawn in CSS (1px stroke, ~0.3em, centred on the x-height); **2** `›` (U+203A) from the text face; **3** en dash; **4+** repeat from level 1. Markers use the text colour, muted; never the accent colour.
+- **LIST-2 (MUST)** Bullets by level: **1** small solid dot drawn in CSS (~0.25em, centred on the x-height; not a ring, which is the annotation mark, D9); **2** `›` (U+203A) from the text face; **3** en dash; **4+** repeat from level 1. Markers use the text colour, muted; never the accent colour.
 - **LIST-3 (MUST)** Numbering is hierarchical — 1. / 1.1. / 1.1.1. The chain runs only through consecutive numbered levels; a numbered list inside a bullet restarts at 1. Numbers use lining tabular figures. The build computes each number (`data-n`) and CSS prints it: nested CSS counters cannot restart a chain inside a bullet.
 - **LIST-4 (MUST)** Markers hang in a gutter: bullets centred, numbers right-aligned, the gutter widening with depth so text never jumps.
 - **LIST-5 (SHOULD)** `#:columns 2|3` sets short lists in columns on wide tiers, one column when narrow; items never split across columns; numbered items read down then across. Warn if an item exceeds ~60 characters.
@@ -604,7 +604,7 @@ All pickers use plain `completing-read`, so they work with Vertico, Ivy, Helm or
 - **Citations.** Numbered notes, Chicago notes-bibliography; page locators for quotations and specific claims; the mark goes after punctuation.
 - **Headings.** Sentence case; name what the section argues. `#:short` for anything over ~30 characters. Three levels at most; no numbers.
 - **Section breaks.** `◊break{}` for a change of direction within a section, or between an unheaded introduction and the first heading. Never before a heading that already follows one.
-- **Lists.** ○ › – by level; numbering 1. / 1.1. / 1.1.1. Use a list only when items are truly parallel. Columns only for short items. Enumerations inside sentences use (1) (2), never i. ii. iii.
+- **Lists.** • › – by level; numbering 1. / 1.1. / 1.1.1. Use a list only when items are truly parallel. Columns only for short items. Enumerations inside sentences use (1) (2), never i. ii. iii.
 - **Spelling and punctuation.** Australian spelling. Em dashes carry hair spaces (added by the build). En dashes for ranges. Serial comma: *decide (D5)*.
 - **Numbers.** Old-style figures in prose, lining in tables. Spell out one to nine.
 - **Images.** Every figure carries a licence; third-party diagrams are redrawn and credited.
@@ -625,8 +625,8 @@ All pickers use plain `completing-read`, so they work with Vertico, Ivy, Helm or
 | D5 | Serial comma | Your call; record it either way | Phase 1 |
 | D6 | Section-break glyph | One custom SVG of your own; a plain asterism is in place (`assets/icons/asterism.svg`) | Before launch |
 | D7 | ~~Term popup placement~~ | **Resolved:** definitions, notes and asides all open in the right margin on wide tiers, as popups on narrow ones (POP-8) | n/a |
-| D8 | A shared circle without JS (MARK-1c) | Link to its first item; a term in the group keeps its own text linked to Terms. Consecutive notes are adjacent in Notes, so nothing is hard to find | Phase 2 |
-| D9 | Level-1 list bullet (LIST-2) | It is a small hollow circle, the same shape as the annotation circle, though muted and in the gutter. Recommend a small solid dot so a circle only ever means "opens something" | Phase 2 |
+| D8 | ~~A shared circle without JS~~ | **Resolved:** it links to its first item; a term in the group keeps its own text linked to Terms (MARK-1c) | n/a |
+| D9 | ~~Level-1 list bullet~~ | **Resolved:** a small solid dot, so a circle only ever means "opens something" (LIST-2) | n/a |
 | D10 | Cross-browser checks (MARK-1, TYPE-5, LAYOUT-7, Phase 2 "done when") | The builder cannot yet see Safari or Firefox. Either grant read access to both on this Mac, or allow Playwright's WebKit and Firefox engines to be installed for automated checks; real iOS and Android stay with you | Phase 2 start |
 
 Resolved already: Pollen markup over Markdown; sections never numbered; glossary site-wide, popup-only; numbered citation notes in Chicago style, with the number kept out of the running text; right margin only; no comments; no archived copies; Libertinus Serif as the typeface; two marks only, arrow and circle; a text-size control in the reading bar (reversing the earlier cut); the bar shows on scroll-up and hides after 2 s idle; the text block stays where it is (LAYOUT-6a).

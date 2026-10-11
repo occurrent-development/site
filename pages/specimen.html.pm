@@ -236,7 +236,7 @@ A list is for items that are truly parallel. Bullets change by level, and
 numbers follow the nesting:
 
 ◊list{
-- A first-level item, marked by a small hollow circle
+- A first-level item, marked by a small dot
   - A second-level item, marked by an angle quote
     - A third-level item, marked by an en dash
 - Numbers and bullets mix:

@@ -337,7 +337,7 @@ a.link:hover, a.link:focus-visible, a.term:hover, a.term:focus-visible { color: 
 p + .list, .list + p { text-indent: 0; }
 .list + p { margin-top: 0; }
 
-/* LIST-2: ○ › – by level; markers muted, never the accent. */
+/* LIST-2: • › – by level; markers muted, never the accent. */
 ul.list > li::before {
   position: absolute;
   color: var(--text-muted);
@@ -346,12 +346,11 @@ ul.list > li::before {
 }
 ul.list[data-depth="1"] > li::before {
   content: "";
-  left: calc(-0.7em - 0.16em);
-  top: calc(0.86em - 0.16em);              /* centred on the x-height */
-  width: 0.32em; height: 0.32em;
-  border: 1px solid currentColor;
+  left: calc(-0.7em - 0.125em);
+  top: calc(0.86em - 0.125em);             /* centred on the x-height */
+  width: 0.25em; height: 0.25em;
+  background: currentColor;                /* a dot, not a ring: rings are marks (D9) */
   border-radius: 50%;
-  box-sizing: border-box;
 }
 ul.list[data-depth="2"] > li::before { content: "›"; }
 ul.list[data-depth="3"] > li::before { content: "–"; }
