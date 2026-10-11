@@ -7,6 +7,9 @@
 ;; - VAL-3: a section id published in the last deploy (data/anchors-deployed.json,
 ;;   fetched by CI) must not disappear while a page links to it.
 ;; - TERM-6: warns about glossary terms no page uses.
+;; - DRAFT-2: writes data/publish.txt, the pages `make` copies into public/:
+;;   every page, and essays whose status is not draft. A published page may
+;;   not link to a draft.
 
 (require racket/list
          racket/string
@@ -17,7 +20,7 @@
          txexpr
          pollen/core
          pollen/pagetree
-         (only-in "../lib/util.rkt" text-of))
+         (only-in "../lib/util.rkt" text-of published?))
 
 (define errors 0)
 (define (fail fmt . args) (set! errors (add1 errors)) (eprintf "build error: ~a\n" (apply format fmt args)))
@@ -41,7 +44,7 @@
 (define (class? x c)
   (and (attrs-have-key? x 'class) (member c (string-split (attr-ref x 'class))) #t))
 
-(define pages
+(define all-pages
   (for/list ([node (in-list (pagetree->list (get-pagetree "index.ptree")))])
     (define-values (url src) (page-info node))
     (define doc (get-doc src))
@@ -57,8 +60,13 @@
                     (attr-ref a 'href)))
     (define terms (for/list ([a (in-list (find-all doc (λ (x) (and (eq? (get-tag x) 'div) (class? x "term-entry")))))])
                     (substring (attr-ref a 'id) 5)))
-    (hasheq 'url url 'src src 'title (or (select-from-metas 'title (get-metas src)) "")
+    (define status (let ([s (select-from-metas 'status (get-metas src))]) (and s (string-trim (format "~a" s)))))
+    (hasheq 'url url 'src src 'out (symbol->string node) 'title (or (select-from-metas 'title (get-metas src)) "")
+            'published (published? src status)
             'sections sections 'ids ids 'xrefs xrefs 'terms terms)))
+
+(define pages (filter (λ (p) (hash-ref p 'published)) all-pages))
+(define drafts (for/hash ([p (in-list all-pages)] #:unless (hash-ref p 'published)) (values (hash-ref p 'url) p)))
 
 (define by-url (for/hash ([p (in-list pages)]) (values (hash-ref p 'url) p)))
 
@@ -68,6 +76,7 @@
     (match-define (list _ path frag) (regexp-match #px"^([^#]*)(?:#(.*))?$" href))
     (define target (hash-ref by-url path #f))
     (cond
+      [(hash-ref drafts path #f) (fail "~a: link to ~a, which is a draft and will not be published" (hash-ref p 'src) href)]
       [(not target) (fail "~a: link to ~a, which is not a page" (hash-ref p 'src) href)]
       [(and frag (not (member frag (hash-ref target 'ids))))
        (fail "~a: link to ~a, but ~a has no section #~a" (hash-ref p 'src) href path frag)])
@@ -107,5 +116,13 @@
                            (hasheq 'title (hash-ref p 'title) 'sections (hash-ref p 'sections)))))
 (write-json-file (build-path "data" "links.json") links)
 
+;; DRAFT-2: what `make` publishes, as "rendered-file public-name" lines.
+(call-with-output-file (build-path "data" "publish.txt") #:exists 'replace
+  (λ (o) (for ([p (in-list pages)])
+           (fprintf o "~a ~a\n" (hash-ref p 'out)
+                    (if (equal? (hash-ref p 'url) "/") "index.html"
+                        (string-append (substring (hash-ref p 'url) 1) ".html"))))))
+
 (unless (zero? errors) (exit 1))
-(printf "validate: ~a pages, ~a internal links\n" (length pages) (length links))
+(printf "validate: ~a pages published, ~a drafts held back, ~a internal links\n"
+        (length pages) (hash-count drafts) (length links))

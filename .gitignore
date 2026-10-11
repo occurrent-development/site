@@ -26,3 +26,4 @@ local.mk
 /data/anchors.json
 /data/links.json
 /data/anchors-deployed.json
+/data/publish.txt

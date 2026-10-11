@@ -54,8 +54,7 @@ render: $(FONTS) $(IMAGES)
 publish: render
 	rm -rf public
 	mkdir -p public/assets/fonts public/assets/icons public/assets/img public/data
-	cp index.html public/
-	for f in pages/*.html; do cp "$$f" public/; done
+	while read src dest; do cp "$$src" "public/$$dest"; done < data/publish.txt
 	cp assets/fonts/*.woff2 public/assets/fonts/
 	cp assets/icons/*.svg public/assets/icons/
 	find assets/img -type f ! -name images.json -exec cp {} public/assets/img/ \;
@@ -74,4 +73,4 @@ clean:
 	$(RACO) pollen reset
 	rm -rf public
 	rm -f index.html pages/*.html assets/fonts/*.woff2 $(FONTS)
-	rm -rf assets/img data/anchors.json data/links.json
+	rm -rf assets/img data/anchors.json data/links.json data/publish.txt

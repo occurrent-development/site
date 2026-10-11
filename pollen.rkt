@@ -543,10 +543,14 @@
 (define (check-essay-metas)
   ;; VAL-1: essays need their meta fields.
   (define p (source-path))
-  (when (and p (regexp-match? #rx"/essays/" (path->string p)))
+  (when (and p (essay-source? p))
     (for ([k '(title status published)])
       (unless (select-from-metas k (current-metas))
-        (build-error "missing ◊define-meta[~a]" k)))))
+        (build-error "missing ◊define-meta[~a]" k)))
+    (define status (string-trim (format "~a" (select-from-metas 'status (current-metas)))))
+    (unless (member status essay-statuses)
+      (build-error "status must be one of ~a (got ~s)" (string-join essay-statuses ", ") status))
+    (format-date (format "~a" (select-from-metas 'published (current-metas))))))
 
 (define (glossary-root elems)
   (define flat (prepare elems))

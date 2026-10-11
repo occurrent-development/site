@@ -181,3 +181,18 @@
   (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:licence "own" "c"))))
   (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:alt "a" "c"))))
   (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:alt "a" #:licence "cc-by-4.0" "c")))))
+
+(require (only-in "lib/util.rkt" published?))
+
+(test-case "DRAFT-2: only non-draft essays are published; pages always are"
+  (check-true (published? "pages/specimen.html.pm" #f))
+  (check-true (published? "essays/x/x.html.pm" "published"))
+  (check-true (published? "essays/x/x.html.pm" "revised"))
+  (check-true (published? "essays/x/x.html.pm" "superseded"))
+  (check-false (published? "essays/x/x.html.pm" "draft"))
+  (check-false (published? "essays/x/x.html.pm" #f)))
+
+(test-case "VAL-1: essays need title, a known status and a published date"
+  (check-not-false (fixture "essays/draft-essay/draft-essay.html.pm"))
+  (check-true (fails? (λ () (fixture "essays/bad-status/bad-status.html.pm"))))
+  (check-true (fails? (λ () (fixture "essays/no-date/no-date.html.pm")))))

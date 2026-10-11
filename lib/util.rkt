@@ -11,7 +11,7 @@
 
 (provide build-error warn text-of words id-pattern check-id
          tag? has-class? source-path source-dir project-file
-         WJ visually-hidden)
+         WJ visually-hidden essay-statuses essay-source? published?)
 
 (define (build-error fmt . args)
   (raise-user-error (string-append "build error: " (where) (apply format fmt args))))
@@ -59,3 +59,13 @@
 
 ;; Text for screen readers only.
 (define (visually-hidden str) `(span ((class "vh")) ,str))
+
+;; DRAFT-2: essays carry a status; only these are published.
+(define essay-statuses '("draft" "published" "revised" "superseded"))
+
+(define (essay-source? path) (regexp-match? #rx"(^|/)essays/" (format "~a" path)))
+
+;; Pages (not essays) are always published; essays only when not drafts.
+(define (published? path status)
+  (or (not (essay-source? path))
+      (and (member status '("published" "revised" "superseded")) #t)))
