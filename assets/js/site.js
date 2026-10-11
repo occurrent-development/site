@@ -168,7 +168,7 @@ const fragments = new Map();
 function fragmentUrl(href) {
   const u = new URL(href, location.href);
   const slug = u.pathname.replace(/^\//, "").replace(/\.html$/, "");
-  return `/_x/${slug}/${u.hash.slice(1) || "index"}.html`;
+  return `/_x/${slug}/${u.hash.slice(1) || "_page"}.frag`;
 }
 function fetchFragment(href) {
   const url = fragmentUrl(href);

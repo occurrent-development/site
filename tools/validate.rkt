@@ -7,8 +7,9 @@
 ;; - VAL-3: a section id published in the last deploy (data/anchors-deployed.json,
 ;;   fetched by CI) must not disappear while a page links to it.
 ;; - TERM-6: warns about glossary terms no page uses.
-;; - POP-7: writes build/_x/<slug>/<id>.html, one fragment per section (and
-;;   index.html with the title and abstract), fetched by cross-page popups.
+;; - POP-7: writes build/_x/<slug>/<id>.frag, one fragment per section (and
+;;   _page.frag with the title and abstract), fetched by cross-page popups.
+;;   Not .html: Cloudflare's HTML handling would redirect those.
 ;; - DRAFT-2: writes data/publish.txt, the pages `make` copies into public/:
 ;;   every page, and essays whose status is not draft. A published page may
 ;;   not link to a draft.
@@ -139,12 +140,12 @@
   (make-directory* dir)
   (define metas (get-metas (hash-ref p 'src)))
   (define (meta k) (let ([v (select-from-metas k metas)]) (and v (format "~a" v))))
-  (call-with-output-file (build-path dir "index.html") #:exists 'replace
+  (call-with-output-file (build-path dir "_page.frag") #:exists 'replace
     (λ (o) (write-string (->html `(div (h1 ,(or (meta 'title) "")) ,@(filter values (list (and (meta 'subtitle) `(p ((class "subtitle")) ,(meta 'subtitle)))
                                                                                           (and (meta 'abstract) `(p ((class "abstract")) ,(meta 'abstract))))))) o)))
   (for ([sec (in-list (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'section) (attrs-have-key? x 'id)
                                                                (not (class? x "endmatter"))))))])
-    (call-with-output-file (build-path dir (string-append (attr-ref sec 'id) ".html")) #:exists 'replace
+    (call-with-output-file (build-path dir (string-append (attr-ref sec 'id) ".frag")) #:exists 'replace
       (λ (o) (write-string (->html (fragment-clean sec)) o)))))
 
 ;; DRAFT-2: what `make` publishes, as "rendered-file public-name" lines.
