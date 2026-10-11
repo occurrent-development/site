@@ -627,6 +627,6 @@ All pickers use plain `completing-read`, so they work with Vertico, Ivy, Helm or
 | D7 | ~~Term popup placement~~ | **Resolved:** definitions, notes and asides all open in the right margin on wide tiers, as popups on narrow ones (POP-8) | n/a |
 | D8 | ~~A shared circle without JS~~ | **Resolved:** it links to its first item; a term in the group keeps its own text linked to Terms (MARK-1c) | n/a |
 | D9 | ~~Level-1 list bullet~~ | **Resolved:** a small solid dot, so a circle only ever means "opens something" (LIST-2) | n/a |
-| D10 | Cross-browser checks (MARK-1, TYPE-5, LAYOUT-7, Phase 2 "done when") | The builder cannot yet see Safari or Firefox. Either grant read access to both on this Mac, or allow Playwright's WebKit and Firefox engines to be installed for automated checks; real iOS and Android stay with you | Phase 2 start |
+| D10 | ~~Cross-browser checks~~ | **Resolved:** the builder views Safari and Firefox on this Mac (read-only) and judges screenshots; real iOS and Android checks stay with Ryan | n/a |
 
 Resolved already: Pollen markup over Markdown; sections never numbered; glossary site-wide, popup-only; numbered citation notes in Chicago style, with the number kept out of the running text; right margin only; no comments; no archived copies; Libertinus Serif as the typeface; two marks only, arrow and circle; a text-size control in the reading bar (reversing the earlier cut); the bar shows on scroll-up and hides after 2 s idle; the text block stays where it is (LAYOUT-6a).
