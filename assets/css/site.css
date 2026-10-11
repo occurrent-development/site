@@ -2,21 +2,47 @@
 
 /* ── Colour tokens (THEME-3/4) ─────────────────────────────────────────────
    The only colour literals in the stylesheet. Each token is light-dark(light, dark);
-   color-scheme picks the half: Auto follows the system, data-theme forces one. */
-:root {
-  color-scheme: light dark;
-  --bg:             light-dark(#EFE7D4, #121212);
-  --text:           light-dark(#000000, #D2D2D0);
-  --text-muted:     light-dark(#5A5244, #9C9A95);
-  --accent:         light-dark(#8A3A26, #D49A7E);
-  --accent-visited: light-dark(#8A5344, #B08C7C);
-  --rule:           light-dark(#B5A88C, #3D3B38);
-  --popup-bg:       light-dark(#F5EFE2, #1B1A18);
-  --popup-border:   light-dark(#C8BBA0, #3D3B38);
-  --selection:      light-dark(#D9C7A2, #4A3B32);
+   color-scheme picks the half: Auto follows the system, data-theme forces one.
+   Browsers without light-dark() (Safari < 17.5, Firefox < 120) would otherwise
+   get no colours at all, so they get the same values the older way. */
+@supports (color: light-dark(#000, #fff)) {
+  :root {
+    color-scheme: light dark;
+    --bg:             light-dark(#EFE7D4, #121212);
+    --text:           light-dark(#000000, #D2D2D0);
+    --text-muted:     light-dark(#5A5244, #9C9A95);
+    --accent:         light-dark(#8A3A26, #D49A7E);
+    --accent-visited: light-dark(#8A5344, #B08C7C);
+    --rule:           light-dark(#B5A88C, #3D3B38);
+    --popup-bg:       light-dark(#F5EFE2, #1B1A18);
+    --popup-border:   light-dark(#C8BBA0, #3D3B38);
+    --selection:      light-dark(#D9C7A2, #4A3B32);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"]  { color-scheme: dark; }
 }
-:root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="dark"]  { color-scheme: dark; }
+@supports not (color: light-dark(#000, #fff)) {
+  :root {
+    color-scheme: light;
+    --bg: #EFE7D4; --text: #000000; --text-muted: #5A5244; --accent: #8A3A26;
+    --accent-visited: #8A5344; --rule: #B5A88C; --popup-bg: #F5EFE2;
+    --popup-border: #C8BBA0; --selection: #D9C7A2;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121212; --text: #D2D2D0; --text-muted: #9C9A95; --accent: #D49A7E;
+    --accent-visited: #B08C7C; --rule: #3D3B38; --popup-bg: #1B1A18;
+    --popup-border: #3D3B38; --selection: #4A3B32;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121212; --text: #D2D2D0; --text-muted: #9C9A95; --accent: #D49A7E;
+      --accent-visited: #B08C7C; --rule: #3D3B38; --popup-bg: #1B1A18;
+      --popup-border: #3D3B38; --selection: #4A3B32;
+    }
+  }
+}
 
 /* ── Fallback metrics (TYPE-10) ────────────────────────────────────────────
    Georgia scaled to Libertinus Serif's average width and vertical metrics

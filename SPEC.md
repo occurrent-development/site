@@ -377,7 +377,7 @@ Rotate to see the second axis. ◊cite["springer2004"]
 - **TYPE-2 (SHOULD)** Body ~18–20 px, line-height ~1.5–1.55, tuned to the chosen face on the specimen page.
 - **TYPE-3 (MUST)** Justified only at full measure; ragged right below that (phones, narrow windows).
 - **TYPE-4 (MUST)** `hyphens: auto` wherever body text is set, with the right `lang`.
-- **TYPE-5 (MUST — verify)** Spelling is Australian. `lang="en-AU"` is correct semantically, but test hyphenation in Chrome, Safari and Firefox; if any fails, use `en-GB` on the body container and document it. *Status: passes in Chrome; Safari and Firefox not yet checked.*
+- **TYPE-5 (MUST — verify)** Spelling is Australian. `lang="en-AU"` is correct semantically, but test hyphenation in Chrome, Safari and Firefox; if any fails, use `en-GB` on the body container and document it. *Status 2026-10-12: passes in Chrome, Safari 26.6 and Firefox (104 and 157); Safari hyphenates ragged text more sparingly but has an `en-AU` dictionary. No `en-GB` fallback needed.*
 - **TYPE-6 (SHOULD)** `text-wrap: pretty` for paragraphs, `balance` for headings; `hanging-punctuation: first` where supported.
 
 ### 10.2 Typeface
@@ -416,7 +416,7 @@ Rotate to see the second axis. ◊cite["springer2004"]
 
 - **THEME-1 (MUST)** Follow `prefers-color-scheme` by default; the control offers **Auto · Light · Dark**, stored in `localStorage` (try/catch), site-wide. Auto keeps following the system live.
 - **THEME-2 (MUST)** No flash: a tiny inline script in `<head>` (< ~500 bytes, the only blocking script) sets `data-theme` and the text-size step before paint.
-- **THEME-3 (MUST)** All colours are custom properties defined once per theme (`--bg`, `--text`, `--text-muted`, `--accent`, `--accent-visited`, `--rule`, `--popup-bg`, `--popup-border`, `--selection`). No colour literals elsewhere. Each token is written once as `light-dark(light, dark)`; `color-scheme` on the root picks the half (Auto follows the system; `data-theme` forces one).
+- **THEME-3 (MUST)** All colours are custom properties defined once per theme (`--bg`, `--text`, `--text-muted`, `--accent`, `--accent-visited`, `--rule`, `--popup-bg`, `--popup-border`, `--selection`). No colour literals elsewhere. Each token is written once as `light-dark(light, dark)`; `color-scheme` on the root picks the half (Auto follows the system; `data-theme` forces one). Browsers without `light-dark()` (Safari < 17.5, Firefox < 120) get the same values through an `@supports not` block, so an old browser falls back to the site's own themes, never to the browser's defaults.
 - **THEME-4 (MUST)** Light: dark-ivory background, black text. Dark: near-black background, light grey text. **Chosen** on the specimen page (D1, resolved 2026-10-12):
 
   | Token | Light | Dark |
@@ -448,7 +448,7 @@ Rotate to see the second axis. ◊cite["springer2004"]
 
 ### 10.6 Layout mechanics
 
-- **LAYOUT-7 (MUST)** Implement tiers as **container queries** on the page wrapper, not media queries: relative units in container queries resolve against the container's computed font size, so the layout stays right if the reader zooms or sets a larger default font. Verify in Safari, Chrome and Firefox.
+- **LAYOUT-7 (MUST)** Implement tiers as **container queries** on the page wrapper, not media queries: relative units in container queries resolve against the container's computed font size, so the layout stays right if the reader zooms or sets a larger default font. Verify in Safari, Chrome and Firefox. *Status 2026-10-12: verified in Chrome, Safari 26.6 and Firefox 157 (tiers L and S). Firefox before 110 has no container queries and shows tier S at every width, which is an acceptable fallback.*
 
 ---
 
