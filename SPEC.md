@@ -193,7 +193,7 @@ Every annotation carries a small superscript mark; the mark is the only signal t
 | Definition | `◊term` | ○ (circle) |
 | Aside | `◊aside` | ○ (circle) |
 
-- **MARK-1 (MUST)** Marks are drawn, not typed: never Unicode glyphs. Arrows are SVG in `currentColor` (inline `<svg>`, or a mask that exactly fills an atomic inline box sized to the glyph). The circle is a small hollow ring in the accent colour, as in Butterick's *Practical Typography*, drawn with a CSS border and no mask. **Never mask an empty non-atomic inline box**: Safari paints the whole box (the Phase 1 defect on iOS). Every mark is checked in Safari, Chrome and Firefox, desktop and phone, before a phase is called done.
+- **MARK-1 (MUST)** Marks are drawn, not typed: never Unicode glyphs. Arrows are SVG in `currentColor` (inline `<svg>`, or a mask that exactly fills an atomic inline box sized to the glyph). The circle is a small hollow ring in the accent colour, as in Butterick's *Practical Typography*, drawn with a CSS border and no mask. **Never mask an empty non-atomic inline box**: Safari paints the whole box (the Phase 1 defect, seen on iOS and in desktop Safari 26.6; Chrome and Firefox 157 draw those marks correctly). Every mark is checked in Safari, Chrome and Firefox, desktop and phone, before a phase is called done.
 - **MARK-1a (MUST)** Arrows are 20% larger than in the Phase 1 build (glyph ≈ 0.58em, from 0.48em), with the stroke thinned in proportion so the weight on the page is unchanged.
 - **MARK-1b (MUST)** The circle looks the same for citations, definitions and asides. The types keep separate markup, classes and accessible names (MARK-7), and separate content and no-JS fallbacks; only the sign is shared.
 - **MARK-1c (MUST)** Circles never sit side by side. Annotations that fall at the same point in the text (two citations, or a term followed by a citation) share **one** circle, which opens all of them in source order. "The same point" means nothing but whitespace lies between the end of one annotation and the next `◊cite`, `◊aside` or circle-bearing `◊term`; punctuation between them keeps them apart. Without JS a shared circle links to its first item (D8).
@@ -448,7 +448,7 @@ Rotate to see the second axis. ◊cite["springer2004"]
 
 ### 10.6 Layout mechanics
 
-- **LAYOUT-7 (MUST)** Implement tiers as **container queries** on the page wrapper, not media queries: relative units in container queries resolve against the container's computed font size, so the layout stays right if the reader zooms or sets a larger default font. Verify in Safari, Chrome and Firefox. *Status 2026-10-12: verified in Chrome, Safari 26.6 and Firefox 157 (tiers L and S). Firefox before 110 has no container queries and shows tier S at every width, which is an acceptable fallback.*
+- **LAYOUT-7 (MUST)** Implement tiers as **container queries** on the page wrapper, not media queries: relative units in container queries resolve against the container's computed font size, so the layout stays right if the reader zooms or sets a larger default font. Verify in Safari, Chrome and Firefox. *Status 2026-10-12: verified in Chrome, Safari 26.6 and Firefox 157, tiers L and S in each. Firefox before 110 has no container queries and shows tier S at every width, which is an acceptable fallback.*
 
 ---
 
