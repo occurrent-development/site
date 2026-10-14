@@ -3,6 +3,8 @@
 ◊define-meta[title]{Specimen}
 ◊define-meta[subtitle]{Every element the site can render, set as an essay would be}
 ◊define-meta[specimen]{yes}
+◊define-meta[published]{2026-10-09}
+◊define-meta[tags]{site, typography}
 ◊define-meta[unlisted]{yes}
 ◊define-meta[epistemic]{A test page. Its claims are about its own typesetting and are checked by looking at it.}
 ◊define-meta[abstract]{This page exists to be judged rather than read. It shows the column, the face, the headings, the breaks and the two themes at the size and measure the essays will use, so that a change to any of them can be checked in one place. Elements that arrive in later phases are listed at the end.}
