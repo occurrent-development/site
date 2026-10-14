@@ -263,10 +263,21 @@
   (check-equal? (attr-ref (caddr rows) 'data-tags) "site|philosophy")
   (check-not-false (findf (λ (th) (attrs-have-key? th 'data-nosort)) (find-all idx (tag? 'th)))))
 
-(test-case "MARK-3a: punctuation after a mark is held to it"
+(test-case "MARK-3a: punctuation after a mark goes before it, in the no-wrap span"
   (define doc (root "See " (link "https://example.org" "the source") ", and " (cite "hackingMakingPeople2006") ". Done."))
-  (define held (find-all doc (λ (x) (has-class* x "nwp"))))
-  (check-equal? (length held) 2)
-  (check-equal? (last (get-elements (car held))) ",")
-  (check-equal? (last (get-elements (cadr held))) ".")
+  (define nws (find-all doc (λ (x) (has-class* x "nw"))))
+  (define (punct-then-mark? nw p)
+    (define els (get-elements nw))
+    (define i (index-where els (λ (e) (has-class* e "punct"))))
+    (and i (equal? (get-elements (list-ref els i)) (list p))
+         (findf (λ (e) (or (has-class* e "mark") (has-class* e "circle-link"))) (drop els i))
+         #t))
+  (check-true (punct-then-mark? (car nws) ","))
+  (check-true (punct-then-mark? (cadr nws) "."))
   (check-not-false (member " Done." (get-elements (car (find-all doc (tag? 'p)))))))
+
+(test-case "MARK-3: a mark after an italic phrase binds only its last word"
+  (define doc (root "in the " (em "London Review of Books") (cite "hackingMakingPeople2006") " and"))
+  (define nw (car (find-all doc (λ (x) (has-class* x "nw")))))
+  (check-equal? (car (get-elements nw)) '(em "Books"))
+  (check-not-false (member '(em "London Review of ") (find-all doc (tag? 'em)))))

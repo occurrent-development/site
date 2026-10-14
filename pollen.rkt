@@ -663,16 +663,35 @@
       [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
       [else x])))
 
-;; MARK-3a: a line never breaks between a mark and the punctuation after it.
-;; The element ending in the mark and the punctuation are wrapped in a
-;; no-wrap span; inside it the element wraps normally (CSS), so only the
-;; boundary between them is held.
+;; MARK-3a: punctuation after a mark goes before it ("elsewhere.°", not
+;; "elsewhere°."), inside the no-wrap span, so word, punctuation and mark
+;; never part. Inside a link the punctuation keeps the text colour (CSS).
 (define trailing-punct #px"^[,.;:!?…)\\]’”»]+")
+
+(define (mark-el? x)
+  (or (has-class? x "mark") (has-class? x "circle") (has-class? x "circle-link")))
 
 (define (ends-with-mark? x)
   (and (txexpr? x)
        (or (has-class? x "nw")
            (let ([els (get-elements x)]) (and (pair? els) (ends-with-mark? (last els)))))))
+
+;; Put the punctuation into the .nw span that ends x, before its mark.
+(define (push-punct x p)
+  (define els (get-elements x))
+  (cond
+    [(has-class? x "nw")
+     (define-values (word marks) (splitf-at els (λ (e) (not (mark-el? e)))))
+     (define-values (word* wj)
+       (match (and (pair? word) (last word))
+         [(? string? s) #:when (string-suffix? s WJ)
+          (values (append (drop-right word 1)
+                          (let ([t (substring s 0 (- (string-length s) (string-length WJ)))])
+                            (if (equal? t "") null (list t))))
+                  (list WJ))]
+         [_ (values word null)]))
+     (txexpr (get-tag x) (get-attrs x) (append word* (list `(span ((class "punct")) ,p)) wj marks))]
+    [else (txexpr (get-tag x) (get-attrs x) (append (drop-right els 1) (list (push-punct (last els) p))))]))
 
 (define (bind-punctuation doc)
   (let walk ([x doc])
@@ -684,8 +703,8 @@
                      #:when (regexp-match? trailing-punct s)
                      (define p (car (regexp-match trailing-punct s)))
                      (define after (substring s (string-length p)))
-                     (list* `(span ((class "nwp")) ,m ,p)
-                            (loop (if (equal? after "") rest (cons after rest))))]
+                     (cons (push-punct m p)
+                           (loop (if (equal? after "") rest (cons after rest))))]
                     [(cons e rest) (cons e (loop rest))]
                     ['() '()])))
         x)))

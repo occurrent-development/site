@@ -35,6 +35,15 @@
         (match (regexp-match #px"^(.*?)(\\S+)$" l)
           [(list _ before word) (values (append init (if (equal? before "") null (list before))) (list word))]
           [_ (values elems null)])]
+       ;; an inline phrase (◊em{London Review of Books}) gives up only its
+       ;; last word, so the rest of it can still wrap
+       [(and (txexpr? l) (or (memq (get-tag l) '(em strong)) (has-class? l "sc"))
+             (not (attrs-have-key? l 'id)))
+        (define-values (inner word) (split-last-word (get-elements l)))
+        (if (or (null? word) (null? inner) (andmap (λ (e) (and (string? e) (regexp-match? #px"^\\s*$" e))) inner))
+            (values init (list l))
+            (values (append init (list (txexpr (get-tag l) (get-attrs l) inner)))
+                    (list (txexpr (get-tag l) (get-attrs l) word))))]
        [else (values init (list l))])]))
 
 ;; Attach a mark to the end of some text. The last word and the mark are

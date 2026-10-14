@@ -414,10 +414,9 @@ hr.break + p { text-indent: 0; }
   hr.break { height: 1.1em; margin: 2em auto; }
 }
 
-/* MARK-3a: a mark and the punctuation after it stay on one line; the
-   element ending in the mark still wraps inside. */
-.nwp { white-space: nowrap; }
-.nwp > :not(.nw) { white-space: normal; }
+/* MARK-3a: punctuation moved before a mark keeps the text colour, even
+   inside a link */
+a .punct { color: var(--text); }
 
 /* ── Marks (§4.1, MARK-1…8) ────────────────────────────────────────────
    Two signs. An arrow (a link away) is an atomic inline box exactly filled
