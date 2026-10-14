@@ -118,43 +118,154 @@ function stickyHeader(table) {
 }
 
 // ── Tag filter on the home page (INDEX-3) ──────────────────────────────
-// One tag at a time; "all" clears it. The tag is kept in the address
-// (?tag=…), so a filtered list can be linked to.
+// The Tags heading opens a list of every tag; the chosen ones form a set,
+// shown above the table, from which each can be removed. A row shows when
+// it has any tag in the set. The set is kept in the address (?tags=a,b).
+
+const SVG = "http://www.w3.org/2000/svg";
+function drawn(d, cls) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("class", cls);
+  const path = document.createElementNS(SVG, "path");
+  for (const [k, v] of Object.entries({ d, fill: "none", stroke: "currentColor", "stroke-width": "1.3",
+    "stroke-linecap": "round", "stroke-linejoin": "round" })) path.setAttribute(k, v);
+  svg.append(path);
+  return svg;
+}
+const CHEVRON = "M2.5 4.5 6 8l3.5-3.5";
+const CROSS = "M3 3l6 6M9 3l-6 6";
 
 function tagFilter(index) {
-  const buttons = [...index.querySelectorAll(".tag-filter button")];
+  const th = index.querySelector("th[data-tag-filter]");
   const rows = [...index.querySelectorAll("tbody tr")];
+  const tagsOf = (r) => (r.dataset.tags ? r.dataset.tags.split("|") : []);
+  const counts = new Map();
+  for (const r of rows) for (const t of tagsOf(r)) counts.set(t, (counts.get(t) || 0) + 1);
+  const all = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  const chosen = new Set();
 
-  // tags in the rows become buttons too
+  // the heading becomes the button that opens the list
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tag-menu-button";
+  button.setAttribute("aria-haspopup", "true");
+  button.setAttribute("aria-expanded", "false");
+  button.append(...th.childNodes, drawn(CHEVRON, "chevron"));
+  th.append(button);
+
+  const panel = document.createElement("div");
+  panel.className = "tag-menu";
+  panel.hidden = true;
+  panel.setAttribute("role", "group");
+  panel.setAttribute("aria-label", "Show essays tagged");
+  for (const t of all) {
+    const label = document.createElement("label");
+    const box = Object.assign(document.createElement("input"), { type: "checkbox", value: t });
+    label.append(box, ` ${t}`, Object.assign(document.createElement("span"), { className: "count", textContent: counts.get(t) }));
+    panel.append(label);
+  }
+  index.append(panel);
+
+  const set = document.createElement("p");
+  set.className = "tag-set";
+  set.hidden = true;
+  index.prepend(set);
+
+  // tags in the rows become buttons that add (or remove) themselves
   for (const span of index.querySelectorAll("td .tag")) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "tag";
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "tag", textContent: span.textContent });
     b.dataset.tag = span.textContent;
-    b.textContent = span.textContent;
     span.replaceWith(b);
   }
 
-  function show(tag, push) {
-    if (tag && !buttons.some((b) => b.dataset.tag === tag)) tag = "";
-    for (const b of buttons) b.setAttribute("aria-pressed", String(b.dataset.tag === tag));
-    for (const r of rows) r.hidden = !!tag && !r.dataset.tags.split("|").includes(tag);
-    for (const b of index.querySelectorAll("td button.tag")) b.classList.toggle("is-current", b.dataset.tag === tag);
+  function update(push) {
+    for (const r of rows) r.hidden = chosen.size > 0 && !tagsOf(r).some((t) => chosen.has(t));
+    for (const box of panel.querySelectorAll("input")) box.checked = chosen.has(box.value);
+    for (const b of index.querySelectorAll("td button.tag")) {
+      b.classList.toggle("is-current", chosen.has(b.dataset.tag));
+      b.setAttribute("aria-pressed", String(chosen.has(b.dataset.tag)));
+    }
+    th.classList.toggle("is-filtered", chosen.size > 0);
+    set.replaceChildren();
+    set.hidden = chosen.size === 0;
+    if (chosen.size) {
+      set.append(Object.assign(document.createElement("span"), { className: "tag-set-label", textContent: "Tagged" }));
+      for (const t of [...chosen].sort((a, b) => a.localeCompare(b))) {
+        const b = Object.assign(document.createElement("button"), { type: "button", className: "chip" });
+        b.dataset.remove = t;
+        b.setAttribute("aria-label", `Remove ${t}`);
+        b.append(t, drawn(CROSS, "cross"));
+        set.append(b);
+      }
+      if (chosen.size > 1) {
+        const clear = Object.assign(document.createElement("button"), { type: "button", className: "clear", textContent: "clear" });
+        clear.dataset.remove = "";
+        set.append(clear);
+      }
+    }
+    if (!panel.hidden) place();
     if (push) {
       const url = new URL(location.href);
-      if (tag) url.searchParams.set("tag", tag); else url.searchParams.delete("tag");
-      history.replaceState(null, "", url);
+      url.searchParams.delete("tag");
+      if (chosen.size) url.searchParams.set("tags", [...chosen].join(","));
+      else url.searchParams.delete("tags");
+      history.replaceState(null, "", url.pathname + url.search.replace(/%2C/g, ",") + url.hash);
     }
   }
 
-  index.addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-tag]");
-    if (!b) return;
-    const current = buttons.find((x) => x.getAttribute("aria-pressed") === "true")?.dataset.tag;
-    // a tag in a row toggles: clicking the current one shows everything again
-    show(b.closest("td") && b.dataset.tag === current ? "" : b.dataset.tag, true);
+  // below the heading, which moves when the set above the table appears
+  function place() {
+    const i = index.getBoundingClientRect(), h = th.getBoundingClientRect();
+    panel.style.top = `${h.bottom - i.top + 4}px`;
+  }
+  function open() {
+    th.scrollIntoView({ block: "nearest" });
+    panel.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    place();
+    panel.querySelector("input")?.focus();
+  }
+  function shut(focus) {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+    if (focus) button.focus();
+  }
+
+  button.addEventListener("click", (e) => { e.stopPropagation(); panel.hidden ? open() : shut(); });
+  panel.addEventListener("change", (e) => {
+    const box = e.target;
+    if (box.checked) chosen.add(box.value); else chosen.delete(box.value);
+    update(true);
   });
-  show(new URL(location.href).searchParams.get("tag") || "", false);
+  panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); shut(true); } });
+  document.addEventListener("click", (e) => {
+    // (a click on the pinned copy of the heading is forwarded to the button)
+    if (!panel.contains(e.target) && !e.target.closest("th[data-tag-filter], .sticky-head")) shut();
+  });
+  index.addEventListener("focusout", (e) => {
+    if (!panel.hidden && e.relatedTarget && !panel.contains(e.relatedTarget) && e.relatedTarget !== button) shut();
+  });
+
+  set.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-remove]");
+    if (!b) return;
+    if (b.dataset.remove) chosen.delete(b.dataset.remove); else chosen.clear();
+    update(true);
+    (set.querySelector("button") || button).focus();
+  });
+  index.addEventListener("click", (e) => {
+    const b = e.target.closest("td button.tag");
+    if (!b) return;
+    if (chosen.has(b.dataset.tag)) chosen.delete(b.dataset.tag); else chosen.add(b.dataset.tag);
+    update(true);
+  });
+
+  const params = new URL(location.href).searchParams;
+  for (const t of (params.get("tags") || params.get("tag") || "").split(",")) if (counts.has(t)) chosen.add(t);
+  update(false);
 }
 
 const index = document.querySelector(".essay-index");
