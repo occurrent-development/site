@@ -399,7 +399,7 @@
        (define commentary (and (attrs-have-key? x 'note) (typeset-string (attr-ref x 'note))))
        (set! notes (cons (list n (append (note-form key loc first?)
                                          (if commentary (list " " commentary) null))
-                               key)
+                               key first?)
                          notes))
        ;; CITE-1: the number belongs to the note; the text gets a circle.
        `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
@@ -492,9 +492,10 @@
                   (endmatter "notes" "Notes"
                              `(ol ((class "notes"))
                                   ,@(for/list ([nt (in-list (reverse notes))])
-                                      (match-define (list n elems key) nt)
+                                      (match-define (list n elems key first?) nt)
                                       `(li ((id ,(format "note-~a" n)) (value ,(number->string n))
-                                            (data-bib ,(string-append "bib-" key)))
+                                            (data-bib ,(string-append "bib-" key))
+                                            (data-form ,(if first? "full" "short")))
                                            ,@elems " "
                                            (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
              (and (positive? (hash-count bib-keys))

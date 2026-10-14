@@ -238,3 +238,8 @@
 (test-case "TABLE-5: ◊sort-key gives a cell the value it sorts by"
   (define t (table "| Year | Event |" "\n" "|---|---|" "\n" "| " (sort-key "2004" "c. 2004") " | x |" "\n"))
   (check-not-false (findf (λ (x) (equal? (attr-ref x 'data-sort #f) "2004")) (find-all t txexpr?))))
+
+(test-case "POP-7: notes say whether they are the full or the short form"
+  (define doc (fixture "citations.html.pm"))
+  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "note-~a" n)) 'data-form)) '(1 2 3 4 5))
+                '("full" "full" "short" "short" "short")))

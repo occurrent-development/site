@@ -121,7 +121,8 @@ function item(target) {
   if (target.startsWith("note-")) {
     const n = target.slice(5);
     const body = el("div", {}, el("p", {}, ...clean(src).childNodes));
-    const bib = src.dataset.bib && byId(src.dataset.bib);
+    // A full note is already the reference; a short one gets the entry (POP-7).
+    const bib = src.dataset.form === "short" && src.dataset.bib && byId(src.dataset.bib);
     if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
     return { title: `Note ${n}`, head: `Note ${n}`, body };
   }
