@@ -584,6 +584,7 @@ function setupBar() {
   addEventListener("scroll", () => {
     const y = scrollY;
     if (y < lastY - 2 && !headerVisible) showBar();
+    else if (y > lastY + 2) hideBar();
     lastY = y;
     if (bar.classList.contains("is-shown")) restartIdle();
   }, { passive: true });
@@ -591,25 +592,34 @@ function setupBar() {
   bar.addEventListener("focusin", showBar);      // BAR-1a: tabbing in reveals it
   bar.addEventListener("focusout", restartIdle);
 
-  // The current top-level section, by IntersectionObserver (BAR-1b)
+  // The current section, by IntersectionObserver (BAR-1b): the top level
+  // for the bar; both levels for the contents in the margin (TOC-2).
   const sections = [...document.querySelectorAll("article section.level-1")];
+  const subsections = [...document.querySelectorAll("article section.level-1 > section.level-2")];
+  const tocLinks = [...document.querySelectorAll("nav.toc a[href^='#']")];
   const inBand = new Set();
+  const currentOf = (list) => {
+    for (const s of list) if (inBand.has(s)) return s;
+    // above the band: the last section that started above the viewport
+    const passed = list.filter((s) => s.getBoundingClientRect().top < innerHeight * 0.3);
+    return passed[passed.length - 1] || null;
+  };
   const update = () => {
-    let current = null;
-    for (const s of sections) if (inBand.has(s)) { current = s; break; }
-    if (!current) {
-      // above the band: the last section that started above the viewport
-      const passed = sections.filter((s) => s.getBoundingClientRect().top < innerHeight * 0.3);
-      current = passed[passed.length - 1] || null;
-    }
+    const current = currentOf(sections);
     barTitle.textContent = current ? sectionTitle(current) : essayTitle;
     bar.dataset.current = current ? current.id : "";
+    const sub = current && currentOf(subsections.filter((s) => s.parentElement === current));
+    const ids = new Set([current?.id, sub?.id].filter(Boolean).map((id) => `#${id}`));
+    for (const a of tocLinks) {
+      if (ids.has(a.getAttribute("href"))) a.setAttribute("aria-current", "location");
+      else a.removeAttribute("aria-current");
+    }
   };
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) e.isIntersecting ? inBand.add(e.target) : inBand.delete(e.target);
     update();
   }, { rootMargin: "0px 0px -70% 0px" });
-  sections.forEach((s) => io.observe(s));
+  [...sections, ...subsections].forEach((s) => io.observe(s));
   update();
 }
 
@@ -627,6 +637,7 @@ function tocContent() {
   const current = bar.dataset.current;
   for (const a of list.querySelectorAll("a")) {
     if (current && a.getAttribute("href") === `#${current}`) a.setAttribute("aria-current", "location");
+    else a.removeAttribute("aria-current");
   }
   list.classList.add("toc-list");
   return { title: essayTitle, body: el("nav", { "aria-label": "Contents" }, list) };
@@ -645,8 +656,13 @@ function toggleToc() {
     const r = button.getBoundingClientRect();
     box.style.position = "fixed";
     box.style.left = `${Math.max(8, r.left)}px`;
-    box.style.top = `${r.bottom + 6}px`;
-    box.style.maxHeight = `${innerHeight - r.bottom - 20}px`;
+    if (r.top > innerHeight / 2) {       // the bar is at the bottom: open upwards
+      box.style.bottom = `${innerHeight - r.top + 6}px`;
+      box.style.maxHeight = `${r.top - 20}px`;
+    } else {
+      box.style.top = `${r.bottom + 6}px`;
+      box.style.maxHeight = `${innerHeight - r.bottom - 20}px`;
+    }
   }
   open = { box, trigger: button, pinned: true, mode: shade ? "popin" : "toc", shade };
   if (shade) open.mode = "popin";

@@ -262,3 +262,11 @@
   (check-equal? titles '("Newer" "Listed"))         ; undated pages and drafts are left out
   (check-equal? (attr-ref (caddr rows) 'data-tags) "site|philosophy")
   (check-not-false (findf (λ (th) (attrs-have-key? th 'data-nosort)) (find-all idx (tag? 'th)))))
+
+(test-case "MARK-3a: punctuation after a mark is held to it"
+  (define doc (root "See " (link "https://example.org" "the source") ", and " (cite "hackingMakingPeople2006") ". Done."))
+  (define held (find-all doc (λ (x) (has-class* x "nwp"))))
+  (check-equal? (length held) 2)
+  (check-equal? (last (get-elements (car held))) ",")
+  (check-equal? (last (get-elements (cadr held))) ".")
+  (check-not-false (member " Done." (get-elements (car (find-all doc (tag? 'p)))))))

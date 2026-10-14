@@ -256,6 +256,7 @@
   (define tops (filter (λ (e) (= (first e) 1)) entries))
   (and (>= (length tops) 3)
        `(nav ((class "toc") (aria-label "Contents"))
+          (div ((class "toc-inner"))   ; stays in view in tier XL (TOC-2)
              (p ((class "toc-title")) "Contents")
              (ul
               ,@(let loop ([es (filter (λ (e) (<= (first e) 2)) entries)])
@@ -265,7 +266,7 @@
                      (define-values (subs more) (splitf-at rest (λ (e) (= (first e) 2))))
                      (cons `(li ,(link top)
                                 ,@(if (null? subs) null `((ul ,@(map (λ (e) `(li ,(link e))) subs)))))
-                           (loop more))]))))))
+                           (loop more))])))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Validation
@@ -662,6 +663,33 @@
       [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
       [else x])))
 
+;; MARK-3a: a line never breaks between a mark and the punctuation after it.
+;; The element ending in the mark and the punctuation are wrapped in a
+;; no-wrap span; inside it the element wraps normally (CSS), so only the
+;; boundary between them is held.
+(define trailing-punct #px"^[,.;:!?…)\\]’”»]+")
+
+(define (ends-with-mark? x)
+  (and (txexpr? x)
+       (or (has-class? x "nw")
+           (let ([els (get-elements x)]) (and (pair? els) (ends-with-mark? (last els)))))))
+
+(define (bind-punctuation doc)
+  (let walk ([x doc])
+    (if (txexpr? x)
+        (txexpr (get-tag x) (get-attrs x)
+                (let loop ([els (map walk (get-elements x))])
+                  (match els
+                    [(list* (? ends-with-mark? m) (? string? s) rest)
+                     #:when (regexp-match? trailing-punct s)
+                     (define p (car (regexp-match trailing-punct s)))
+                     (define after (substring s (string-length p)))
+                     (list* `(span ((class "nwp")) ,m ,p)
+                            (loop (if (equal? after "") rest (cons after rest))))]
+                    [(cons e rest) (cons e (loop rest))]
+                    ['() '()])))
+        x)))
+
 (define (check-essay-metas)
   ;; VAL-1: essays need their meta fields.
   (define p (source-path))
@@ -698,7 +726,7 @@
   (define-values (epigraphs body)
     (splitf-at nested (λ (x) (has-class? x "epigraph"))))
   (define annotated (annotate (append epigraphs (if toc (list toc) null) body)))
-  (define doc (eager-first-image (bind-circles (render-circles (set-directions (txexpr 'root null annotated))))))
+  (define doc (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated)))))))
   (check-unique-ids doc)
   doc)
 
