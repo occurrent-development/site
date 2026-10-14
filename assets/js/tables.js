@@ -120,7 +120,7 @@ function stickyHeader(table) {
 // ── Tag filter on the home page (INDEX-3) ──────────────────────────────
 // The Tags heading opens a list of every tag; the chosen ones form a set,
 // shown above the table, from which each can be removed. A row shows when
-// it has any tag in the set. The set is kept in the address (?tags=a,b).
+// it has every tag in the set. The set is kept in the address (?tags=a,b).
 
 const SVG = "http://www.w3.org/2000/svg";
 function drawn(d, cls) {
@@ -168,6 +168,10 @@ function tagFilter(index) {
   }
   index.append(panel);
 
+  const none = Object.assign(document.createElement("p"), { className: "tag-none", textContent: "No essay has all of these tags." });
+  none.hidden = true;
+  index.append(none);
+
   const set = document.createElement("p");
   set.className = "tag-set";
   set.hidden = true;
@@ -181,7 +185,8 @@ function tagFilter(index) {
   }
 
   function update(push) {
-    for (const r of rows) r.hidden = chosen.size > 0 && !tagsOf(r).some((t) => chosen.has(t));
+    for (const r of rows) r.hidden = ![...chosen].every((t) => tagsOf(r).includes(t));
+    none.hidden = rows.some((r) => !r.hidden);
     for (const box of panel.querySelectorAll("input")) box.checked = chosen.has(box.value);
     for (const b of index.querySelectorAll("td button.tag")) {
       b.classList.toggle("is-current", chosen.has(b.dataset.tag));

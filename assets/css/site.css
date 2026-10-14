@@ -622,6 +622,8 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .tag-menu input { accent-color: var(--accent); margin: 0; }
 .tag-menu .count { margin-left: auto; padding-left: 1em; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+.tag-none { text-indent: 0; color: var(--text-muted); font-size: 0.85em; margin-top: -0.75em; }
+
 /* the chosen tags, each removable */
 .tag-set {
   display: flex;
