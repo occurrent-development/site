@@ -342,7 +342,7 @@ a:visited .mark { background-color: var(--accent-visited); }   /* MARK-5 */
   height: 0.4em;
   margin-left: 0.08em;
   vertical-align: 0.5em;
-  border: 0.085em solid var(--accent);
+  border: 0.068em solid var(--accent);   /* 20% finer than first built (2026-10-14) */
   border-radius: 50%;
 }
 a.circle-link { color: var(--accent); }
