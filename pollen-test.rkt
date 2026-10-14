@@ -256,9 +256,9 @@
   (check-equal? (output->url "essays/placeholder/placeholder.html") "/placeholder"))
 
 (test-case "INDEX-1: the home page lists dated pages, newest first, with tags"
-  (define idx (essay-index))
+  (define idx (essay-index #:pagetree "tests/index.ptree"))
   (define rows (find-all idx (tag? 'tr)))
   (define titles (for/list ([r (in-list (cdr rows))]) (string-trim (apply string-append (filter string? (get-elements (car (find-all r (tag? 'a)))))))))
-  (check-equal? titles '("Placeholder" "Specimen"))       ; colophon and about carry no date
-  (check-equal? (attr-ref (cadr rows) 'data-tags) "philosophy|site")
+  (check-equal? titles '("Newer" "Listed"))         ; undated pages and drafts are left out
+  (check-equal? (attr-ref (caddr rows) 'data-tags) "site|philosophy")
   (check-not-false (findf (λ (th) (attrs-have-key? th 'data-nosort)) (find-all idx (tag? 'th)))))

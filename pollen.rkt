@@ -706,8 +706,8 @@
 ;; The home page (§13a): every listed page as a table, newest first.
 
 ;; INDEX-1: a page is listed when it has a `published` date and is not a draft.
-(define (index-entries)
-  (for*/list ([node (in-list (pagetree->list (get-pagetree (project-file "index.ptree"))))]
+(define (index-entries ptree)
+  (for*/list ([node (in-list (pagetree->list (get-pagetree (project-file ptree))))]
               [out (in-value (symbol->string node))]
               #:unless (equal? out "index.html")
               [src (in-value (project-file (string-append out ".pm")))]
@@ -735,8 +735,9 @@
 (define (date-cell iso)
   `(td ((class "date") (data-sort ,iso)) (time ((datetime ,iso)) ,(format-date-short iso))))
 
-(define (essay-index)
-  (define entries (sort (index-entries) string>? #:key (λ (e) (hash-ref e 'published))))
+;; #:pagetree is for the tests.
+(define (essay-index #:pagetree [ptree "index.ptree"])
+  (define entries (sort (index-entries ptree) string>? #:key (λ (e) (hash-ref e 'published))))
   (define all-tags (sort (remove-duplicates (append-map (λ (e) (hash-ref e 'tags)) entries)) string<?))
   (define (tag-button t label pressed)
     `(button ((type "button") (data-tag ,t) (aria-pressed ,(if pressed "true" "false"))) ,label))
