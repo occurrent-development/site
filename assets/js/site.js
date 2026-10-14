@@ -60,9 +60,70 @@ function showSize() {
   for (const b of document.querySelectorAll(".size-up")) b.disabled = size() === SIZES - 1;
 }
 
+// THEME-5a: changing the size keeps the reader's place. The character at
+// the start of the first line wholly visible (below the bar, if it is showing at the
+// top) is found before the change and scrolled back to the same height after.
+function caretAt(x, y) {
+  if (document.caretPositionFromPoint) {
+    const p = document.caretPositionFromPoint(x, y);
+    return p && { node: p.offsetNode, offset: p.offset };
+  }
+  const r = document.caretRangeFromPoint?.(x, y);
+  return r && { node: r.startContainer, offset: r.startOffset };
+}
+function charRect(node, offset) {
+  const r = document.createRange();
+  const end = Math.min(offset + 1, node.length);
+  r.setStart(node, Math.min(offset, end)); r.setEnd(node, end);
+  const rects = r.getClientRects();
+  return rects[0] || r.getBoundingClientRect();
+}
+function readingAnchor() {
+  if (!article || scrollY < 1) return null;
+  const b = bar?.getBoundingClientRect();
+  const top = b && bar.classList.contains("is-shown") && b.top < 1 ? b.bottom : 0;
+  const a = article.getBoundingClientRect();
+  for (let y = top + 2; y < top + 80; y += 4) {
+    for (const x of [a.left + a.width * 0.25, a.left + a.width * 0.5]) {
+      const c = caretAt(x, y);
+      if (c?.node?.nodeType === Node.TEXT_NODE && article.contains(c.node) && c.node.length) {
+        // the first line wholly in view; back to its start
+        let { node, offset } = c;
+        const lineTop = charRect(node, offset).top;
+        if (lineTop < top - 1) continue;
+        while (offset > 0 && Math.abs(charRect(node, offset - 1).top - lineTop) < 2) offset--;
+        return { node, offset, top: charRect(node, offset).top };
+      }
+    }
+  }
+  // no text at the top (a figure, a table): fall back to the element there
+  const elAt = document.elementFromPoint(a.left + a.width / 2, top + 2);
+  return elAt && article.contains(elAt) ? { el: elAt, top: elAt.getBoundingClientRect().top } : null;
+}
+// A new size can change the width tier, and the margin is then rebuilt a
+// frame later (scheduleLayout), reflowing the text again; so the pin is
+// re-applied after each layout pass for the next half second.
+let placeKeptAt = 0;   // the scroll keepPlace makes must not hide the bar
+let repin = null;
+function keepPlace(change) {
+  const anchor = readingAnchor();
+  change();
+  if (!anchor) return;
+  const pin = () => {
+    placeKeptAt = performance.now();
+    const now = anchor.el ? anchor.el.getBoundingClientRect().top : charRect(anchor.node, anchor.offset).top;
+    if (Math.abs(now - anchor.top) >= 1) scrollTo({ top: scrollY + now - anchor.top, behavior: "instant" });
+  };
+  pin();
+  repin = pin;
+  setTimeout(() => { if (repin === pin) repin = null; }, 500);
+}
+
 function setSize(n) {
   n = Math.max(0, Math.min(SIZES - 1, n));
-  if (n === MID) delete root.dataset.size; else root.dataset.size = String(n);
+  keepPlace(() => {
+    if (n === MID) delete root.dataset.size; else root.dataset.size = String(n);
+  });
   store.set("size", n === MID ? null : String(n));
   showSize();
   close();
@@ -75,7 +136,7 @@ addEventListener("storage", (e) => {
     showTheme();
   }
   if (e.key === "size") {
-    if (e.newValue) root.dataset.size = e.newValue; else delete root.dataset.size;
+    keepPlace(() => { if (e.newValue) root.dataset.size = e.newValue; else delete root.dataset.size; });
     showSize();
     scheduleLayout();
   }
@@ -549,6 +610,7 @@ function scheduleLayout() {
     const t = tier();
     if (t !== currentTier) { setupMargin(); currentTier = t; }
     positionMargin();
+    repin?.();
   });
 }
 
@@ -584,7 +646,7 @@ function setupBar() {
   addEventListener("scroll", () => {
     const y = scrollY;
     if (y < lastY - 2 && !headerVisible) showBar();
-    else if (y > lastY + 2) hideBar();
+    else if (y > lastY + 2 && performance.now() - placeKeptAt > 500) hideBar();
     lastY = y;
     if (bar.classList.contains("is-shown")) restartIdle();
   }, { passive: true });
