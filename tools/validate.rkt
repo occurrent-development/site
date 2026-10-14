@@ -24,7 +24,7 @@
          pollen/core
          pollen/pagetree
          (only-in pollen/template ->html)
-         (only-in "../lib/util.rkt" text-of published?))
+         (only-in "../lib/util.rkt" text-of published? output->url))
 
 (define errors 0)
 (define (fail fmt . args) (set! errors (add1 errors)) (eprintf "build error: ~a\n" (apply format fmt args)))
@@ -33,12 +33,7 @@
 ;; Output path in the pagetree → (values url source)
 (define (page-info node)
   (define out (symbol->string node))
-  (define url
-    (match out
-      ["index.html" "/"]
-      [(regexp #px"^(?:pages|essays/[^/]+)/([a-z0-9-]+)\\.html$" (list _ slug)) (string-append "/" slug)]
-      [_ (string-append "/" (regexp-replace #rx"\\.html$" out ""))]))
-  (values url (string->path (string-append out ".pm"))))
+  (values (output->url out) (string->path (string-append out ".pm"))))
 
 (define (find-all x pred)
   (if (txexpr? x)
@@ -68,6 +63,14 @@
     (hasheq 'url url 'src src 'doc doc 'out (symbol->string node) 'title (or (select-from-metas 'title (get-metas src)) "")
             'published (published? src status)
             'sections sections 'ids ids 'xrefs xrefs 'terms terms)))
+
+;; An essay missing from index.ptree would be neither rendered nor listed.
+(when (directory-exists? "essays")
+  (define listed (for/list ([p (in-list all-pages)]) (path->string (hash-ref p 'src))))
+  (for ([f (in-directory "essays")]
+        #:when (regexp-match? #px"^essays/[^/]+/[^/]+\\.html\\.pm$" (path->string f))
+        #:unless (member (path->string f) listed))
+    (fail "~a is not in index.ptree" f)))
 
 (define pages (filter (λ (p) (hash-ref p 'published)) all-pages))
 (define drafts (for/hash ([p (in-list all-pages)] #:unless (hash-ref p 'published)) (values (hash-ref p 'url) p)))

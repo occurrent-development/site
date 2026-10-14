@@ -344,6 +344,37 @@ Return the id."
         (sleep-for 2)))
     (browse-url url)))
 
+;;; Tags (INDEX-3) --------------------------------------------------------------
+
+(defun od--used-tags ()
+  "Every tag used in a ◊define-meta[tags] line anywhere in the site."
+  (let (tags)
+    (dolist (f (directory-files-recursively (od-root) "\\.pm\\'"))
+      (with-temp-buffer
+        (insert-file-contents f)
+        (when (re-search-forward "◊define-meta\\[tags\\]{\\([^}]*\\)}" nil t)
+          (dolist (tag (split-string (match-string 1) "," t "[ \t]+"))
+            (cl-pushnew tag tags :test #'equal)))))
+    (sort tags #'string<)))
+
+(defun od-set-tags ()
+  "Set this essay's tags, choosing from those already in use (comma-separated).
+Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
+  (interactive)
+  (let* ((current (let ((v (od--meta "tags"))) (and v (split-string v "," t "[ \t]+"))))
+         (chosen (completing-read-multiple "Tags (comma-separated): " (od--used-tags)
+                                           nil nil (and current (string-join current ","))))
+         (line (format "◊define-meta[tags]{%s}"
+                       (string-join (delete-dups (mapcar (lambda (s) (downcase (string-trim s))) chosen)) ", "))))
+    (save-excursion
+      (goto-char (point-min))
+      (if (re-search-forward "^◊define-meta\\[tags\\]{[^}]*}$" nil t)
+          (replace-match line t t)
+        (goto-char (point-min))
+        (while (re-search-forward "^◊define-meta\\[" nil t) (forward-line 1))
+        (unless (bolp) (insert "\n"))
+        (insert line "\n")))))
+
 ;;; Mode: keys, imenu and outline (EMACS-4), dimmed markup (EMACS-5) ----------
 
 (defvar occurrent-mode-map
@@ -361,6 +392,7 @@ Return the id."
     (define-key m (kbd "C-c o a") #'od-insert-aside)
     (define-key m (kbd "C-c o m") #'od-insert-margin)
     (define-key m (kbd "C-c o p") #'od-preview)
+    (define-key m (kbd "C-c o T") #'od-set-tags)
     m)
   "Keys for `occurrent-mode'.")
 

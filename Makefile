@@ -46,7 +46,9 @@ $(FONTS): $(FONTS_SRC) $(SOURCES) tools/fonts.py
 $(IMAGES): $(IMG_SRC) $(SOURCES) tools/images.py
 	$(PYTHON) tools/images.py
 
+# The home page lists every essay, so it is rebuilt whenever anything is.
 render: $(FONTS) $(IMAGES)
+	touch index.html.pm
 	$(RACO) pollen render -p index.ptree
 	$(RACO) make tools/validate.rkt && racket tools/validate.rkt
 
@@ -66,6 +68,7 @@ publish: render
 	  if [ -n "$$bad" ]; then echo "Refusing to publish: $$bad"; exit 1; fi
 
 serve: $(FONTS) $(IMAGES)
+	touch index.html.pm
 	$(RACO) pollen start . $(PORT)
 
 refresh:
@@ -75,5 +78,5 @@ refresh:
 clean:
 	$(RACO) pollen reset
 	rm -rf public
-	rm -f index.html pages/*.html assets/fonts/*.woff2 $(FONTS)
+	rm -f index.html pages/*.html essays/*/*.html assets/fonts/*.woff2 $(FONTS)
 	rm -rf assets/img build data/anchors.json data/links.json data/publish.txt

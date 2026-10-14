@@ -14,7 +14,7 @@
 <body>
 <div class="page">
 <header class="site-header">
-<a class="site-name" href="/">Occurrent Development</a>
+◊(site-menu metas)
 <button class="theme-toggle" type="button" data-theme-toggle aria-label="Theme" hidden>
 <svg class="icon-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4.5a7.5 7.5 0 0 0 0 15z" fill="currentColor"/></svg>
 <svg class="icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -34,7 +34,7 @@
 </div>
 </div>
 <article>
-◊(if (select-from-metas 'title metas) (->html (essay-header metas)) "")
+◊(if (select-from-metas 'title metas) (->html (essay-header metas)) "<h1 class=\"vh\">Occurrent Development</h1>")
 ◊(doc-body doc)
 </article>
 ◊when/splice[(specimen? metas)]{<div class="tier" aria-hidden="true"></div>}

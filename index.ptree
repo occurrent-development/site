@@ -1,4 +1,6 @@
 #lang pollen
 index.html
+pages/about.html
 pages/specimen.html
 pages/colophon.html
+essays/placeholder/placeholder.html

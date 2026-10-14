@@ -655,6 +655,24 @@ function toggleToc() {
   box.querySelector("[aria-current]")?.focus({ preventScroll: true }) || box.focus();
 }
 
+// ── Site menu (NAV-1) ─────────────────────────────────────────────────────
+// A <details> element, so it opens without scripts; here it also closes on
+// a click elsewhere and on Escape.
+
+const menu = document.querySelector(".site-menu");
+if (menu) {
+  document.addEventListener("click", (e) => {
+    if (menu.open && !menu.contains(e.target)) menu.open = false;
+  });
+  menu.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && menu.open) {
+      menu.open = false;
+      menu.querySelector("summary").focus();
+      e.stopPropagation();
+    }
+  });
+}
+
 // ── Start ────────────────────────────────────────────────────────────────
 
 showTheme();

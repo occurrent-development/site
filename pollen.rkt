@@ -16,6 +16,8 @@
          pollen/core
          pollen/setup
          pollen/template
+         pollen/pagetree
+         racket/path
          "typography.rkt"
          "lib/util.rkt"
          "lib/marks.rkt"
@@ -35,9 +37,11 @@
          link cite term aside margin more
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv sort-key figure
+         ;; the home page (§13a)
+         essay-index
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
-         page-title essay-header doc-body format-date revised-date)
+         page-title essay-header doc-body format-date revised-date site-menu)
 
 (module setup racket/base
   (require racket/runtime-path)
@@ -679,6 +683,7 @@
 
 (define (page-root elems)
   (check-essay-metas)
+  (let ([t (and (current-metas) (select-from-metas 'tags (current-metas)))]) (when t (parse-tags t)))
   (define flat (prepare elems))
   (check-headings-top-level flat)
   (forbid flat '(od-more) "an essay")
@@ -696,6 +701,87 @@
   (define doc (eager-first-image (bind-circles (render-circles (set-directions (txexpr 'root null annotated))))))
   (check-unique-ids doc)
   doc)
+
+;; ---------------------------------------------------------------------------
+;; The home page (§13a): every listed page as a table, newest first.
+
+;; INDEX-1: a page is listed when it has a `published` date and is not a draft.
+(define (index-entries)
+  (for*/list ([node (in-list (pagetree->list (get-pagetree (project-file "index.ptree"))))]
+              [out (in-value (symbol->string node))]
+              #:unless (equal? out "index.html")
+              [src (in-value (project-file (string-append out ".pm")))]
+              #:when (file-exists? src)
+              [metas (in-value (get-metas src))]
+              [published (in-value (select-from-metas 'published metas))]
+              #:when published
+              #:when (published? src (string-trim (format "~a" (or (select-from-metas 'status metas) "")))))
+    (define pub (string-trim (format "~a" published)))
+    (define revised (revised-date src))
+    (define title (select-from-metas 'title metas))
+    (hasheq 'url (output->url out)
+            'title (string-trim (if (string? title) title (text-of title)))
+            'published pub
+            ;; INDEX-2: never revised since publication → the publication date
+            'reviewed (if (and revised (string>? revised pub)) revised pub)
+            'tags (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null)))))
+
+;; "2026-10-01" → "1 Oct 2026", for table columns; on a phone it may break
+;; before the year only
+(define (format-date-short iso)
+  (define parts (string-split (format-date iso)))
+  (format "~a\u00A0~a ~a" (car parts) (substring (cadr parts) 0 3) (caddr parts)))
+
+(define (date-cell iso)
+  `(td ((class "date") (data-sort ,iso)) (time ((datetime ,iso)) ,(format-date-short iso))))
+
+(define (essay-index)
+  (define entries (sort (index-entries) string>? #:key (λ (e) (hash-ref e 'published))))
+  (define all-tags (sort (remove-duplicates (append-map (λ (e) (hash-ref e 'tags)) entries)) string<?))
+  (define (tag-button t label pressed)
+    `(button ((type "button") (data-tag ,t) (aria-pressed ,(if pressed "true" "false"))) ,label))
+  `(div ((class "essay-index"))
+        ;; INDEX-3: shown only with scripts (the head script sets .js)
+        (p ((class "tag-filter") (role "group") (aria-label "Show essays tagged"))
+           ,(tag-button "" "all" #t)
+           ,@(for/list ([t (in-list all-tags)]) (tag-button t t #f)))
+        (div ((class "table-wrap w-column size-normal"))
+             (div ((class "table-scroll") (tabindex "0") (role "region") (aria-label "Essays"))
+                  (table ((class "index-table") (data-sortable ""))
+                         (thead (tr (th ((scope "col")) "Title")
+                                    (th ((scope "col")) "Date published")
+                                    (th ((scope "col")) "Last review")
+                                    (th ((scope "col") (data-nosort "")) "Tags")))
+                         (tbody
+                          ,@(for/list ([e (in-list entries)])
+                              `(tr ((data-tags ,(string-join (hash-ref e 'tags) "|")))
+                                   (td ((class "title")) (a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
+                                   ,(date-cell (hash-ref e 'published))
+                                   ,(date-cell (hash-ref e 'reviewed))
+                                   (td ((class "tags"))
+                                       ,@(add-between (for/list ([t (in-list (hash-ref e 'tags))])
+                                                        `(span ((class "tag")) ,t))
+                                                      ", "))))))))))
+
+;; NAV-1: the menu at the top left. Items live here, once.
+(define menu-items '(("Home" "/") ("About" "/about")))
+
+(define (site-menu metas)
+  (define here (select-from-metas 'here-path metas))
+  (define url (and here (output->url (path->string (path-replace-extension
+                                                    (find-relative-path (current-project-root) (string->path (format "~a" here)))
+                                                    #""))))) 
+  (->html
+   `(details ((class "site-menu"))
+             (summary (span ((class "site-name")) "Occurrent Development")
+                      (svg ((class "chevron") (viewBox "0 0 12 12") (aria-hidden "true"))
+                           (path ((d "M2.5 4.5 6 8l3.5-3.5") (fill "none") (stroke "currentColor")
+                                  (stroke-width "1.3") (stroke-linecap "round") (stroke-linejoin "round")))))
+             (nav ((aria-label "Site"))
+                  (ul ,@(for/list ([item (in-list menu-items)])
+                          `(li (a ,(append `((href ,(cadr item)))
+                                           (if (equal? url (cadr item)) '((aria-current "page")) null))
+                                  ,(car item)))))))))
 
 (define (root . elems)
   (if (glossary-source? (source-path))

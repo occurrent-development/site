@@ -111,7 +111,7 @@ If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown
 - Popup previews of external links for an allow-list of sites that permit framing (nothing to do with archiving; still probably not worth it).
 - Per-essay reading time, word counts, or "similar essays" — all easy, all clutter until the site is bigger.
 - Full-text search across essays: worth revisiting past ~15 essays; a build-time index plus a small client script.
-- A tag or topic index: same threshold.
+- A tag or topic index: *partly built 2026-10-14*, as the tag filter on the home page (INDEX-3). Separate pages per tag, with descriptions, wait for the same threshold.
 
 ## 17. Interactive figures: beyond the v1 frame
 

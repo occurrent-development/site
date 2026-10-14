@@ -24,7 +24,7 @@ References live in Zotero. Keep a Better BibTeX auto-export of the whole library
 ZOTERO_BIB = ~/path/to/Zotero-Library.bib
 ```
 
-`emacs/occurrent.el` provides the writing commands (`C-c o c` cites from the whole library, through citar when installed; `C-c o t` terms; `C-c o s` sections; and so on). Load it and enable `occurrent-mode` for `.pm` files. Only cited entries reach the public repository, without abstracts, notes or file paths.
+`emacs/occurrent.el` provides the writing commands (`C-c o c` cites from the whole library, through citar when installed; `C-c o t` terms; `C-c o s` sections; `C-c o T` tags; and so on). Load it and enable `occurrent-mode` for `.pm` files. Only cited entries reach the public repository, without abstracts, notes or file paths.
 
 ## Deploying
 
@@ -35,7 +35,9 @@ Every push builds on GitHub Actions (`.github/workflows/deploy.yml`). Pushes to 
 - `pollen.rkt`: tag functions, the root pass (paragraphs, section tree, TOC) and template helpers.
 - `typography.rkt`: the typographic rules table.
 - `template.html.p`: the single page template.
-- `pages/`: specimen, colophon. `/specimen` is the test bed for every CSS change.
+- `index.html.pm`: the home page. Its table of essays is built from every page in `index.ptree` that has a `published` date.
+- `essays/<slug>/<slug>.html.pm`: one folder per essay, each listed in `index.ptree` (the build fails otherwise) and served at `/<slug>`. Tags are a meta line, `◊define-meta[tags]{philosophy, site}`; `C-c o T` in Emacs picks from the tags already in use.
+- `pages/`: about, specimen, colophon. `/specimen` is the test bed for every CSS change.
 - `assets/`: CSS; `js/site.js` (popups, margin, reading bar, theme and text size) and `js/tables.js` (sorting, pinned headers), both plain ES modules; icons; the Libertinus fonts (OFL; see `assets/fonts/README.md`).
 - `lib/`: citations, glossary, lists, tables, figures and marks.
 - `glossary/`: one file per term; never a page.

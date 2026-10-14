@@ -39,6 +39,7 @@ function makeSortable(table) {
   let state = { col: -1, dir: 0 };   // dir: 1 ascending, -1 descending, 0 original
 
   headers.forEach((th, col) => {
+    if (th.hasAttribute("data-nosort")) return;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "sort";
@@ -54,7 +55,8 @@ function makeSortable(table) {
         const d = i === col ? dir : 0;
         if (d) h.setAttribute("aria-sort", d === 1 ? "ascending" : "descending");
         else h.removeAttribute("aria-sort");
-        h.querySelector(".sort-mark").textContent = d === 1 ? "▲" : d === -1 ? "▼" : "";
+        const mark = h.querySelector(".sort-mark");
+        if (mark) mark.textContent = d === 1 ? "▲" : d === -1 ? "▼" : "";
       });
       table.dispatchEvent(new CustomEvent("sorted"));
     });
@@ -114,6 +116,49 @@ function stickyHeader(table) {
   addEventListener("resize", () => { rebuild(); update(); });
   update();
 }
+
+// ── Tag filter on the home page (INDEX-3) ──────────────────────────────
+// One tag at a time; "all" clears it. The tag is kept in the address
+// (?tag=…), so a filtered list can be linked to.
+
+function tagFilter(index) {
+  const buttons = [...index.querySelectorAll(".tag-filter button")];
+  const rows = [...index.querySelectorAll("tbody tr")];
+
+  // tags in the rows become buttons too
+  for (const span of index.querySelectorAll("td .tag")) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tag";
+    b.dataset.tag = span.textContent;
+    b.textContent = span.textContent;
+    span.replaceWith(b);
+  }
+
+  function show(tag, push) {
+    if (tag && !buttons.some((b) => b.dataset.tag === tag)) tag = "";
+    for (const b of buttons) b.setAttribute("aria-pressed", String(b.dataset.tag === tag));
+    for (const r of rows) r.hidden = !!tag && !r.dataset.tags.split("|").includes(tag);
+    for (const b of index.querySelectorAll("td button.tag")) b.classList.toggle("is-current", b.dataset.tag === tag);
+    if (push) {
+      const url = new URL(location.href);
+      if (tag) url.searchParams.set("tag", tag); else url.searchParams.delete("tag");
+      history.replaceState(null, "", url);
+    }
+  }
+
+  index.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-tag]");
+    if (!b) return;
+    const current = buttons.find((x) => x.getAttribute("aria-pressed") === "true")?.dataset.tag;
+    // a tag in a row toggles: clicking the current one shows everything again
+    show(b.closest("td") && b.dataset.tag === current ? "" : b.dataset.tag, true);
+  });
+  show(new URL(location.href).searchParams.get("tag") || "", false);
+}
+
+const index = document.querySelector(".essay-index");
+if (index) tagFilter(index);
 
 for (const table of document.querySelectorAll(".table-wrap table")) {
   if (table.matches("[data-sortable]")) makeSortable(table);

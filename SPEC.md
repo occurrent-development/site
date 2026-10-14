@@ -1,6 +1,6 @@
 # occurrentdevelopment.com — Specification (v1)
 
-Status: draft 1.3 · Owner: Ryan · Last revised: 2026-10-12
+Status: draft 1.4 · Owner: Ryan · Last revised: 2026-10-14
 
 This is the build brief for version 1 of the site: everything needed to write essays, publish them, and be happy with how they look. Requirements carry IDs (e.g. `LINK-3`) so commits and tests can reference them. **MUST** = required; **SHOULD** = expected, may slip; **MAY** = optional.
 
@@ -51,7 +51,7 @@ occurrentdevelopment/
 │   └── img/                   # images belonging to that essay
 ├── glossary/<id>.pm           # one file per term; never rendered as a page
 ├── widgets/<name>/            # source of an interactive figure (§9.3); built by CI
-├── pages/                     # about, colophon, correspondence, changelog
+├── pages/                     # about, colophon, specimen; later correspondence, changelog
 ├── refs/
 │   ├── refs.bib               # cited entries only, written by `make refresh`; committed
 │   └── chicago-notes-bibliography.csl   # CSL style (CC BY-SA 3.0); committed
@@ -428,7 +428,7 @@ Rotate to see the second axis. ◊cite["springer2004"]
   The other candidates are dropped, and the specimen page's candidate-colours panel is removed. Every pair must pass WCAG AA. The remaining tokens are as built and may be tuned on the specimen page: light `--text-muted #5A5244`, `--accent #8A3A26`, `--accent-visited #8A5344`; dark `#9C9A95`, `#D49A7E`, `#B08C7C` (all ≥ 4.5:1 on their background).
 - **THEME-5 (MUST)** Reader controls in v1 are **theme and text size**. Text size has **five steps** on one root variable, the middle step being the calibrated default (TYPE-2); the range runs from roughly 0.85× to 1.2×, tuned on the specimen page. The choice is stored in `localStorage` (try/catch), site-wide, and applied by the no-flash script (THEME-2) before paint. The control is a pair of buttons (smaller, larger) in the reading bar, each with an accessible name, disabled at its end of the range. The step scales the page wrapper's font size, from which the column, gutters and tier queries are all set in `em`; the measure therefore stays at ~90 characters at every step (TYPE-1), and the tiers follow (LAYOUT-7): on a laptop, a step or two up drops the page from tier L to M, and margin content becomes popups. That is accepted. Browser zoom still works and compounds with it.
 - **THEME-6 (MUST)** The theme control sits quietly at the top right of the header and is repeated in the reading bar (BAR-1), so it is within reach anywhere in an essay: an icon button with an accessible name, keyboard operable. The two stay in step.
-- **THEME-7 (MUST) Specimen page** `/specimen`, excluded from feeds and indexes: every element the site can render — body text, intro paragraph, all heading levels, every mark (including a shared circle), asides (stub and expanded), margin notes, notes, definitions, lists, breaks, quotes, figures, tables, TOC, and the reading bar. It is the test bed for colours, type size and grade, and the page to check after any CSS change.
+- **THEME-7 (MUST) Specimen page** `/specimen`, excluded from feeds and indexes: every element the site can render — body text, intro paragraph, all heading levels, every mark (including a shared circle), asides (stub and expanded), margin notes, notes, definitions, lists, breaks, quotes, figures, tables, TOC, and the reading bar. It is the test bed for colours, type size and grade, and the page to check after any CSS change. *Status 2026-10-14: listed on the home page for now (it has a `published` date and tags), so the table has rows to sort; delete its `published` line to unlist it. It stays out of search engines (`noindex`).*
 
 ### 10.5 Page furniture
 
@@ -518,7 +518,7 @@ Site-wide:
 | `published` | yes | ISO date of first publication |
 | `epistemic` | SHOULD | One sentence on confidence and what it rests on |
 | `abstract` | SHOULD | Header, cross-essay popups, feed |
-| `tags` | MAY | |
+| `tags` | MAY | Comma-separated lowercase words, on one line: `◊define-meta[tags]{philosophy, child development}` (INDEX-3) |
 
 - **REV-1 (MUST)** "Last revised" comes from the git log (latest commit touching the file, ignoring `[typo]`/`[meta]` commits), never typed by hand.
 - **REV-2 (MUST)** Each essay's footer links to its source file and its history on GitHub.
@@ -529,6 +529,16 @@ Site-wide:
 - **MAIL-2 (MUST)** A `/correspondence` page gives the postal address and says what to expect: whether letters are read, whether replies are sent, whether letters may be quoted.
 - **MAIL-3 (MUST)** The address lives once, in `data/site.rktd`, rendered from there; it is text, not an image.
 - **MAIL-4 (SHOULD)** Each essay's footer ends with one line — *"Responses by post: see Correspondence"* — linking to that page, without printing the address.
+
+### 13a. Home page and navigation
+
+*Added 2026-10-14.*
+
+- **INDEX-1 (MUST)** The root (`/`) is the index of essays: a short explanatory paragraph, a section break (LAYOUT-4), then a table with the columns **Title · Date published · Last review · Tags**, newest first. A page is listed when it has a `published` date and is not a draft, so essays always are and pages such as About and the colophon never are. Built from the pages' metas at render; `make` rebuilds the home page every time.
+- **INDEX-2 (MUST)** "Last review" is the REV-1 date (git), or the publication date when the essay has not been revised since. Dates in the table are short (`9 Oct 2026`); on phones they may break before the year.
+- **INDEX-3 (MUST)** The table sorts by its first three columns (TABLE-5's sorting, at any number of rows); Tags does not sort. A row of tags above the table filters it to **one tag at a time** ("all" clears it); a tag in a row does the same, and clicking it again clears it. The chosen tag is kept in the address (`/?tag=philosophy`) so a filtered list can be linked to. Without scripts the filter row is hidden and every essay shows. Tags are validated at build (lowercase words; a bad tag fails the build); `od-set-tags` (§16) offers the tags already in use.
+- **NAV-1 (MUST)** Every page has a menu at the top left: the site name with a drawn chevron opens a drop-down of **Home** and **About** (the list lives once, in `pollen.rkt`). It is a `<details>` element, so it works without scripts; with them it also closes on Escape and on a click elsewhere. The current page is marked `aria-current`.
+- **ABOUT-2 (MUST)** `/about` exists from 2026-10-14 with placeholder text, to be replaced (ABOUT-1).
 
 ---
 
@@ -585,6 +595,7 @@ All pickers use plain `completing-read`, so they work with Vertico, Ivy, Helm or
 | `od-goto-section` | sections, indented by level | Jumps |
 | `od-insert-aside` / `od-insert-margin` | — | `◊aside{}` / `◊margin{}` with point inside |
 | `od-preview` | — | Renders and opens the current file in the browser |
+| `od-set-tags` (`C-c o T`) | tags already used anywhere in the site (several, comma-separated) | Replaces or adds the `◊define-meta[tags]` line |
 
 - **EMACS-1 (MUST)** A key inserts `◊` (`C-c ;`; the other commands are under `C-c o`). Also set one Option key back to macOS (`ns-right-alternate-modifier`/`mac-right-option-modifier` to `none`) so ⌥⇧V works everywhere.
 - **EMACS-2 (MUST)** Commands wrap the active region when there is one.

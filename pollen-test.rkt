@@ -6,7 +6,8 @@
          racket/string
          racket/list
          txexpr
-         (except-in "pollen.rkt" list))
+         (except-in "pollen.rkt" list)
+         (only-in "lib/util.rkt" parse-tags output->url))
 
 (define (fails? thunk) (with-handlers ([exn:fail? (λ (e) #t)]) (thunk) #f))
 
@@ -243,3 +244,21 @@
   (define doc (fixture "citations.html.pm"))
   (check-equal? (map (λ (n) (attr-ref (by-id doc (format "note-~a" n)) 'data-form)) '(1 2 3 4 5))
                 '("full" "full" "short" "short" "short")))
+
+(test-case "INDEX-3: tags are comma-separated lowercase words"
+  (check-equal? (parse-tags "philosophy,  child development , site, site") '("philosophy" "child development" "site"))
+  (check-true (fails? (λ () (parse-tags "Philosophy"))))
+  (check-true (fails? (λ () (parse-tags "a;b")))))
+
+(test-case "URLs: pages and essays are flattened to /<slug>"
+  (check-equal? (output->url "index.html") "/")
+  (check-equal? (output->url "pages/about.html") "/about")
+  (check-equal? (output->url "essays/placeholder/placeholder.html") "/placeholder"))
+
+(test-case "INDEX-1: the home page lists dated pages, newest first, with tags"
+  (define idx (essay-index))
+  (define rows (find-all idx (tag? 'tr)))
+  (define titles (for/list ([r (in-list (cdr rows))]) (string-trim (apply string-append (filter string? (get-elements (car (find-all r (tag? 'a)))))))))
+  (check-equal? titles '("Placeholder" "Specimen"))       ; colophon and about carry no date
+  (check-equal? (attr-ref (cadr rows) 'data-tags) "philosophy|site")
+  (check-not-false (findf (λ (th) (attrs-have-key? th 'data-nosort)) (find-all idx (tag? 'th)))))
