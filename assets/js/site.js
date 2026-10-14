@@ -597,6 +597,8 @@ function setupBar() {
   const sections = [...document.querySelectorAll("article section.level-1")];
   const subsections = [...document.querySelectorAll("article section.level-1 > section.level-2")];
   const tocLinks = [...document.querySelectorAll("nav.toc a[href^='#']")];
+  const tocList = document.querySelector("nav.toc .toc-inner > ul");
+  let shownTop = null;
   const inBand = new Set();
   const currentOf = (list) => {
     for (const s of list) if (inBand.has(s)) return s;
@@ -614,6 +616,15 @@ function setupBar() {
       if (ids.has(a.getAttribute("href"))) a.setAttribute("aria-current", "location");
       else a.removeAttribute("aria-current");
     }
+    // TOC-2: a list too tall for the window scrolls itself, keeping the
+    // current section at its top (what is left to read, below it)
+    if (current && current.id !== shownTop) {
+      shownTop = current.id;
+      const li = tocList?.querySelector(`:scope > li > a[href="#${current.id}"]`)?.parentElement;
+      if (li && tocList.scrollHeight > tocList.clientHeight) {
+        tocList.scrollTo({ top: li.offsetTop, behavior: reducedMotion.matches ? "auto" : "smooth" });
+      }
+    }
   };
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) e.isIntersecting ? inBand.add(e.target) : inBand.delete(e.target);
@@ -621,6 +632,32 @@ function setupBar() {
   }, { rootMargin: "0px 0px -70% 0px" });
   [...sections, ...subsections].forEach((s) => io.observe(s));
   update();
+}
+
+// TOC-2: a truncated entry in the margin contents shows in full on hover
+// or focus, over the gap, without moving anything.
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+function setupTocTitles() {
+  const toc = document.querySelector("nav.toc");
+  if (!toc) return;
+  let tip = null;
+  const hide = () => { tip?.remove(); tip = null; };
+  const show = (e) => {
+    const a = e.target.closest?.("a");
+    hide();
+    if (!a || a.scrollWidth <= a.clientWidth) return;
+    const r = a.getBoundingClientRect();
+    const cs = getComputedStyle(a);
+    tip = el("div", { class: "toc-full", "aria-hidden": "true" }, a.textContent);
+    Object.assign(tip.style, { left: `${r.left}px`, top: `${r.top - 1}px`, font: cs.font, lineHeight: `${r.height}px` });
+    document.body.append(tip);
+  };
+  toc.addEventListener("pointerover", show);
+  toc.addEventListener("focusin", show);
+  toc.addEventListener("pointerleave", hide);
+  toc.addEventListener("focusout", hide);
+  toc.querySelector(".toc-inner > ul")?.addEventListener("scroll", hide, { passive: true });
+  addEventListener("scroll", hide, { passive: true });
 }
 
 // The full contents, from the bar, with the current section marked.
@@ -694,6 +731,7 @@ if (menu) {
 showTheme();
 showSize();
 setupBar();
+setupTocTitles();
 scheduleLayout();
 document.fonts?.ready.then(scheduleLayout);
 new ResizeObserver(scheduleLayout).observe(page);

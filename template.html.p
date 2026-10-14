@@ -12,6 +12,7 @@
 ◊(site-css)◊when/splice[(specimen? metas)]{◊(specimen-css)}</style>
 </head>
 <body>
+<div class="frame◊(if (has-toc? doc) " has-toc" "")">
 <div class="page">
 <header class="site-header">
 ◊(site-menu metas)
@@ -38,6 +39,7 @@
 ◊(doc-body doc)
 </article>
 ◊when/splice[(specimen? metas)]{<div class="tier" aria-hidden="true"></div>}
+</div>
 </div>
 <script type="module" src="◊(asset-url "assets/js/site.js")" data-tables="◊(asset-url "assets/js/tables.js")"></script>
 </body>

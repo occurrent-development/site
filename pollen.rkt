@@ -41,7 +41,7 @@
          essay-index
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
-         page-title essay-header doc-body format-date revised-date site-menu)
+         page-title essay-header doc-body format-date revised-date site-menu has-toc?)
 
 (module setup racket/base
   (require racket/runtime-path)
@@ -890,6 +890,9 @@
                                 #:unless (regexp-match? #rx"\\[(typo|meta)\\]" l))
                       l)])
          (and line (substring line 0 10)))))
+
+;; TOC-2: pages with contents get a left margin for them when wide.
+(define (has-toc? doc) (pair? (find-all doc (λ (x) (has-class? x "toc")))))
 
 ;; The document's elements, without the root tag.
 (define (doc-body doc) (->html (get-elements doc)))

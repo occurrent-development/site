@@ -92,8 +92,12 @@ a:hover, a:focus-visible { color: var(--accent); }
      S   below  M                 ragged right, column = container − gutters
      M   ≥ measure + 2 gutters    justified, no margin
      L   ≥ M + gap + margin       justified, right margin reserved for asides
-     XL  ≥ L + toc + gap          as L, with the contents in a left margin (TOC-2)
+   Pages with contents may also have a left margin for them (TOC-2, below).
    Query values must be literal; keep them in step with the variables. */
+.frame {
+  container: frame / inline-size;
+  font-size: calc(1.25rem * var(--size)); /* TYPE-2: 20px at the default 16px; THEME-5 steps */
+}
 .page {
   container: page / inline-size;
   --measure: 36.5em;   /* calibrated: mean 88.6 characters over 20 full lines */
@@ -101,7 +105,6 @@ a:hover, a:focus-visible { color: var(--accent); }
   --gap: 2.5em;
   --margin: 13em;
   --toc: 11em;
-  font-size: calc(1.25rem * var(--size)); /* TYPE-2: 20px at the default 16px; THEME-5 steps */
   line-height: 1.5;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures contextual;
@@ -139,10 +142,16 @@ article { --tier: S; }
   }
 }
 
-/* XL: the contents get a left margin (11 + 2.5 + 54.5 = 68em); the column,
-   right margin and contents are centred together. */
-@container page (min-width: 68em) {
-  .page > * { margin-left: calc((100cqi - 65.5em) / 2 + var(--toc) + var(--gap)); margin-right: auto; }
+/* Left margin for the contents (TOC-2). An outer container, .frame, decides
+   whether it fits: column + gutter + gap + contents = 39 + 1.25 + 2.5 + 11
+   = 53.75em. When it does, .page is narrowed by it, so the tiers above see
+   only the width that is left: as the window narrows, the right margin
+   goes first (below 68.5em) and the contents second (below 53.75em). The
+   column and both margins stay centred together. */
+@container frame (min-width: 53.75em) {
+  .has-toc > .page { padding-left: calc(var(--toc) + var(--gap)); }
+  .has-toc article { position: relative; }
+  .has-toc .bar { left: calc(var(--toc) + var(--gap)); }   /* fixed: centre it over the column */
 }
 
 /* ── Running text (§10.1) ──────────────────────────────────────────────── */
@@ -333,8 +342,8 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 .toc li { margin: 0.15em 0; }
 .toc + p, .toc + .intro { text-indent: 0; }
 
-@container page (min-width: 68em) {
-  .toc, .js .toc {
+@container frame (min-width: 53.75em) {
+  .has-toc .toc, .js .has-toc .toc {
     display: block;
     position: absolute;
     top: 0;
@@ -352,7 +361,14 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     position: sticky;
     top: 1.5rem;
     max-height: calc(100vh - 3rem);
+    display: flex;              /* the title stays; the list scrolls when too tall */
+    flex-direction: column;
+  }
+  .toc-inner > ul {
+    position: relative;         /* offsets for scrolling to the current section */
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     scrollbar-width: thin;
   }
   .toc-title {
@@ -365,7 +381,14 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
   .toc li { margin: 0.3em 0; }
   .toc ul ul { padding-left: 0.9em; }
   .toc ul ul li { margin: 0.2em 0; }
-  .toc a { color: var(--text-muted); text-decoration: none; }
+  .toc a {
+    display: block;
+    color: var(--text-muted);
+    text-decoration: none;
+    white-space: nowrap;        /* long titles end in an ellipsis; the full one shows on hover */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .toc a:hover, .toc a:focus-visible { color: var(--accent); }
   .toc a[aria-current] { color: var(--text); }
 }
@@ -520,9 +543,7 @@ ol.list > li::before {
     margin-left: calc((var(--measure) + var(--gap) + var(--margin) - 100cqi) / 2 + var(--gutter));
   }
 }
-@container page (min-width: 68em) {
-  .w-full { margin-left: calc(var(--gutter) - (100cqi - 65.5em) / 2 - var(--toc) - var(--gap)); }
-}
+
 
 /* ── Figures (§9.1) ─────────────────────────────────────────────────── */
 figure.figure { margin: 1.75em 0; text-align: left; }
@@ -724,6 +745,21 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 /* rows hide when filtered, so the closing rule belongs to the body */
 .table-wrap .index-table tbody tr:last-child { border-bottom: 0; }
 .table-wrap .index-table tbody { border-bottom: 1.5px solid var(--text); }
+
+/* The full title of a truncated entry in the margin contents, on hover */
+.toc-full {
+  position: fixed;
+  z-index: 25;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 0 0.35em;
+  margin-left: -0.35em;
+  background: var(--popup-bg);
+  border: 1px solid var(--popup-border);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  color: var(--accent);
+}
 
 /* The contents, opened from the reading bar */
 .toc-list { list-style: none; margin: 0; padding: 0; }
