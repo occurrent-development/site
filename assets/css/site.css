@@ -359,7 +359,7 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     font-size: 1em;             /* so the widths above are in the page's em */
   }
   .toc-inner {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--sans);
     font-variant-numeric: lining-nums;
     font-size: 0.7em;
     line-height: 1.35;
@@ -1081,15 +1081,17 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .stub-extra .term-more p { margin: 0 0 0.4em; text-indent: 0; }
 .stub-extra .see-also { color: var(--text-muted); }
 
-/* ── Trial, 2026-10-15: headings in sans (?h=sans on any page) ──────────────
-   Every heading, figure and table title, table column heading and popup
-   title in the system sans, semibold and in ordinary case. Not the default;
-   kept until Ryan decides, then made permanent or removed. */
+/* ── Headings in sans (LAYOUT-2a, chosen 2026-10-15) ──────────────────────
+   Level-2 and level-3 headings, figure and table titles, table column
+   headings, popup titles and the bar's section name are in the system sans,
+   semibold, in ordinary case. The essay title and level-1 headings stay in
+   the text face (level 1 in small caps); the title is set larger. Placed
+   after the rules it overrides. */
 :root { --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-.h-sans section h3, .h-sans section h4,
-.h-sans .exhibit-title, .h-sans .lb-title,
-.h-sans .table-wrap thead th, .h-sans .sticky-head th,
-.h-sans .popup-title, .h-sans .bar-section {
+section h3, section h4,
+.exhibit-title, .lb-title,
+.table-wrap thead th, .sticky-head th,
+.popup-title, .bar .bar-section {
   font-family: var(--sans);
   font-variant-caps: normal;
   font-variant-numeric: lining-nums;
@@ -1098,15 +1100,15 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   letter-spacing: 0;
 }
 /* the essay title and level-1 headings stay in the text face; the title larger */
-.h-sans .essay-header h1 { font-size: 2.6em; line-height: 1.1; }
-.h-sans section h3 { font-size: 0.95em; }
-.h-sans section h4 { font-size: 0.85em; line-height: 1.75; }          /* run in, on the text's first line */
-.h-sans .exhibit-title, .h-sans .lb-title { font-size: 0.78em; line-height: 1.45; }
-.h-sans .exhibit-label { margin-right: 0.35em; }
-.h-sans .table-wrap thead th, .h-sans .sticky-head th { font-size: 0.8em; font-weight: 500; }
-.h-sans .popup-title { font-size: 0.95em; }
-.h-sans .bar-section { font-size: 0.75em; font-weight: 500; }
-.h-sans .self { font-family: Libertinus Serif, serif; font-weight: 400; }
+.essay-header h1 { font-size: 2.6em; line-height: 1.1; }
+section h3 { font-size: 0.95em; }
+section h4 { font-size: 0.85em; line-height: 1.75; }          /* run in, on the text's first line */
+.exhibit-title, .lb-title { font-size: 0.78em; line-height: 1.45; }
+.exhibit-label { margin-right: 0.35em; }
+.table-wrap thead th, .sticky-head th { font-size: 0.8em; font-weight: 500; }
+.popup-title { font-size: 0.95em; }
+.bar .bar-section { font-size: 0.75em; font-weight: 500; }
+.self { font-family: Libertinus Serif, serif; font-weight: 400; }
 
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
