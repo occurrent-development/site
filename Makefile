@@ -2,6 +2,7 @@
 #
 #   make           test, subset fonts, render, assemble public/   (offline; BUILD-2)
 #   make test      typography rules (TYPE-14) and the root pass
+#   make test-emacs  the Emacs mode's tests (needs Emacs 29+)
 #   make serve     Pollen project server on http://localhost:8080
 #   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json, invert.json
 #   make clean     remove everything the build generates
@@ -28,7 +29,7 @@ IMG_SRC   := $(shell find pages essays -path '*/img/*' -type f 2>/dev/null)
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
 
-.PHONY: all test render publish serve refresh clean
+.PHONY: all test test-emacs render publish serve refresh clean
 
 all: test publish
 
@@ -36,6 +37,10 @@ test:
 	$(RACO) test typography-test.rkt pollen-test.rkt
 	@! grep -rn --include='*.pm' '◊quote\b' . || \
 	  { echo "◊quote is not a tag (Racket's quote swallows it); use ◊blockquote"; exit 1; }
+
+# The Emacs mode's tests (TEST-1, TEST-3); not part of `make', so CI needs no Emacs.
+test-emacs:
+	emacs -Q --batch -L emacs -l occurrent-test.el -f ert-run-tests-batch-and-exit
 
 # Subset each face to the characters the site uses (TYPE-8). Writes hashed
 # WOFF2 files beside the sources and a manifest the template reads.

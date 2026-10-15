@@ -24,7 +24,14 @@ References live in Zotero. Keep a Better BibTeX auto-export of the whole library
 ZOTERO_BIB = ~/path/to/Zotero-Library.bib
 ```
 
-`emacs/occurrent.el` provides the writing commands (`C-c o c` cites from the whole library, through citar when installed; `C-c o t` terms; `C-c o s` sections; `C-c o T` tags; `C-c o r` references to figures and tables; and so on). Load it and enable `occurrent-mode` for `.pm` files. Only cited entries reach the public repository, without abstracts, notes or file paths.
+`emacs/occurrent.el` is the major mode for writing the site: `.pm` files open in `occurrent-mode`, which dims markup, marks anything the build would refuse, and holds the writing, checking and publishing commands under `C-c o` (`C-c o I` opens a guide to starting, publishing and revising an essay). Set up with:
+
+```elisp
+(add-to-list 'load-path "~/Documents/Ryan/Personal/Projects/Occurrent-Development/site/emacs")
+(require 'occurrent)
+```
+
+`make test-emacs` runs its tests. `HANDOVER-EMACS.md` specifies it. Only cited entries reach the public repository, without abstracts, notes or file paths.
 
 ## Deploying
 

@@ -20,6 +20,11 @@ essays/*/support/
 *.tex
 __pycache__/
 
+# Editor files: Emacs backups, auto-saves and lock files
+*~
+\#*\#
+.\#*
+
 # Machine-specific make settings
 local.mk
 

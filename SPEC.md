@@ -631,6 +631,7 @@ All pickers use plain `completing-read`, so they work with Vertico, Ivy, Helm or
 - **EMACS-3 (MUST)** Glossary candidates are read **directly from `glossary/`** (not a build output), cached per session and invalidated by modification time, so a term created a minute ago is immediately available.
 - **EMACS-4 (MUST)** `imenu` support for Pollen headings and an `outline-minor-mode` regexp, so sections fold and move like Org headings.
 - **EMACS-5 (SHOULD)** Font-lock dims tag syntax (◊, brackets, keyword arguments) so prose dominates the buffer.
+- **EMACS-6 (MUST) The major mode.** Since 2026-10-15 `occurrent-mode` is a major mode derived from `text-mode`, not a minor mode on `pollen-mode`. Its vocabulary, syntax, highlighting (errors the build would refuse are marked, with the reason in a tooltip), editing (filling, completion at point, unwrap, comments with `M-;`, Org's table editor inside `◊table`), the guide (`C-c o I`), checking (`C-c o k`) and publishing through Magit (`C-c o P`, `C-c o C`, `C-c o d`, with drafts kept out of git by `.git/info/exclude`) are specified in `HANDOVER-EMACS.md` under the IDs MODE, VOCAB, SYN, FL, EDIT, CHECK, PUB, DRAFT-E1, LOAD and TEST; that file is the detail, not repeated here. Tests: `make test-emacs` (ERT), and the VOCAB-3 sync test in `make test`.
 
 ---
 

@@ -993,7 +993,11 @@
 ;; LAYOUT-1: left-aligned, ragged right. Meta values go through the same
 ;; typography as the body.
 (define (essay-header metas)
-  (define (meta key) (let ([v (select-from-metas key metas)]) (and v (string-trim (if (string? v) v (text-of v))))))
+  ;; an empty meta line (as od-new-essay writes them) counts as absent
+  (define (meta key)
+    (let* ([v (select-from-metas key metas)]
+           [s (and v (string-trim (if (string? v) v (text-of v))))])
+      (and s (not (equal? s "")) s)))
   (define title (meta 'title))
   (define abstract (meta 'abstract))
   (txexpr 'header `((class ,(if abstract "essay-header" "essay-header no-abstract")))
