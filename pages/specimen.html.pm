@@ -142,8 +142,8 @@ standard by a wide margin, as does every colour the page uses for marks,
 rules and quieter text.
 
 The text size, set from the bar, steps everything in this face together: the
-column, the margin, the contents and anything open over the page. Open a note,
-step the size, and the note steps with the text, while the line at the top of
+column, the margin, the contents and anything open over the page. Open a
+reference, step the size, and it steps with the text, while the line at the top of
 the window stays where it was.
 
 ◊break{}
@@ -211,7 +211,7 @@ break, rarely needed in prose,◊br{}looks like this.
 ◊subsubsection[#:id "intro"]{The first paragraph.} The first paragraph of an
 essay is marked as its introduction. On a phone or a narrow window, its first
 line is set in small capitals, a quiet signal that the essay has begun. On a
-wide screen, where the margin will carry notes and asides, the first line is
+wide screen, where the margin will carry asides and margin notes, the first line is
 set like any other.
 
 ◊section[#:id "marks" #:short "Marks and links"]{Marks and links}
@@ -240,31 +240,32 @@ defined word inside it opens over the page. On a narrower screen a definition
 opens over the text. Without scripts, a circle is a link to the end of the
 page, where definitions are collected under Terms.
 
-◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
-◊summary{Circles for sources and digressions; the numbers stay with the notes.}
+◊section[#:id "notes-asides" #:short "References and asides"]{References and asides}
+◊summary{Circles for sources and digressions; the numbers stay with the references.}
 
-Citations become numbered notes, collected at the end, but the number belongs
-to the note and is never printed in the text. The first note for a work gives
-it in full: Hacking's account of how classifications change the people
+Citations become numbered references, collected at the end under References,
+but the number belongs to the reference and is never printed in the text.
+There is no separate bibliography. The first reference to a work gives it in
+full: Hacking's account of how classifications change the people
 classified first appeared in the ◊em{London Review of
 Books} ◊cite["hackingMakingPeople2006" #:loc "p. 23"] and is developed at
 length elsewhere ◊cite["hackingSocialConstructionWhat2000" #:loc "pp. 31-34"].
-Later notes for the same work use the short form, with their own
-page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and a note may carry a
-remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
+Later references to the same work use the short form, with their own
+page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and its popup adds the
+work in full; a reference may also carry a remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
 is shorter and sharper."]. Two citations at the same point share one
 circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructionWhat2000"
-#:loc "pp. 31-34"], which opens both. A note opens over the page at every
-width, and its circle stays filled for as long as it is pinned open.
+#:loc "pp. 31-34"], which opens both. A reference opens over the page at
+every width, and its circle stays filled for as long as it is pinned open.
 
 ◊margin{Asides can be skipped.} An aside is a digression the argument does
 not need◊aside{An aside may cite, too: Hacking's essay on
 ◊term["looping-effect"]{looping} is the fuller version of the
-argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered at its
-place in the argument.} and is unnumbered. On a wide screen it sits in the
+argument ◊cite["hackingLoopingEffectsHuman1996"]. Its reference is numbered at
+its place in the argument.} and is unnumbered. On a wide screen it sits in the
 right margin as a single line, cut short, and opening it lets it grow
 downward in place; a short one is shown whole. Open the first aside and then
-the circle inside it: the note opens over the page, and the aside stays where
+the circle inside it: the reference opens over the page, and the aside stays where
 it is. On a narrower screen both open over the text. Without scripts each
 aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
 

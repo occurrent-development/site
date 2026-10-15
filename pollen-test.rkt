@@ -119,12 +119,12 @@
   (define (targets x) (string-split (attr-ref x 'data-targets "")))
   (define openers (find-all doc (λ (x) (attrs-have-key? x 'data-targets))))
   ;; CITE-1: no numerals in the text; circles open notes 1–5 in reading order
-  (check-equal? (filter (λ (t) (regexp-match? #rx"^note-" t)) (remove-duplicates (append-map targets openers)))
-                '("note-1" "note-2" "note-3" "note-4" "note-5"))
+  (check-equal? (filter (λ (t) (regexp-match? #rx"^reference-" t)) (remove-duplicates (append-map targets openers)))
+                '("reference-1" "reference-2" "reference-3" "reference-4" "reference-5"))
   (check-equal? (find-all doc (tag? 'sup)) '())
-  (define notes (find-all (by-id doc "notes") (tag? 'li)))
+  (define notes (find-all (by-id doc "references") (tag? 'li)))
   (check-equal? (length notes) 5)                       ; not double-counted (CITE-2)
-  (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "note-~a" n))) " "))
+  (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "reference-~a" n))) " "))
   ;; CITE-3: full form first, short form after, each with its own locator
   (check-regexp-match #rx"^Ian Hacking, “Making Up People,” London Review of Books 28, no. 16 \\(2006\\): 23\\." (note 1))
   (check-regexp-match #rx"^Ian Hacking, The Social Construction of What\\? \\(Harvard" (note 2))  ; inside the first aside
@@ -133,24 +133,29 @@
   (check-regexp-match #rx"^Hacking, “Making Up People\\.” With a remark\\." (note 5))
   ;; CITE-4: each note's ↩ goes to the circle that opens it; for a note inside
   ;; an aside that circle is in the aside's end copy (the inline copy has no ids)
-  (define backs (find-all (by-id doc "notes") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
+  (define backs (find-all (by-id doc "references") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
   (for ([b (in-list backs)] [n (in-naturals 1)])
     (define circle (by-id doc (substring (attr-ref b 'href) 1)))
-    (check-not-false (member (format "note-~a" n) (targets circle))))
+    (check-not-false (member (format "reference-~a" n) (targets circle))))
   (define opener-2 (by-id doc (substring (attr-ref (list-ref backs 1) 'href) 1)))
   (check-not-false (memq opener-2 (find-all (by-id doc "asides") txexpr?)))
   ;; ASIDE-2: asides are unnumbered and named "aside"
   (check-true (for/and ([o (in-list openers)] #:when (member "aside-1" (targets o)))
                 (regexp-match? #rx"aside" (attr-ref o 'aria-label ""))))
-  ;; CITE-7: the definition's citation is unnumbered and reaches the bibliography
+  ;; CITE-7: the definition's citation is unnumbered and opens the work's full entry
   (define terms (by-id doc "terms"))
   (check-not-false (findf (λ (x) (member "bib-hackingLoopingEffectsHuman1996" (targets x)))
                           (find-all terms (λ (x) (attrs-have-key? x 'data-targets)))))
-  (check-equal? (map (λ (li) (attr-ref li 'id)) (find-all (by-id doc "bibliography") (tag? 'li)))
+  ;; the full entries are kept, hidden, for the popups (CITE-10, POP-7)
+  (define store (car (find-all doc (λ (x) (has-class* x "reference-store")))))
+  (check-true (attrs-have-key? store 'hidden))
+  (check-equal? (map (λ (li) (attr-ref li 'id)) (find-all store (tag? 'li)))
                 '("bib-hackingMakingPeople2006" "bib-hackingLoopingEffectsHuman1996" "bib-hackingSocialConstructionWhat2000"))
-  ;; CITE-10: end matter order
+  ;; without scripts, the definition shows the work it cites
+  (check-not-false (findf (λ (x) (has-class* x "term-refs")) (find-all terms txexpr?)))
+  ;; CITE-10: end matter order, and no bibliography
   (check-equal? (map (λ (s) (attr-ref s 'id)) (find-all doc (λ (x) (equal? (attr-ref x 'class #f) "endmatter"))))
-                '("terms" "asides" "notes" "bibliography")))
+                '("terms" "asides" "references")))
 
 (test-case "MARK-1c: annotations at the same point share one circle"
   (define doc (root "Claim" (cite "hackingMakingPeople2006" #:loc "p. 23")
@@ -162,11 +167,11 @@
   (check-equal? (length circles) 3)
   (define openers (find-all body (λ (x) (attrs-have-key? x 'data-targets))))
   (check-equal? (map (λ (o) (attr-ref o 'data-targets)) openers)
-                '("note-1 note-2" "term-occurrent note-3" "note-4"))
-  (check-equal? (attr-ref (car openers) 'aria-label) "note 1, note 2")
-  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, note 3")
+                '("reference-1 reference-2" "term-occurrent reference-3" "reference-4"))
+  (check-equal? (attr-ref (car openers) 'aria-label) "reference 1, reference 2")
+  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, reference 3")
   ;; D8: without JS a shared circle links to its first item
-  (check-equal? (attr-ref (car openers) 'href) "#note-1")
+  (check-equal? (attr-ref (car openers) 'href) "#reference-1")
   (check-equal? (attr-ref (cadr openers) 'href) "#term-occurrent"))
 
 (define (marks-in doc) (map classes (find-all doc (λ (x) (regexp-match? #rx"^mark " (classes x))))))
@@ -243,7 +248,7 @@
 
 (test-case "POP-7: notes say whether they are the full or the short form"
   (define doc (fixture "citations.html.pm"))
-  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "note-~a" n)) 'data-form)) '(1 2 3 4 5))
+  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "reference-~a" n)) 'data-form)) '(1 2 3 4 5))
                 '("full" "full" "short" "short" "short")))
 
 (test-case "INDEX-3: tags are comma-separated lowercase words"
@@ -338,8 +343,8 @@
   (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all header txexpr?)))
   (check-not-false (findf (λ (x) (has-class* x "epistemic")) (find-all header txexpr?)))
   (check-equal? (length (find-all header (tag? 'em))) 1)
-  ;; the abstract's citation is note 1, the body's note 2
-  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#note-1")
+  ;; the abstract's citation is reference 1, the body's reference 2
+  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#reference-1")
   (check-equal? (map (λ (p) (classes p)) (filter (tag? 'p) (cdr (get-elements doc)))) '("intro")))
 
 (test-case "SRC-4a: once each, at the top level; the old meta lines fail"

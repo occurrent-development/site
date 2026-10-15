@@ -178,13 +178,13 @@ function termItem(target) {
 function item(target) {
   const src = byId(target);
   if (!src && !target.startsWith("aside-")) return null;
-  if (target.startsWith("note-")) {
-    const n = target.slice(5);
+  if (target.startsWith("reference-")) {
+    const n = target.slice(10);
     const body = el("div", {}, el("p", {}, ...clean(src).childNodes));
-    // A full note is already the reference; a short one gets the entry (POP-7).
+    // A full reference is already complete; a short one gets the full entry (POP-7).
     const bib = src.dataset.form === "short" && src.dataset.bib && byId(src.dataset.bib);
     if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
-    return { title: `Note ${n}`, head: `Note ${n}`, body };
+    return { title: `Reference ${n}`, head: `Reference ${n}`, body };
   }
   if (target.startsWith("bib-")) {
     // CITE-7: unnumbered, so no heading

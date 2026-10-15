@@ -110,7 +110,7 @@
                                (and date (list 'data-date (norm date)))))
           text))
 
-;; ◊cite[key]: a numbered note (§5).
+;; ◊cite[key]: a numbered reference (§5).
 (define (cite key #:loc [loc #f] #:note [note #f])
   (unless (string? key) (build-error "◊cite needs a key"))
   (txexpr 'od-cite (filter values (list (list 'key key)
@@ -425,12 +425,12 @@
                                          (if commentary (list " " commentary) null))
                                key first?)
                          notes))
-       ;; CITE-1: the number belongs to the note; the text gets a circle.
-       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
+       ;; CITE-1: the number belongs to the reference; the text gets a circle.
+       `(od-ann ((kind "reference") (target ,(format "reference-~a" n)) (label ,(format "reference ~a" n))))]
       [(? (tag? 'od-aside))
        (set! aside-n (add1 aside-n))
        (define i aside-n)
-       ;; note numbering continues inside the aside, at its place in the argument
+       ;; reference numbering continues inside the aside, at its place in the argument
        (define body (map walk (get-elements x)))
        (set! asides (cons (list i body) asides))
        ;; ASIDE-2: unnumbered. ASIDE-1: the inline copy, which the script lifts
@@ -463,12 +463,14 @@
         [(cons id rest)
          (define t (term-ref id))
          (define more-ids '())
+         (define cited '())          ; keys cited in this definition, for its no-JS line
          (define (def-walk x)
            (match x
-             [(? (tag? 'od-cite))   ; CITE-7: unnumbered, to the bibliography
+             [(? (tag? 'od-cite))   ; CITE-7: unnumbered; opens the work's full reference
               (define key (attr-ref x 'key))
               (bib-entry key)
               (hash-set! bib-keys key #t)
+              (unless (member key cited) (set! cited (append cited (list key))))
               `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")))]
              [(? (tag? 'od-term))   ; TERM-7
               (define tid (attr-ref x 'ref))
@@ -488,6 +490,10 @@
            `(div ((class "term-entry") (id ,(string-append "term-" id)))
                  (p ((class "definition")) (dfn ,(hash-ref t 'term)) ". " ,@definition)
                  ,@(if more `((div ((class "term-more")) ,@more)) null)
+                 ;; without scripts, the works the definition cites, in full
+                 ,@(if (null? cited) null
+                       `((p ((class "term-refs"))
+                            ,@(add-between (for/list ([k (in-list cited)]) `(span ,@(bib-entry k))) " "))))
                  ,@(if (null? see) null
                        `((p ((class "see-also")) "See also: "
                             ,@(add-between
@@ -513,20 +519,22 @@
                                            ,@elems " "
                                            (od-back ((target ,(format "aside-~a" i)) (label "Back to the aside in the text"))))))))
              (and (pair? notes)
-                  (endmatter "notes" "Notes"
-                             `(ol ((class "notes"))
+                  (endmatter "references" "References"
+                             `(ol ((class "references"))
                                   ,@(for/list ([nt (in-list (reverse notes))])
                                       (match-define (list n elems key first?) nt)
-                                      `(li ((id ,(format "note-~a" n)) (value ,(number->string n))
+                                      `(li ((id ,(format "reference-~a" n)) (value ,(number->string n))
                                             (data-bib ,(string-append "bib-" key))
                                             (data-form ,(if first? "full" "short")))
                                            ,@elems " "
-                                           (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
+                                           (od-back ((target ,(format "reference-~a" n)) (label ,(format "Back to reference ~a in the text" n)))))))))
+             ;; CITE-10: no bibliography section. Each work's full entry is
+             ;; kept, hidden, for the popups: under a short-form reference
+             ;; (POP-7), and for the unnumbered citations in definitions (CITE-7).
              (and (positive? (hash-count bib-keys))
-                  (endmatter "bibliography" "Bibliography"
-                             `(ul ((class "bibliography"))
-                                  ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
-                                      `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k)))))))))
+                  `(div ((class "reference-store") (hidden ""))
+                        (ul ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
+                                `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k)))))))))
   (append body end))
 
 ;; A first-use term: its text links to its definition, with a circle.

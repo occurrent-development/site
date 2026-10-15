@@ -724,19 +724,19 @@ figure.figure .figure-svg { color: var(--text); }
 }
 .endmatter h2 { font-size: 1.45em; }       /* matches level-1 headings at body size */
 .endmatter p { text-indent: 0; }
-ol.notes { margin: 0; padding-left: 2em; }
+ol.references { margin: 0; padding-left: 2em; }
 ul.asides { margin: 0; padding: 0; list-style: none; }
-ol.notes { font-variant-numeric: oldstyle-nums proportional-nums; }
-ol.notes > li::marker { font-variant-numeric: lining-nums tabular-nums; color: var(--text-muted); }
-ol.notes > li { margin: 0.35em 0; padding-left: 0.25em; }
+ol.references { font-variant-numeric: oldstyle-nums proportional-nums; }
+ol.references > li::marker { font-variant-numeric: lining-nums tabular-nums; color: var(--text-muted); }
+ol.references > li { margin: 0.35em 0; padding-left: 0.25em; }
 ul.asides > li { margin: 0.5em 0; }
-ol.notes > li:target, ul.asides > li:target, .term-entry:target, .bibliography li:target {
+ol.references > li:target, ul.asides > li:target, .term-entry:target {
   background: color-mix(in srgb, var(--selection) 45%, transparent);
 }
 a.back { color: var(--text-muted); text-decoration: none; margin-left: 0.15em; }
 a.back:hover, a.back:focus-visible { color: var(--accent); }
-ul.bibliography { list-style: none; margin: 0; padding: 0; }
-ul.bibliography li { padding-left: 1.5em; text-indent: -1.5em; margin: 0.35em 0; }
+/* without scripts, the works a definition cites, under it (CITE-7) */
+.term-entry .term-refs { color: var(--text-muted); font-size: 0.95em; }
 .term-entry { margin: 0 0 0.9em; }
 .term-entry p { margin: 0.25em 0; }
 .term-entry dfn { font-style: normal; font-weight: 600; }
