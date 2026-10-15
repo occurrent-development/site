@@ -1086,7 +1086,6 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
    title in the system sans, semibold and in ordinary case. Not the default;
    kept until Ryan decides, then made permanent or removed. */
 :root { --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-.h-sans .essay-header h1,
 .h-sans section h2, .h-sans section h3, .h-sans section h4,
 .h-sans .exhibit-title, .h-sans .lb-title,
 .h-sans .table-wrap thead th, .h-sans .sticky-head th,
@@ -1098,8 +1097,9 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   font-weight: 600;
   letter-spacing: 0;
 }
-.h-sans .essay-header h1 { font-size: 1.85em; letter-spacing: -0.01em; line-height: 1.2; }
-.h-sans section h2 { font-size: 1.1em; }
+/* the essay title stays in the text face, larger; level-1 headings larger and lighter */
+.h-sans .essay-header h1 { font-size: 2.6em; line-height: 1.1; }
+.h-sans section h2 { font-size: 1.4em; font-weight: 400; letter-spacing: -0.005em; }
 .h-sans section h3 { font-size: 0.95em; }
 .h-sans section h4 { font-size: 0.85em; line-height: 1.75; }          /* run in, on the text's first line */
 .h-sans .exhibit-title, .h-sans .lb-title { font-size: 0.78em; line-height: 1.45; }
