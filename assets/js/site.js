@@ -147,7 +147,7 @@ function clean(node) {
   const c = node.cloneNode(true);
   c.removeAttribute("id");
   for (const e of c.querySelectorAll("[id]")) e.removeAttribute("id");
-  for (const e of c.querySelectorAll(".back, .self, .aside[hidden], .stub, .toc-mark")) e.remove();
+  for (const e of c.querySelectorAll(".back, .self, .aside[hidden], .stub, .toc-mark, .expand, .sticky-head")) e.remove();
   for (const e of c.querySelectorAll(".in-margin")) { e.classList.remove("in-margin"); e.style.transform = ""; }   // margin notes, run in again
   return c;
 }
@@ -217,7 +217,7 @@ function sectionContent(id) {
   if (!target) return null;
   const source = target.matches("section") ? target : target.closest("p, li, figure, blockquote") || target;
   const c = clean(source);
-  const h = c.querySelector(":scope > h2, :scope > h3, :scope > h4");
+  const h = c.querySelector(":scope > h2, :scope > h3, :scope > h4, :scope > .exhibit-title");
   const title = h ? h.textContent.replace(/§\s*$/, "").trim() : "";
   if (h) h.remove();
   for (const x of c.querySelectorAll(".circle-link, .circle")) x.remove();
@@ -428,6 +428,59 @@ function replaceContent(box, t) {
   if (title) title.textContent = c.title;
 }
 
+// ── Expanded figures and tables (IMG-8) ───────────────────────────────────
+
+const EXPAND = "M7 2h3v3M10 2 6.5 5.5M5 10H2V7M2 10l3.5-3.5";
+let lightbox = null;   // { box, shade, from }
+
+function setupExhibits() {
+  for (const fig of article?.querySelectorAll(".exhibit") || []) {
+    const label = fig.querySelector(".exhibit-label")?.textContent.replace(/\u00A0/g, " ") || "";
+    const b = el("button", { type: "button", class: "expand", "aria-label": `Expand ${label}`.trim(), title: "Expand" }, icon(EXPAND));
+    fig.querySelector(".exhibit-body")?.append(b);
+  }
+}
+
+function openLightbox(fig, from) {
+  closeLightbox();
+  close();
+  const id = `lb-title-${++seq}`;
+  const title = clean(fig.querySelector(".exhibit-title"));
+  const stage = el("div", { class: "lb-stage" });
+  const body = clean(fig.querySelector(".exhibit-body"));
+  // the largest variant the window wants, not the column's
+  for (const x of body.querySelectorAll("source, img")) if (x.hasAttribute("sizes")) x.setAttribute("sizes", "100vw");
+  for (const img of body.querySelectorAll("img")) { img.removeAttribute("loading"); img.removeAttribute("width"); img.removeAttribute("height"); }
+  // a table's sort buttons would do nothing here: keep their words
+  for (const btn of body.querySelectorAll("th button.sort")) { btn.querySelector(".sort-mark")?.remove(); btn.replaceWith(...btn.childNodes); }
+  // a table keeps its booktabs rules, at body size whatever its size in the text
+  if (fig.classList.contains("table-wrap")) stage.classList.add("is-table", "table-wrap");
+  stage.append(...body.childNodes);
+  const meta = fig.querySelector(".exhibit-meta");
+  const box = el("div", { class: "lightbox", role: "dialog", "aria-modal": "true", "aria-labelledby": id, tabindex: "-1" },
+    el("div", { class: "lb-head" },
+      el("span", { class: "lb-title", id }, ...title.childNodes),
+      el("button", { type: "button", class: "lb-close", "aria-label": "Close" }, icon(CROSS))),
+    stage,
+    el("div", { class: "lb-foot" }, ...(meta ? clean(meta).childNodes : [])));
+  if (fig.dataset.invert) box.dataset.invert = fig.dataset.invert;
+  const shade = el("div", { class: "lightbox-shade" });
+  mount().append(shade, box);
+  root.style.overflow = "hidden";
+  lightbox = { box, shade, from };
+  box.querySelector(".lb-close").focus({ preventScroll: true });
+}
+
+function closeLightbox() {
+  if (!lightbox) return;
+  const { box, shade, from } = lightbox;
+  lightbox = null;
+  box.remove();
+  shade.remove();
+  root.style.overflow = "";
+  from?.focus?.({ preventScroll: true });
+}
+
 // ── The margin item: an aside or definition expanded in place (ASIDE-3) ────
 
 let marginOpen = null;   // { stub, trigger }
@@ -471,6 +524,14 @@ function collapseMargin({ returnFocus = false } = {}) {
 // ── Events ────────────────────────────────────────────────────────────────
 
 document.addEventListener("click", (e) => {
+  if (lightbox) {
+    if (e.target.closest(".lb-close") || e.target.closest(".lightbox-shade")) { closeLightbox(); return; }
+    // touch: a tap on the figure shows or hides the words over it
+    if (touch.matches && e.target.closest(".lightbox") && !e.target.closest("a, button")) lightbox.box.classList.toggle("show-words");
+    return;
+  }
+  const ex = e.target.closest(".expand");
+  if (ex) { e.preventDefault(); openLightbox(ex.closest(".exhibit"), ex); return; }
   if (e.target.closest("[data-theme-toggle]")) { setTheme(THEMES[(THEMES.indexOf(theme()) + 1) % 3]); return; }
   if (e.target.closest(".size-down")) { setSize(size() - 1); return; }
   if (e.target.closest(".size-up")) { setSize(size() + 1); return; }
@@ -514,6 +575,16 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (lightbox) {
+    if (e.key === "Escape") { e.preventDefault(); closeLightbox(); return; }
+    if (e.key === "Tab") {   // focus stays in the dialog
+      const f = [...lightbox.box.querySelectorAll("a[href], button, [tabindex='0']")];
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1]?.focus(); }
+      else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0]?.focus(); }
+    }
+    return;
+  }
   if (e.key === "Escape") {
     if (open) { close({ returnFocus: true }); return; }
     if (marginOpen) { collapseMargin({ returnFocus: true }); return; }
@@ -532,6 +603,7 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("pointerover", (e) => {
   if (e.pointerType !== "mouse" || touch.matches) return;
   const t = e.target.closest(TRIGGERS);
+  if (lightbox) return;
   if (t && !t.closest(".popup, .bar")) {
     const s = stubFor(t);
     highlight(t, true, s);
@@ -640,7 +712,7 @@ function setupMargin() {
   for (const s of article.querySelectorAll(".def-stub")) { if (s._trigger) s._trigger._stub = null; s.remove(); }
   if (L) {
     for (const t of article.querySelectorAll("a.term[data-targets]")) {
-      if (t.closest(".aside, .endmatter, .in-margin, nav.toc") || t.dataset.targets.includes(" ")) continue;
+      if (t.closest(".aside, .endmatter, .in-margin, nav.toc, .exhibit-title, .exhibit-meta") || t.dataset.targets.includes(" ")) continue;
       const s = defStub(t);
       if (!s) continue;
       t.after(s);
@@ -652,39 +724,47 @@ function setupMargin() {
     m.classList.toggle("in-margin", L);
     if (!L) m.style.transform = "";
   }
+  if (!L) for (const x of article.querySelectorAll(".exhibit-title, .exhibit-meta")) x.style.transform = "";
 }
 
-// ASIDE-4, MNOTE-4: margin notes hold their place by their paragraph and
-// stubs fit around them, moving down just enough to clear; then an open
-// item pushes whatever is below it down, as far as it needs, and everything
-// returns when it closes.
+// ASIDE-4, MNOTE-4, IMG-7: margin notes and the words of figures and tables
+// hold their place, and stubs fit around them, moving down just enough to
+// clear; then an open item pushes whatever is below it down, as far as it
+// needs, and everything returns when it closes.
 function positionMargin() {
   if (tier() !== "L" || !article) return;
-  const items = [...article.querySelectorAll(".in-margin.stub, .in-margin.margin-note")];
-  for (const it of items) it.style.transform = "";
-  const isNote = (i) => i.classList.contains("margin-note");
-  // Stubs can sit in smaller text (a caption, a table), where the stylesheet's
-  // em would be wrong; so their place and size are set from the article's.
-  const cs = getComputedStyle(article), fs = parseFloat(cs.fontSize);
-  const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
-  for (const st of items.filter((i) => !isNote(i))) {
-    Object.assign(st.style, { left: `${v("--measure") + v("--gap")}px`, width: `${v("--margin")}px`, fontSize: `${0.85 * fs}px` });
-  }
-  // ASIDE-3: an item that fits in two margin lines is shown in full
-  for (const s of items.filter((i) => !isNote(i) && !i.classList.contains("is-open"))) {
-    s.classList.add("is-full");
-    const lh = parseFloat(getComputedStyle(s).lineHeight);
-    if (s.offsetHeight <= 2 * lh + 1 && !s.querySelector(".stub-extra")) s.dataset.full = "1";
-    else { delete s.dataset.full; s.classList.remove("is-full"); }
-  }
   const rect = (x) => x.getBoundingClientRect();
-  const natural = new Map(items.map((i) => [i, rect(i).top]));
-  const height = new Map(items.map((i) => [i, rect(i).height]));
+  const stubs = [...article.querySelectorAll(".in-margin.stub")];
+  const notes = [...article.querySelectorAll(".in-margin.margin-note")];
+  const exhibits = [...article.querySelectorAll(".exhibit")]
+    .map((x) => [x.querySelector(".exhibit-title"), x.querySelector(".exhibit-meta")].filter(Boolean));
+  for (const e of [...stubs, ...notes, ...exhibits.flat()]) e.style.transform = "";
+  // ASIDE-3: an item that fits in two margin lines is shown in full
+  // Stubs can sit in smaller text (a table), where the stylesheet's em would
+  // be wrong; so their place and size are set from the article's.
+  const fs = parseFloat(getComputedStyle(article).fontSize);
+  const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
+  for (const st of stubs) {
+    Object.assign(st.style, { left: `${v("--measure") + v("--gap")}px`, width: `${v("--margin")}px`, fontSize: `${0.85 * fs}px` });
+    if (st.classList.contains("is-open")) continue;
+    st.classList.add("is-full");
+    const lh = parseFloat(getComputedStyle(st).lineHeight);
+    if (st.offsetHeight <= 2 * lh + 1 && !st.querySelector(".stub-extra")) st.dataset.full = "1";
+    else { delete st.dataset.full; st.classList.remove("is-full"); }
+  }
+  // Items: { els, top, h, fixed }. A caption block has no height of its own,
+  // so its extent is its children's.
+  const extent = (els) => {
+    const rs = els.flatMap((e) => [rect(e), ...[...e.children].map(rect)]).filter((r) => r.height);
+    return rs.length ? [Math.min(...rs.map((r) => r.top)), Math.max(...rs.map((r) => r.bottom))] : [rect(els[0]).top, rect(els[0]).top];
+  };
+  const items = [
+    ...stubs.map((s) => ({ els: [s], top: rect(s).top, h: rect(s).height, fixed: false })),
+    ...[...notes.map((n) => [n]), ...exhibits].map((els) => { const [t, b] = extent(els); return { els, top: t, h: b - t, fixed: true }; }),
+  ].sort((a, b) => a.top - b.top);
   const O = marginOpen?.stub;
   const lineOf = (i) => parseFloat(getComputedStyle(i).lineHeight);
-  const gap = items.length ? lineOf(items[0]) * 0.25 : 4;
-  const order = [...items].sort((a, b) => natural.get(a) - natural.get(b));
-  const wide = [...article.querySelectorAll(".w-wide, .w-full")].map((o) => [rect(o).top, rect(o).bottom]);
+  const gap = stubs.length ? lineOf(stubs[0]) * 0.25 : 4;
   const clear = (y, h, zones) => {
     for (let moved = true; moved;) {
       moved = false;
@@ -692,30 +772,28 @@ function positionMargin() {
     }
     return y;
   };
-  // Pass 1, everything collapsed: margin notes where they belong; stubs after
-  // the one above, clear of notes and of wide figures and tables.
-  const notes = items.filter(isNote).map((n) => [natural.get(n), natural.get(n) + height.get(n)]);
-  const at = new Map();
+  // Pass 1, everything collapsed: fixed items where they belong; stubs after
+  // the one above, clear of the fixed ones.
+  const fixedZones = items.filter((i) => i.fixed).map((i) => [i.top, i.top + i.h]);
   let last = -Infinity;
-  for (const it of order) {
-    const h = it === O ? lineOf(it) : height.get(it);
-    if (isNote(it)) { at.set(it, natural.get(it)); last = Math.max(last, natural.get(it) + h); continue; }
-    const y = clear(Math.max(natural.get(it), last + gap), h, [...notes, ...wide]);
-    at.set(it, y);
-    last = y + h;
+  for (const it of items) {
+    const h = it.els[0] === O ? lineOf(O) : it.h;
+    if (it.fixed) { it.y = it.top; last = Math.max(last, it.top + h); continue; }
+    it.y = clear(Math.max(it.top, last + gap), h, fixedZones);
+    last = it.y + h;
   }
   // Pass 2: the open item keeps its place and grows; what is below moves down.
-  if (O && at.has(O)) {
-    let bottom = at.get(O) + height.get(O);
-    for (const it of order.filter((i) => i !== O && at.get(i) >= at.get(O))) {
-      const y = clear(Math.max(at.get(it), bottom + gap), height.get(it), wide);
-      at.set(it, y);
-      bottom = y + height.get(it);
+  const open_ = items.find((i) => i.els[0] === O);
+  if (open_) {
+    let bottom = open_.y + open_.h;
+    for (const it of items.filter((i) => i !== open_ && i.y >= open_.y).sort((a, b) => a.y - b.y)) {
+      it.y = Math.max(it.y, bottom + gap);
+      bottom = it.y + it.h;
     }
   }
   for (const it of items) {
-    const dy = at.get(it) - natural.get(it);
-    if (Math.abs(dy) > 0.5) it.style.transform = `translateY(${dy}px)`;
+    const dy = it.y - it.top;
+    if (Math.abs(dy) > 0.5) for (const e of it.els) e.style.transform = `translateY(${dy}px)`;
   }
 }
 
@@ -930,6 +1008,7 @@ showTheme();
 showSize();
 setupBar();
 setupTocTitles();
+setupExhibits();
 scheduleLayout();
 document.fonts?.ready.then(scheduleLayout);
 new ResizeObserver(scheduleLayout).observe(page);

@@ -24,7 +24,7 @@ References live in Zotero. Keep a Better BibTeX auto-export of the whole library
 ZOTERO_BIB = ~/path/to/Zotero-Library.bib
 ```
 
-`emacs/occurrent.el` provides the writing commands (`C-c o c` cites from the whole library, through citar when installed; `C-c o t` terms; `C-c o s` sections; `C-c o T` tags; and so on). Load it and enable `occurrent-mode` for `.pm` files. Only cited entries reach the public repository, without abstracts, notes or file paths.
+`emacs/occurrent.el` provides the writing commands (`C-c o c` cites from the whole library, through citar when installed; `C-c o t` terms; `C-c o s` sections; `C-c o T` tags; `C-c o r` references to figures and tables; and so on). Load it and enable `occurrent-mode` for `.pm` files. Only cited entries reach the public repository, without abstracts, notes or file paths.
 
 ## Deploying
 

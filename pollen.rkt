@@ -36,7 +36,7 @@
          ;; annotations (§4–7)
          link cite term aside margin more
          ;; lists, tables, figures (§3.4, §9)
-         (rename-out [od-list list]) table table-csv sort-key figure
+         (rename-out [od-list list]) table table-csv sort-key figure ref
          ;; the home page (§13a)
          essay-index
          ;; used by the template
@@ -134,17 +134,21 @@
   (when (and start (not (exact-positive-integer? start))) (build-error "◊list #:start must be a positive number"))
   (parse-list xs #:start start #:columns columns))
 
-(define (table #:caption [caption #f] #:source [source #f] #:size [size "normal"] #:width [width "column"]
+(define (table #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f]
+               #:size [size "normal"] #:width [width #f]
                #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f] . xs)
   (define-values (header aligns body) (parse-pipe-table xs))
   (make-table header aligns body
+              #:id id #:title (and title (list (norm title)))
               #:caption (and caption (list (norm caption))) #:source (and source (list (norm source)))
               #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers))
 
-(define (table-csv path #:caption [caption #f] #:source [source #f] #:size [size "normal"] #:width [width "column"]
+(define (table-csv path #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f]
+                   #:size [size "normal"] #:width [width #f]
                    #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f])
   (define-values (header aligns body) (read-csv-table path))
   (make-table header aligns body
+              #:id id #:title (and title (list (norm title)))
               #:caption (and caption (list (norm caption))) #:source (and source (list (norm source)))
               #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers))
 
@@ -153,10 +157,17 @@
   (unless (string? value) (build-error "◊sort-key needs a value, as in ◊sort-key[\"2004\"]{c. 2004}"))
   (txexpr 'span `((data-sort ,value)) display))
 
-(define (figure src #:alt [alt #f] #:licence [licence #f] #:credit [credit #f]
-                #:width [width "column"] #:invert [invert 'auto] . caption)
-  (make-figure src caption #:alt (norm alt) #:licence licence #:credit (norm credit)
+(define (figure src #:id [id #f] #:title [title #f] #:alt [alt #f] #:licence [licence #f] #:credit [credit #f]
+                #:width [width #f] #:invert [invert 'auto] . caption)
+  (make-figure src caption #:id id #:title (and title (list (norm title)))
+               #:alt (norm alt) #:licence licence #:credit (norm credit)
                #:width width #:invert invert))
+
+;; IMG-7: ◊ref[id] prints the label of a figure or table on this page
+;; ("Figure 2"), as a same-page link; the root pass fills in the number.
+(define (ref id)
+  (check-id id 'ref)
+  (txexpr 'od-ref `((target ,id)) null))
 
 ;; ---------------------------------------------------------------------------
 ;; Headings are markers (SECT-2); the root pass wraps them into sections.
@@ -653,6 +664,39 @@
            (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x))))]
       [else x])))
 
+;; IMG-7: figures and tables are numbered in document order, each kind on
+;; its own ("Figure 1", "Table 1"); ◊ref becomes a link carrying the label.
+(define (number-exhibits elems)
+  (define counts (make-hash))
+  (define labels (make-hash))
+  (define (fill x label)
+    (let walk ([x x])
+      (cond [(has-class? x "exhibit-label") (txexpr (get-tag x) (get-attrs x) (list label))]
+            [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+            [else x])))
+  (define numbered
+    (for/list ([e (in-list elems)])
+      (let walk ([x e])
+        (cond
+          [(has-class? x "exhibit")
+           (define kind (attr-ref x 'data-kind))
+           (define n (add1 (hash-ref counts kind 0)))
+           (hash-set! counts kind n)
+           (define label (format "~a\u00A0~a" (if (equal? kind "table") "Table" "Figure") n))
+           (hash-set! labels (attr-ref x 'id) label)
+           (fill x label)]
+          [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+          [else x]))))
+  (for/list ([e (in-list numbered)])
+    (let walk ([x e])
+      (cond
+        [((tag? 'od-ref) x)
+         (define id (attr-ref x 'target))
+         (define label (hash-ref labels id (λ () (build-error "◊ref ~s: no figure or table with that id on this page" id))))
+         (link (string-append "#" id) label)]
+        [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+        [else x]))))
+
 ;; IMG-1: the first figure loads eagerly; the rest lazily.
 (define (eager-first-image doc)
   (define done #f)
@@ -739,7 +783,7 @@
   (define lifted (lift-margin-notes flat))
   (when (pair? (find-all lifted (tag? 'od-margin)))
     (build-error "◊margin must open its paragraph"))
-  (define-values (nested toc-entries) (nest-sections (mark-intro lifted)))
+  (define-values (nested toc-entries) (nest-sections (mark-intro (number-exhibits lifted))))
   (define toc (make-toc toc-entries))
   ;; TOC-1: after the abstract (in the header) and any epigraph, before the text.
   (define-values (epigraphs body)

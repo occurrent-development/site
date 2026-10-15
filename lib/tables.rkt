@@ -12,12 +12,12 @@
          racket/match
          racket/file
          txexpr
-         "util.rkt")
+         "util.rkt"
+         "exhibits.rkt")
 
 (provide make-table read-csv-table parse-pipe-table)
 
 (define sizes '("normal" "small" "tiny"))
-(define widths '("column" "wide" "full"))
 
 ;; ---------------------------------------------------------------------------
 ;; Pipe tables
@@ -124,11 +124,11 @@
 (define (numeric-cell? c) (regexp-match? numeric-rx (string-trim (text-of c))))
 
 (define (make-table header aligns body
-                    #:caption [caption #f] #:source [source #f]
-                    #:size [size "normal"] #:width [width "column"]
+                    #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f]
+                    #:size [size "normal"] #:width [width #f]
                     #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f])
   (unless (member size sizes) (build-error "table: #:size must be one of ~a" (string-join sizes ", ")))
-  (unless (member width widths) (build-error "table: #:width must be one of ~a" (string-join widths ", ")))
+  (when width (build-error "table ~s: #:width is gone; every table is column width, and Expand shows it larger (IMG-2)" id))
   (define ncols (length header))
   (for ([r (in-list body)] [i (in-naturals 1)])
     (unless (= (length r) ncols)
@@ -149,16 +149,18 @@
         [else #f])))
   (define (cell-attrs i) (let ([a (list-ref col-aligns i)]) (if a `((class ,(string-append "a-" a))) null)))
   (define sortable? (if (eq? sortable 'auto) (>= (length body) 5) sortable))
-  `(div ((class ,(format "table-wrap w-~a size-~a" width size)))
-        (div ((class "table-scroll") (tabindex "0") (role "region")
-              (aria-label ,(if caption (string-append "Table: " (string-trim (text-of caption))) "Table")))
-             (table ,(if sortable? '((data-sortable "")) null)
-                    ,@(if caption `((caption ,@caption)) null)
-                    (thead (tr ,@(for/list ([c (in-list header)] [i (in-naturals)])
-                                   `(th ,(append '((scope "col")) (cell-attrs i)) ,@c))))
-                    (tbody ,@(for/list ([r (in-list body)])
-                               `(tr ,@(for/list ([c (in-list r)] [i (in-naturals)])
-                                        (if (and row-headers (= i 0))
-                                            `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
-                                            `(td ,(cell-attrs i) ,@c))))))))
-        ,@(if source `((p ((class "credit table-source")) ,@source)) null)))
+  (make-exhibit "table" id title
+                (list
+                 `(div ((class "table-scroll") (tabindex "0") (role "region")
+                        (aria-labelledby ,(string-append (or id "") "-title")))
+                       (table ,(if sortable? '((data-sortable "")) null)
+                              (thead (tr ,@(for/list ([c (in-list header)] [i (in-naturals)])
+                                             `(th ,(append '((scope "col")) (cell-attrs i)) ,@c))))
+                              (tbody ,@(for/list ([r (in-list body)])
+                                         `(tr ,@(for/list ([c (in-list r)] [i (in-naturals)])
+                                                  (if (and row-headers (= i 0))
+                                                      `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
+                                                      `(td ,(cell-attrs i) ,@c)))))))))
+                (or caption null)
+                (or source null)
+                #:class (format "table-wrap size-~a" size)))

@@ -277,28 +277,35 @@ across:
 }
 
 ◊section[#:id "images" #:short "Figures"]{Figures}
-◊summary{Images at three widths, with captions, credits and both themes.}
+◊summary{Numbered, titled and captioned, at the width of the column.}
 
-A figure sits at the width of the column, of the column and margin together,
-or of the page. Line art is drawn as SVG in the text colour, so it follows the
-theme without any inversion:
+A figure sits at the width of the column and never in a margin. Its number
+and title, its caption and its credit sit in the right margin on a wide
+screen, beside the top of the figure; on a narrower one the title is above it
+and the rest below. Each is numbered in order, as tables are, and the text
+refers to it by its id, which prints the number: ◊ref["two-kinds"] is line art,
+drawn as SVG in the text colour, so it follows the theme without any
+inversion.
 
-◊figure["img/occurrent-continuant.svg" #:alt "Three identical circles at
-three moments, labelled continuant, above a single wavy band stretched across
-the same three moments and divided into parts, labelled occurrent."
-#:licence "own"]{The ◊term["continuant"]{continuant} and the occurrent,
-drawn for this page.}
+◊figure["img/occurrent-continuant.svg" #:id "two-kinds" #:title "The
+continuant and the occurrent" #:alt "Three identical circles at three
+moments, labelled continuant, above a single wavy band stretched across the
+same three moments and divided into parts, labelled occurrent."
+#:licence "own"]{A ◊term["continuant"]{continuant} is wholly present at each
+moment; an occurrent has a different part at each. Drawn for this page.}
 
 A photograph or a rendering is served in several sizes and formats, and the
-browser picks the smallest that will look sharp. This one is wide:
+browser picks the smallest that will look sharp. ◊ref["landscape"] is one;
+like every figure and table it has an Expand button at its top right, which
+shows it as large as the window allows, over the page.
 
-◊figure["img/landscape.jpg" #:alt "A grey surface sloping away from the
-viewer, its single valley dividing into three as it descends." #:licence "own"
-#:width "wide" #:credit "After C. H. Waddington (1957); rendered for this
-page."]{A developmental landscape: one valley that divides as it descends, so
-that a ball rolling down it ends in one of three places. The line below is a
-credit, set apart from the caption as every credit is, and as a table's
-source is.}
+◊figure["img/landscape.jpg" #:id "landscape" #:title "A developmental
+landscape" #:alt "A grey surface sloping away from the viewer, its single
+valley dividing into three as it descends." #:licence "own" #:credit "After
+C. H. Waddington (1957); rendered for this page."]{One valley that divides as
+it descends, so that a ball rolling down it ends in one of three places. The
+line below is a credit, set apart from the caption as every credit is, and as
+a table's source is.}
 
 ◊section[#:id "tables" #:short "Tables"]{Tables}
 ◊summary{Rules above and below, lining figures, numbers aligned right.}
@@ -307,10 +314,12 @@ Tables follow the booktabs convention: no vertical rules, a heavier rule above
 the header and at the foot, a hairline under the header. Figures are lining
 and of equal width, and columns of numbers align right on their own. This one
 records the measure calibration, and like any table of five rows or more it
-can be sorted by clicking a column's heading:
+can be sorted by clicking a column's heading. ◊ref["calibration"] is the
+first table, so it is numbered 1 whatever figures come before it:
 
-◊table[#:caption "Measure against characters per line, Libertinus Serif at 20
-px" #:source "Measured on this page in Chrome, October 2026."]{
+◊table[#:id "calibration" #:title "Measure against characters per line"
+#:caption "Libertinus Serif at 20 px." #:source "Measured on this page in
+Chrome, October 2026."]{
 | Measure (em) | Width (px) | Mean characters | Longest line |
 |---|---|---|---|
 | 34.5 | 690 | 83.0 | 89 |
@@ -325,8 +334,9 @@ A long table keeps its header row in view while it passes beneath the top of
 the window. These are the twenty full lines counted for the calibration above,
 in the order they appear on this page:
 
-◊table[#:caption "The twenty lines counted, at 36.5 em" #:size "small"
-#:source "Mean 88.6 characters. Lines beginning mid-word continue a hyphenated word."]{
+◊table[#:id "lines" #:title "The twenty lines counted, at 36.5 em" #:size
+"small" #:caption "Mean 88.6 characters. Lines beginning mid-word continue a
+hyphenated word."]{
 | Line | Opens with | Characters |
 |---|---|---|
 | 1 | The width of | 88 |
@@ -353,8 +363,8 @@ in the order they appear on this page:
 
 A table can also come from a file, and be set smaller:
 
-◊table-csv["data/budget.csv" #:caption "The performance budget" #:size
-"small"]
+◊table-csv["data/budget.csv" #:id "budget" #:title "The performance budget"
+#:size "small"]
 
 ◊section[#:id "to-come" #:short "Still to come"]{Still to come}
 ◊summary{What later phases add to the site, and to this page.}

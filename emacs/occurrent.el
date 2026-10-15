@@ -344,6 +344,32 @@ Return the id."
         (sleep-for 2)))
     (browse-url url)))
 
+;;; Figures and tables (IMG-7) ---------------------------------------------------
+
+(defun od--exhibit-ids ()
+  "The ids of the figures and tables in this buffer, as (ID . KIND TITLE)."
+  (let (ids)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "◊\\(figure\\|table\\|table-csv\\)\\[" nil t)
+        (let* ((kind (if (equal (match-string 1) "figure") "Figure" "Table"))
+               (start (point))
+               (end (save-excursion (condition-case nil (progn (backward-char) (forward-sexp) (point))
+                                      (error (line-end-position 6)))))
+               (text (buffer-substring-no-properties start end))
+               (id (and (string-match "#:id \"\\([^\"]+\\)\"" text) (match-string 1 text)))
+               (title (and (string-match "#:title \"\\([^\"]+\\)\"" text)
+                           (replace-regexp-in-string "[ \t\n]+" " " (match-string 1 text)))))
+          (when id (push (cons (format "%s  %s: %s" id kind (or title "")) id) ids)))))
+    (nreverse ids)))
+
+(defun od-insert-ref ()
+  "Insert ◊ref[\"id\"] for a figure or table in this file."
+  (interactive)
+  (let ((cands (od--exhibit-ids)))
+    (unless cands (user-error "No figure or table with an #:id in this file"))
+    (insert (format "◊ref[\"%s\"]" (cdr (assoc (completing-read "Figure or table: " cands nil t) cands))))))
+
 ;;; Tags (INDEX-3) --------------------------------------------------------------
 
 (defun od--used-tags ()
@@ -393,6 +419,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (define-key m (kbd "C-c o m") #'od-insert-margin)
     (define-key m (kbd "C-c o p") #'od-preview)
     (define-key m (kbd "C-c o T") #'od-set-tags)
+    (define-key m (kbd "C-c o r") #'od-insert-ref)
     m)
   "Keys for `occurrent-mode'.")
 

@@ -11,17 +11,14 @@
          xml
          file/sha1
          txexpr
-         "util.rkt")
+         "util.rkt"
+         "exhibits.rkt")
 
 (provide make-figure licence-label)
 
-(define widths '("column" "wide" "full"))
-
-;; `sizes` for each width (rem at the default 16px: column 36.5em × 1.25).
-(define sizes
-  (hash "column" "(min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)"
-        "wide"   "(min-width: 68.125rem) 65rem, (min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)"
-        "full"   "calc(100vw - 3.125rem)"))
+;; IMG-2: every figure is column width (rem at the default 16px: 36.5em × 1.25);
+;; Expand (IMG-8) shows it larger.
+(define sizes "(min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)")
 
 ;; IMG-6
 (define licence-rx #px"^(own|public-domain|permission|cc0|cc-by(-sa|-nd|-nc|-nc-sa|-nc-nd)?-\\d\\.\\d)$")
@@ -53,7 +50,7 @@
   manifest)
 
 (define (make-figure src caption
-                     #:alt alt #:licence licence #:credit credit
+                     #:id id #:title title #:alt alt #:licence licence #:credit credit
                      #:width width #:invert invert)
   (unless (string? alt)
     (build-error "figure ~s needs #:alt (use #:alt \"\" for a decorative image)" src))
@@ -61,7 +58,7 @@
     (build-error "figure ~s needs #:licence: own, public-domain, permission, cc0 or a CC licence like cc-by-4.0" src))
   (when (and (not (equal? licence "own")) (not credit))
     (build-error "figure ~s needs #:credit (licence ~a)" src licence))
-  (unless (member width widths) (build-error "figure ~s: #:width must be column, wide or full" src))
+  (when width (build-error "figure ~s: #:width is gone; every figure is column width, and Expand shows it larger (IMG-2)" src))
   (define path (simplify-path (build-path (source-dir) src)))
   (unless (file-exists? path) (build-error "figure: no file ~a" src))
   (define key (path->string (find-relative-path (simplify-path (project-file)) path)))
@@ -71,26 +68,23 @@
   (define credit-line
     (filter values (list (and credit (if (string? credit) credit (text-of credit)))
                          label)))
-  `(figure ((class ,(format "figure w-~a" width))
-            ;; #:invert wins; else the cached classification; else dimmed
-           (data-invert ,(case invert [(#t) "yes"] [(#f) "no"]
-                           [else (or (and (not (hash-ref entry 'svg #f)) (classified path)) "auto")])))
-           ,(if (hash-ref entry 'svg #f)
-                (inline-svg path alt)
-                (picture entry alt width))
-           ,@(if (and (null? caption) (null? credit-line)) null
-                 `((figcaption ,@caption
-                               ,@(if (null? credit-line) null
-                                     `((span ((class "credit")) ,(string-join credit-line " · ")))))))))
+  (make-exhibit "figure" id title
+                (list (if (hash-ref entry 'svg #f) (inline-svg path alt) (picture entry alt)))
+                caption
+                (if (null? credit-line) null (list (string-join credit-line " · ")))
+                #:class "figure"
+                ;; #:invert wins; else the cached classification; else dimmed
+                #:attrs `((data-invert ,(case invert [(#t) "yes"] [(#f) "no"]
+                                          [else (or (and (not (hash-ref entry 'svg #f)) (classified path)) "auto")])))))
 
 (define (srcset urls) (string-join (for/list ([u (in-list urls)]) (format "~a ~aw" (hash-ref u 'url) (hash-ref u 'w))) ", "))
 
-(define (picture entry alt width)
+(define (picture entry alt)
   (define srcs (hash-ref entry 'sources))
   (define fallback (string->symbol (hash-ref entry 'fallback)))
   (define fb (hash-ref srcs fallback))
   (define default (or (for/last ([u (in-list fb)] #:when (<= (hash-ref u 'w) 1200)) u) (first fb)))
-  (define sz (hash-ref sizes width))
+  (define sz sizes)
   `(picture
     (source ((type "image/avif") (srcset ,(srcset (hash-ref srcs 'avif))) (sizes ,sz)))
     (source ((type "image/webp") (srcset ,(srcset (hash-ref srcs 'webp))) (sizes ,sz)))

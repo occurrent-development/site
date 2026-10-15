@@ -7,7 +7,7 @@
          racket/list
          txexpr
          (except-in "pollen.rkt" list)
-         (only-in "lib/util.rkt" parse-tags output->url))
+         (only-in "lib/util.rkt" parse-tags output->url text-of))
 
 (define (fails? thunk) (with-handlers ([exn:fail? (λ (e) #t)]) (thunk) #f))
 
@@ -201,12 +201,12 @@
   (check-true (fails? (λ () (root "x" (aside "nested " (aside "no")))))))
 
 (test-case "TABLE-1/5/6: semantic tables, wrong cell counts fail"
-  (define t (table #:caption "C" "\n" "| a | b |" "\n" "|---|---|" "\n"
+  (define t (table #:id "t" #:title "T" #:caption "C" "\n" "| a | b |" "\n" "|---|---|" "\n"
                    "| 1 | x |" "\n" "| 2 | y |" "\n" "| 3 | z |" "\n" "| 4 | w |" "\n" "| 5 | v |" "\n"))
   (check-not-false (findf (λ (x) (attrs-have-key? x 'data-sortable)) (find-all t (tag? 'table))))
   (check-equal? (length (find-all t (λ (x) (equal? (attr-ref x 'scope #f) "col")))) 2)
   (check-equal? (classes (car (find-all t (tag? 'td)))) "a-right")
-  (check-true (fails? (λ () (table "| a | b |" "\n" "|---|---|" "\n" "| 1 |" "\n")))))
+  (check-true (fails? (λ () (table #:id "t" #:title "T" "| a | b |" "\n" "|---|---|" "\n" "| 1 |" "\n")))))
 
 (test-case "IMG-3/6: figures need alt text and a licence"
   (check-true (fails? (λ () (figure "pages/img/landscape.jpg" #:licence "own" "c"))))
@@ -237,7 +237,7 @@
   (check-equal? (get-tag (car (get-elements (car nw)))) 'em))
 
 (test-case "TABLE-5: ◊sort-key gives a cell the value it sorts by"
-  (define t (table "| Year | Event |" "\n" "|---|---|" "\n" "| " (sort-key "2004" "c. 2004") " | x |" "\n"))
+  (define t (table #:id "t" #:title "T" "| Year | Event |" "\n" "|---|---|" "\n" "| " (sort-key "2004" "c. 2004") " | x |" "\n"))
   (check-not-false (findf (λ (x) (equal? (attr-ref x 'data-sort #f) "2004")) (find-all t txexpr?))))
 
 (test-case "POP-7: notes say whether they are the full or the short form"
@@ -281,3 +281,20 @@
   (define nw (car (find-all doc (λ (x) (has-class* x "nw")))))
   (check-equal? (car (get-elements nw)) '(em "Books"))
   (check-not-false (member '(em "London Review of ") (find-all doc (tag? 'em)))))
+
+(test-case "IMG-7: figures and tables need an id and a title; widths are gone"
+  (define rows (list "| a |" "\n" "|---|" "\n" "| 1 |" "\n"))
+  (check-true (fails? (λ () (apply table #:title "T" rows))))
+  (check-true (fails? (λ () (apply table #:id "t" rows))))
+  (check-true (fails? (λ () (apply table #:id "t" #:title "T" #:width "wide" rows))))
+  (check-true (fails? (λ () (apply table #:id "Bad Id" #:title "T" rows)))))
+
+(test-case "IMG-7: numbered in order, each kind on its own; ◊ref prints the label"
+  (define (tab id) (table #:id id #:title "T" "| a |" "\n" "|---|" "\n" "| 1 |" "\n"))
+  (define doc (root "See " (ref "second") " and " (ref "first") "." "\n\n" (tab "first") "\n\n" (tab "second")))
+  (define labels (map (λ (x) (text-of x)) (find-all doc (λ (x) (has-class* x "exhibit-label")))))
+  (check-equal? labels '("Table\u00A01" "Table\u00A02"))
+  (define links (find-all doc (λ (x) (and ((tag? 'a) x) (has-class* x "same")))))
+  (check-equal? (map (λ (a) (attr-ref a 'href)) links) '("#second" "#first"))
+  (check-true (and (regexp-match? #rx"Table\u00A02" (text-of (car links))) #t))
+  (check-true (fails? (λ () (root "See " (ref "nowhere") ".")))))

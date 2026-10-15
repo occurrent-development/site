@@ -544,65 +544,91 @@ ol.list > li::before {
   .list.cols-3 { columns: 3; column-gap: 2em; }
 }
 
-/* ── Figures and tables: widths (IMG-2) ────────────────────────────────
-   Narrow tiers: everything is column width. L: wide adds the margin; full
-   spans the page minus gutters. */
-@container page (min-width: 54.5em) {
-  .w-wide { width: calc(var(--measure) + var(--gap) + var(--margin)); }
-  .w-full {
-    width: calc(100cqi - 2 * var(--gutter));
-    margin-left: calc((var(--measure) + var(--gap) + var(--margin) - 100cqi) / 2 + var(--gutter));
-  }
-}
-
-
-/* ── Figures (§9.1) ─────────────────────────────────────────────────── */
-figure.figure { margin: 1.75em 0; text-align: left; }
-figure.figure img, figure.figure svg { display: block; width: 100%; height: auto; }
-figure.figure .figure-svg { color: var(--text); }
-figcaption {
+/* ── Figures and tables (IMG-2/3/7) ─────────────────────────────────────
+   Always column width; nothing enters a margin but the words. Narrow tiers:
+   the label and title above, the caption and credit below. Tier L: all
+   three in the right margin, from the top of the figure; the caption block
+   takes no height, so a long caption runs on down the margin rather than
+   pushing the text apart. */
+.exhibit { margin: 1.75em 0; text-align: left; }
+.exhibit + p { text-indent: 0; }
+.exhibit-title, .exhibit-meta {
+  display: block;
   font-size: 0.85em;                        /* IMG-3: aside size, ragged */
   line-height: 1.4;
-  margin-top: 0.6em;
   text-align: left;
+  text-indent: 0;
   hyphens: manual;
   -webkit-hyphens: manual;
 }
+.exhibit-title { margin-bottom: 0.5em; }
+.exhibit-label { font-variant-caps: all-small-caps; letter-spacing: 0.05em; margin-right: 0.15em; }
+.exhibit-meta { margin-top: 0.6em; }
+.exhibit-caption { display: block; }
+.exhibit-body { position: relative; }
+figure.figure img, figure.figure svg { display: block; width: 100%; height: auto; }
+figure.figure .figure-svg { color: var(--text); }
+.table-wrap .exhibit-title { padding-right: 2.4em; }   /* room for Expand above the table */
+
+@container page (min-width: 54.5em) {
+  .exhibit {
+    display: grid;
+    grid-template-columns: var(--measure) var(--gap) var(--margin);
+    grid-template-rows: auto 1fr;
+    margin-right: calc(-1 * (var(--gap) + var(--margin)));
+  }
+  .exhibit-body { grid-column: 1; grid-row: 1 / span 2; min-width: 0; }
+  .exhibit-title { grid-column: 3; grid-row: 1; margin: 0; padding-right: 0.6em; }
+  .exhibit-meta { grid-column: 3; grid-row: 2; margin: 0.4em 0 0; height: 0; overflow: visible; padding-right: 0.6em; }
+  .table-wrap .exhibit-title { padding-right: 0.6em; }
+}
+
+/* IMG-8: Expand, at the top right of every figure and table */
+.expand {
+  appearance: none;
+  position: absolute;
+  top: 0.4em;
+  right: 0.4em;
+  z-index: 2;
+  width: 1.9em;
+  height: 1.9em;
+  padding: 0.4em;
+  border: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.expand svg { display: block; width: 100%; height: 100%; }
+.expand:hover, .expand:focus-visible { color: var(--accent); }
+.table-wrap .expand { top: -2.1em; right: -0.4em; background: none; }   /* above the table's top rule */
+
 /* IMG-3a: every credit line (a figure's #:credit, a table's #:source) is
    set alike, and unlike a caption: muted, italic, smaller, its own line. */
 .credit {
   display: block;
   font-style: italic;
   color: var(--text-muted);
-  font-size: 0.75em;
+  font-size: 0.88em;                        /* 0.75 of the body, inside a 0.85 caption */
   line-height: 1.4;
-  text-align: left;
-  text-indent: 0;
-  hyphens: manual;
-  -webkit-hyphens: manual;
   margin-top: 0.3em;
 }
-figcaption .credit { font-size: 0.88em; }   /* 0.75 of the body, inside a 0.85 caption */
 .credit em { font-style: normal; }
-figure + p { text-indent: 0; }
 
 /* IMG-4: in dark mode, invertible images are inverted; others dimmed.
    Invertible images are blended, so their white (black once inverted)
    becomes the page background in either theme. */
-figure[data-invert="yes"] img { mix-blend-mode: multiply; }
-:root[data-theme="dark"] figure[data-invert="yes"] img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
-:root[data-theme="dark"] figure:not([data-invert="yes"]) img { filter: brightness(0.9); }
+[data-invert="yes"] img { mix-blend-mode: multiply; }
+:root[data-theme="dark"] [data-invert="yes"] img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+:root[data-theme="dark"] [data-invert]:not([data-invert="yes"]) img { filter: brightness(0.9); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) figure[data-invert="yes"] img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
-  :root:not([data-theme="light"]) figure:not([data-invert="yes"]) img { filter: brightness(0.9); }
+  :root:not([data-theme="light"]) [data-invert="yes"] img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+  :root:not([data-theme="light"]) [data-invert]:not([data-invert="yes"]) img { filter: brightness(0.9); }
 }
 
 /* ── Tables (§9.2): booktabs ────────────────────────────────────────── */
-.table-wrap { margin: 1.75em 0; }
-.table-wrap + p { text-indent: 0; }
 .table-scroll {
   overflow-x: auto;
-  container-type: inline-size;            /* lets the caption stay in view */
   /* TABLE-4: an edge fade where the table overflows (scroll-shadow technique) */
   background:
     linear-gradient(to right, var(--bg) 30%, transparent) left / 2em 100% no-repeat local,
@@ -619,15 +645,6 @@ figure[data-invert="yes"] img { mix-blend-mode: multiply; }
   -webkit-hyphens: manual;
   font-variant-numeric: lining-nums tabular-nums;   /* TABLE-3 */
 }
-.table-wrap caption {
-  caption-side: top;
-  text-align: left;
-  position: sticky;                       /* stays put while a wide table scrolls */
-  left: 0;
-  max-width: 100cqi;
-  font-size: 0.85em;
-  margin-bottom: 0.5em;
-}
 .table-wrap thead tr { border-top: 1.5px solid var(--text); border-bottom: 1px solid var(--rule); }
 .table-wrap tbody tr:last-child { border-bottom: 1.5px solid var(--text); }
 .table-wrap th, .table-wrap td { padding: 0.3em 0.75em; vertical-align: top; }
@@ -640,11 +657,6 @@ figure[data-invert="yes"] img { mix-blend-mode: multiply; }
 .a-center { text-align: center; }
 .size-small table { font-size: 0.85em; }
 .size-tiny table { font-size: max(0.7em, 12px); }
-/* the caption above a table is set as a figure's caption is (IMG-3a),
-   whatever the table's own size */
-.table-wrap caption { line-height: 1.4; hyphens: manual; -webkit-hyphens: manual; }
-.size-small caption { font-size: 1em; }                 /* the table is 0.85 */
-.size-tiny caption { font-size: calc(0.85em / 0.7); }   /* the table is ~0.7 */
 
 /* ── End matter (CITE-10) ──────────────────────────────────────────── */
 .endmatter {
@@ -935,6 +947,70 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   .popup-close svg { width: 1.25em; height: 1.25em; }
 }
 .popin-shade { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / 0.25); }
+
+/* ── Expanded figures and tables (IMG-8) ─────────────────────────────────
+   Pointer devices: a panel almost the size of the window over the shaded
+   essay, title at the top, caption and credit below. Touch devices: the
+   whole screen, the figure alone; a tap shows the words over it. */
+.lightbox-shade { position: fixed; inset: 0; z-index: 39; background: rgb(0 0 0 / 0.55); }
+.lightbox {
+  position: fixed;
+  inset: 3vh 3vw;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: 4px;
+  box-shadow: 0 0.6em 2.4em rgb(0 0 0 / 0.3);
+  text-align: left;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+}
+.lightbox:focus { outline: none; }
+.lb-head, .lb-foot { flex: none; padding: 0.7em 1.1em; font-size: 0.85em; line-height: 1.4; }
+.lb-head { display: flex; align-items: baseline; gap: 1em; border-bottom: 1px solid var(--rule); }
+.lb-title { flex: 1; min-width: 0; }
+.lb-foot { border-top: 1px solid var(--rule); max-height: 30vh; overflow-y: auto; }
+.lb-foot:empty { display: none; }
+.lb-close {
+  appearance: none; border: 0; background: none; color: var(--text-muted); cursor: pointer;
+  padding: 0; width: 1.1em; height: 1.1em; align-self: center; flex: none;
+}
+.lb-close svg { display: block; width: 100%; height: 100%; }
+.lb-close:hover, .lb-close:focus-visible { color: var(--accent); }
+.lb-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25em;
+  overflow: auto;
+}
+.lb-stage picture { display: contents; }
+.lb-stage img, .lb-stage .figure-svg { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.lb-stage .figure-svg { width: 100%; height: 100%; color: var(--text); }
+.lb-stage.is-table { align-items: flex-start; justify-content: flex-start; }
+.lb-stage .table-scroll { overflow: visible; background: none; margin: 0 auto; }
+.lb-stage.table-wrap { margin: 0; }
+.lb-stage.table-wrap table { font-size: 1em; }
+
+@media (hover: none) {
+  .lightbox { inset: 0; border-radius: 0; box-shadow: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .lb-stage { padding: 0.5em; }
+  /* the words are an overlay, shown and hidden by a tap */
+  .lb-head, .lb-foot {
+    position: absolute; left: 0; right: 0; z-index: 1;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    transition: opacity 0.2s;
+  }
+  .lb-head { top: 0; padding-top: calc(0.7em + env(safe-area-inset-top)); }
+  .lb-foot { bottom: 0; padding-bottom: calc(0.7em + env(safe-area-inset-bottom)); }
+  .lightbox:not(.show-words) .lb-head .lb-title,
+  .lightbox:not(.show-words) .lb-foot { opacity: 0; pointer-events: none; }
+  .lightbox:not(.show-words) .lb-head { background: none; border-color: transparent; }
+  .lb-close { width: 44px; height: 44px; padding: 12px; margin: -12px -12px -12px 0; }
+}
 
 /* ── The margin, tier L (POP-8, ASIDE-3/4, MNOTE-2/4) ───────────────────
    Margin notes, aside stubs and opened notes stay where they are in the
