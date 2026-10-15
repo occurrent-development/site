@@ -745,7 +745,7 @@ function positionMargin() {
   const fs = parseFloat(getComputedStyle(article).fontSize);
   const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
   for (const st of stubs) {
-    Object.assign(st.style, { left: `${v("--measure") + v("--gap")}px`, width: `${v("--margin")}px`, fontSize: `${0.85 * fs}px` });
+    Object.assign(st.style, { left: `${v("--measure") + v("--gap")}px`, width: getComputedStyle(article).getPropertyValue("--margin"), fontSize: `${0.85 * fs}px` });
     if (st.classList.contains("is-open")) continue;
     st.classList.add("is-full");
     const lh = parseFloat(getComputedStyle(st).lineHeight);

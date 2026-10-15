@@ -134,9 +134,14 @@ article { --tier: S; }
 @container page (min-width: 54.5em) { article { --tier: L; position: relative; } }
 
 /* L: column + gap + right margin fit (39 + 2.5 + 13 = 54.5em). The column
-   moves left so the column and margin together are centred. */
+   moves left so the column and margin together are centred. The margin
+   widens into spare room, up to 20em, keeping 3em clear at either side.
+   --margin is registered as a length, so it is computed once, here, and
+   text set smaller inside the margin inherits the same width. */
+@property --margin { syntax: "<length>"; inherits: true; initial-value: 0px; }
 @container page (min-width: 54.5em) {
   .page > * {
+    --margin: clamp(13em, 100cqi - var(--measure) - var(--gap) - 6em, 20em);
     width: calc(var(--measure) + var(--gap) + var(--margin));
     padding-inline: 0 calc(var(--gap) + var(--margin));
   }
@@ -561,8 +566,8 @@ ol.list > li::before {
   hyphens: manual;
   -webkit-hyphens: manual;
 }
-.exhibit-title { margin-bottom: 0.5em; }
-.exhibit-label { font-variant-caps: all-small-caps; letter-spacing: 0.05em; margin-right: 0.15em; }
+.exhibit-title { margin-bottom: 0.5em; font-weight: 600; }   /* set apart from the caption */
+.exhibit-label { margin-right: 0.25em; }
 .exhibit-meta { margin-top: 0.6em; }
 .exhibit-caption { display: block; }
 .exhibit-body { position: relative; }
@@ -969,7 +974,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .lightbox:focus { outline: none; }
 .lb-head, .lb-foot { flex: none; padding: 0.7em 1.1em; font-size: 0.85em; line-height: 1.4; }
 .lb-head { display: flex; align-items: baseline; gap: 1em; border-bottom: 1px solid var(--rule); }
-.lb-title { flex: 1; min-width: 0; }
+.lb-title { flex: 1; min-width: 0; font-weight: 600; }
 .lb-foot { border-top: 1px solid var(--rule); max-height: 30vh; overflow-y: auto; }
 .lb-foot:empty { display: none; }
 .lb-close {
@@ -1019,7 +1024,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   position: absolute;
   /* the column and gap, in this element's own em (it is set at 0.85) */
   left: calc((var(--measure) + var(--gap)) / 0.85);
-  width: calc(var(--margin) / 0.85);
+  width: var(--margin);
   font-size: 0.85em;
   line-height: 1.4;
   text-align: left;
@@ -1036,7 +1041,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   .js article .margin-note {
     position: absolute;
     left: calc((var(--measure) + var(--gap)) / 0.85);
-    width: calc(var(--margin) / 0.85);
+    width: var(--margin);
     font-size: 0.85em;
     line-height: 1.4;
     text-align: left;
