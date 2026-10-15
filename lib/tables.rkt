@@ -161,4 +161,4 @@
                                         (if (and row-headers (= i 0))
                                             `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
                                             `(td ,(cell-attrs i) ,@c))))))))
-        ,@(if source `((p ((class "table-source")) ,@source)) null)))
+        ,@(if source `((p ((class "credit table-source")) ,@source)) null)))

@@ -135,6 +135,11 @@ black on #EFE7D4, and #D2D2D0 on #121212. Both pairs pass the ◊sc{WCAG} AA
 standard by a wide margin, as does every colour the page uses for marks,
 rules and quieter text.
 
+The text size, set from the bar, steps everything in this face together: the
+column, the margin, the contents and anything open over the page. Open a note,
+step the size, and the note steps with the text, while the line at the top of
+the window stays where it was.
+
 ◊break{}
 
 Colour in running text is reserved for one thing: the small marks that show
@@ -203,8 +208,13 @@ A circle opens something where the reader is, without moving the page: a
 definition, a note or an aside. The first time a defined word appears, such
 as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects},
 it carries a circle; later uses, like this second
-◊term["occurrent"]{occurrent}, are plain text. Without scripts, a circle is a
-link to the end of the page, where definitions are collected under Terms.
+◊term["occurrent"]{occurrent}, are plain text. On a wide screen a definition
+also waits in the right margin as a single line beside its circle, and
+clicking either lets it grow there, in place, while the rest of the margin
+moves down to make room; More, inside it, opens the longer discussion, and a
+defined word inside it opens over the page. On a narrower screen a definition
+opens over the text. Without scripts, a circle is a link to the end of the
+page, where definitions are collected under Terms.
 
 ◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
 ◊summary{Circles for sources and digressions; the numbers stay with the notes.}
@@ -220,17 +230,19 @@ page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and a note may carry a
 remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
 is shorter and sharper."]. Two citations at the same point share one
 circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructionWhat2000"
-#:loc "pp. 31-34"], which opens both.
+#:loc "pp. 31-34"], which opens both. A note opens over the page at every
+width, and its circle stays filled for as long as it is pinned open.
 
 ◊margin{Asides can be skipped.} An aside is a digression the argument does
 not need◊aside{An aside may cite, too: Hacking's essay on
 ◊term["looping-effect"]{looping} is the fuller version of the
 argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered at its
 place in the argument.} and is unnumbered. On a wide screen it sits in the
-right margin, collapsed to its first line until opened; on a phone it opens
-over the text. Without scripts each aside is collected at the end, with a
-link back.◊aside{A second aside, to show that asides are told apart by where
-they sit, not by a number.}
+right margin as a single line, cut short, and opening it lets it grow
+downward in place; a short one is shown whole. Open the first aside and then
+the circle inside it: the note opens over the page, and the aside stays where
+it is. On a narrower screen both open over the text. Without scripts each
+aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
 
 ◊section[#:id "lists" #:short "Lists"]{Lists}
 ◊summary{Bullets by level, and numbers that follow the nesting.}
@@ -282,9 +294,11 @@ browser picks the smallest that will look sharp. This one is wide:
 
 ◊figure["img/landscape.jpg" #:alt "A grey surface sloping away from the
 viewer, its single valley dividing into three as it descends." #:licence "own"
-#:width "wide"]{A developmental landscape in the manner of
-C. H. Waddington's, rendered for this page: one valley that divides as it
-descends, so that a ball rolling down it ends in one of three places.}
+#:width "wide" #:credit "After C. H. Waddington (1957); rendered for this
+page."]{A developmental landscape: one valley that divides as it descends, so
+that a ball rolling down it ends in one of three places. The line below is a
+credit, set apart from the caption as every credit is, and as a table's
+source is.}
 
 ◊section[#:id "tables" #:short "Tables"]{Tables}
 ◊summary{Rules above and below, lining figures, numbers aligned right.}
@@ -346,8 +360,9 @@ A table can also come from a file, and be set smaller:
 ◊summary{What later phases add to the site, and to this page.}
 
 Everything above works without scripts, and everything interactive is an
-addition to it: the circles and stubs, the margin, the bar that appears at the
-top of the window when you scroll back up, the text size and theme controls,
+addition to it: the circles and stubs, the margin, the bar that appears when
+you scroll back up (at the top of the window, or at the bottom on a touch
+screen), the text size and theme controls,
 and the sortable tables. What remains is around the essays rather than in
 them: interactive figures, backlinks between essays, a changelog and a feed,
 a page for correspondence, and a stylesheet for print. Each will be checked

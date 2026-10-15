@@ -81,7 +81,7 @@
            ,@(if (and (null? caption) (null? credit-line)) null
                  `((figcaption ,@caption
                                ,@(if (null? credit-line) null
-                                     `(" " (span ((class "credit")) ,(string-join credit-line " · ")))))))))
+                                     `((span ((class "credit")) ,(string-join credit-line " · ")))))))))
 
 (define (srcset urls) (string-join (for/list ([u (in-list urls)]) (format "~a ~aw" (hash-ref u 'url) (hash-ref u 'w))) ", "))
 

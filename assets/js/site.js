@@ -7,7 +7,6 @@
 const root = document.documentElement;
 const page = document.querySelector(".page");
 const article = document.querySelector("article");
-const canHover = matchMedia("(hover: hover) and (pointer: fine)");
 
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -126,8 +125,7 @@ function setSize(n) {
   });
   store.set("size", n === MID ? null : String(n));
   showSize();
-  close();
-  scheduleLayout();
+  scheduleLayout();   // an open popup stays open and steps with the text (THEME-5b)
 }
 
 addEventListener("storage", (e) => {
@@ -149,7 +147,8 @@ function clean(node) {
   const c = node.cloneNode(true);
   c.removeAttribute("id");
   for (const e of c.querySelectorAll("[id]")) e.removeAttribute("id");
-  for (const e of c.querySelectorAll(".back, .self, .aside[hidden]")) e.remove();
+  for (const e of c.querySelectorAll(".back, .self, .aside[hidden], .stub, .toc-mark")) e.remove();
+  for (const e of c.querySelectorAll(".in-margin")) { e.classList.remove("in-margin"); e.style.transform = ""; }   // margin notes, run in again
   return c;
 }
 
@@ -287,10 +286,31 @@ async function contentFor(t) {
   }
 }
 
-// ── The open item: a popup, a popin, a margin panel or an expanded stub ────
+// ── The open popup: a popup, a popin, or the bar's contents ─────────────────
 
 let open = null;      // { box, trigger, pinned, mode, shade }
 let openTimer = 0, closeTimer = 0, seq = 0;
+const touch = matchMedia("(hover: none)");   // POP-5, BAR-1
+
+// THEME-5b: popups are mounted in the scaled wrapper, so they step with the text.
+const mount = () => document.querySelector(".frame") || document.body;
+
+const SVG = "http://www.w3.org/2000/svg";
+function icon(d) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG, "path");
+  for (const [k, v] of Object.entries({ d, fill: "none", stroke: "currentColor", "stroke-width": "1.2",
+    "stroke-linecap": "round", "stroke-linejoin": "round" })) path.setAttribute(k, v);
+  svg.append(path);
+  return svg;
+}
+const CROSS = "M2.5 2.5l7 7M9.5 2.5l-7 7";
+const BACK = "M7.5 2.5 4 6l3.5 3.5";
+
+// ASIDE-2: a circle is filled while what it opens is open.
+function fill(t, on) { t?.querySelector?.(".circle")?.classList.toggle("is-open", on); }
 
 function buildPopup(c, pinned) {
   const id = `popup-title-${++seq}`;
@@ -298,14 +318,14 @@ function buildPopup(c, pinned) {
   const bar = el("div", { class: "popup-bar" },
     el("span", { class: "popup-title", id }, c.title || ""),
     c.url ? el("a", { class: "popup-open", href: c.url, target: "_blank", rel: "noopener" }, "Open in new tab") : null,
-    el("button", { type: "button", class: "popup-close", "aria-label": "Close" }, "×"));
+    el("button", { type: "button", class: "popup-close", "aria-label": "Close" }, icon(CROSS)));
   box.append(bar, el("div", { class: "popup-body" }, c.body));
   return box;
 }
 
 // POP-2: in the viewport, never over the element that opened it.
 function placeFloat(box, t) {
-  document.body.append(box);
+  mount().append(box);
   const r = t.getBoundingClientRect();
   const vw = root.clientWidth, vh = innerHeight, gap = 6, edge = 8;
   const below = vh - r.bottom - gap - edge, above = r.top - gap - edge;
@@ -322,7 +342,7 @@ function placeFloat(box, t) {
 function placePopin(box) {
   box.classList.add("is-popin");
   const shade = el("div", { class: "popin-shade" });
-  document.body.append(shade, box);
+  mount().append(shade, box);
   root.style.overflow = "hidden";
   let y0 = null, dy = 0;
   const bar = box.querySelector(".popup-bar");
@@ -346,58 +366,24 @@ async function openFor(t, { pinned = false, focus = false } = {}) {
     if (focus) open.box.focus();
     return;
   }
-  close();
-  const kind = kindOf(t);
-  const targets = (t.dataset.targets || "").split(" ");
-  // POP-8: on wide tiers circles open in the margin; an aside expands its stub.
-  if (kind === "circle" && tier() === "L") {
-    if (targets.length === 1 && targets[0].startsWith("aside-")) {
-      const stub = byId("aside-text-" + targets[0].slice(6));
-      if (stub && stub.classList.contains("stub")) { expandStub(stub, t, pinned, focus); return; }
-    }
-    openMarginPanel(t, pinned, focus);
-    return;
-  }
   const c = await contentFor(t);
   if (!c || (open && open.trigger === t)) return;
   close();
   const box = buildPopup(c, pinned);
   let shade = null, mode = "float";
-  if (!canHover.matches) { shade = placePopin(box); mode = "popin"; pinned = true; box.setAttribute("role", "dialog"); }
+  if (touch.matches) { shade = placePopin(box); mode = "popin"; pinned = true; box.setAttribute("role", "dialog"); }
   else placeFloat(box, t);
   open = { box, trigger: t, pinned, mode, shade };
   t.setAttribute("aria-expanded", "true");
+  if (pinned) fill(t, true);
   if (focus || mode === "popin") box.focus({ preventScroll: true });
-}
-
-function openMarginPanel(t, pinned, focus) {
-  const c = circleContent(t);
-  if (!c.items.length) return;
-  const box = el("span", { class: "in-margin margin-panel", role: pinned ? "dialog" : "tooltip", tabindex: "-1",
-                           "aria-label": c.title });
-  if (c.items.length === 1 && c.items[0].head) box.append(el("span", { class: "popup-item-head", style: "display:block" }, c.items[0].head));
-  box.append(c.body);
-  (t.closest(".nw") || t).after(box);
-  open = { box, trigger: t, pinned, mode: "margin" };
-  t.setAttribute("aria-expanded", "true");
-  t.querySelector(".circle")?.classList.add("is-open");
-  if (focus) box.focus({ preventScroll: true });
-}
-
-// ASIDE-3: one expanded at a time, drawn over what is below; nothing moves.
-function expandStub(stub, trigger, pinned, focus) {
-  if (stub.dataset.full) { if (focus) stub.focus(); return; }
-  stub.classList.add("is-open");
-  stub.setAttribute("aria-expanded", "true");
-  open = { box: stub, trigger: trigger || circleFor(stub) || stub, pinned, mode: "stub" };
-  open.trigger.setAttribute?.("aria-expanded", "true");
-  if (focus) stub.focus({ preventScroll: true });
 }
 
 function pin() {
   if (!open) return;
   open.pinned = true;
-  if (open.mode !== "stub") open.box.setAttribute("role", "dialog");
+  open.box.setAttribute("role", "dialog");
+  fill(open.trigger, true);
 }
 
 function close({ returnFocus = false } = {}) {
@@ -406,17 +392,11 @@ function close({ returnFocus = false } = {}) {
   if (!open) return;
   const o = open;
   open = null;
-  if (o.mode === "stub") {
-    o.box.classList.remove("is-open");
-    o.box.setAttribute("aria-expanded", "false");
-    restoreReplaced(o.box);
-  } else {
-    o.box.remove();
-  }
+  o.box.remove();
   o.shade?.remove();
   if (o.mode === "popin") root.style.overflow = "";
   o.trigger.setAttribute?.("aria-expanded", "false");
-  o.trigger.querySelector?.(".circle")?.classList.remove("is-open");
+  fill(o.trigger, false);
   if (o.mode === "toc") bar?.classList.remove("toc-open");
   if (returnFocus) o.trigger.focus?.();
 }
@@ -426,80 +406,137 @@ function scheduleClose() {
   if (open && !open.pinned) closeTimer = setTimeout(close, 250);
 }
 
-// POP-6, TERM-7: a circle inside an open item replaces its content, with Back.
+// POP-6, TERM-7: a circle inside a popup replaces its content; Back, in the
+// title bar, restores it.
 function replaceContent(box, t) {
-  const body = box.querySelector(".popup-body") || box;
+  const body = box.querySelector(".popup-body");
   const c = circleContent(t);
-  if (!c.items.length) return;
-  const saved = [...body.childNodes];
-  const back = el("button", { type: "button", class: "popup-back" }, "← Back");
+  if (!body || !c.items.length) return;
+  const title = box.querySelector(".popup-title");
+  const saved = { nodes: [...body.childNodes], title: title?.textContent };
+  box.querySelector(".popup-back")?.remove();
+  const back = el("button", { type: "button", class: "popup-back", "aria-label": "Back" }, icon(BACK), "Back");
   back.addEventListener("click", (e) => {
     e.stopPropagation();
-    body.replaceChildren(...saved);
+    body.replaceChildren(...saved.nodes);
+    if (title) title.textContent = saved.title;
+    back.remove();
+    box.focus({ preventScroll: true });
   });
-  if (!box._original) box._original = saved;
-  body.replaceChildren(el("p", {}, back), ...(c.items.length === 1 && c.items[0].head ? [el("p", { class: "popup-item-head" }, c.items[0].head)] : []), c.body);
-  const title = box.querySelector(".popup-title");
+  box.querySelector(".popup-bar").prepend(back);
+  body.replaceChildren(c.body);   // the title bar names it
   if (title) title.textContent = c.title;
 }
-function restoreReplaced(box) {
-  if (box._original) { box.replaceChildren(...box._original); delete box._original; }
+
+// ── The margin item: an aside or definition expanded in place (ASIDE-3) ────
+
+let marginOpen = null;   // { stub, trigger }
+
+// The stub a trigger opens, in tier L, when the trigger is in the text (a
+// circle inside an open margin item opens a popup instead, POP-6).
+function stubFor(t) {
+  if (tier() !== "L" || !t || t.closest(".in-margin")) return null;
+  return t._stub?.isConnected ? t._stub : null;
+}
+
+function toggleMargin(stub, { focus = false } = {}) {
+  if (marginOpen && marginOpen.stub === stub) { collapseMargin({ returnFocus: focus }); return; }
+  collapseMargin();
+  if (stub.dataset.full) { if (focus) stub.focus(); return; }   // shown in full; never collapses
+  const t = stub._trigger;
+  stub.classList.add("is-open");
+  stub.setAttribute("aria-expanded", "true");
+  t?.setAttribute("aria-expanded", "true");
+  fill(t, true);
+  marginOpen = { stub, trigger: t };
+  positionMargin();
+  if (focus) stub.focus({ preventScroll: true });
+}
+
+function collapseMargin({ returnFocus = false } = {}) {
+  if (!marginOpen) return;
+  const { stub, trigger } = marginOpen;
+  marginOpen = null;
+  stub.classList.remove("is-open");
+  stub.setAttribute("aria-expanded", "false");
+  stub.scrollTop = 0;
+  for (const m of stub.querySelectorAll(".term-more")) m.hidden = true;     // More folds again
+  for (const l of stub.querySelectorAll(".stub-more-line")) l.hidden = false;
+  trigger?.setAttribute("aria-expanded", "false");
+  fill(trigger, false);
+  positionMargin();
+  if (returnFocus) (trigger || stub).focus?.();
 }
 
 // ── Events ────────────────────────────────────────────────────────────────
 
-const OPENED = ".popup, .margin-panel, .stub.is-open";
-
 document.addEventListener("click", (e) => {
-  const t = e.target.closest(TRIGGERS);
-  const inOpen = e.target.closest(OPENED);
-
   if (e.target.closest("[data-theme-toggle]")) { setTheme(THEMES[(THEMES.indexOf(theme()) + 1) % 3]); return; }
   if (e.target.closest(".size-down")) { setSize(size() - 1); return; }
   if (e.target.closest(".size-up")) { setSize(size() + 1); return; }
   if (e.target.closest(".popup-close")) { close({ returnFocus: true }); return; }
   if (e.target.closest(".bar-section")) { e.preventDefault(); toggleToc(); return; }
 
+  const t = e.target.closest(TRIGGERS);
+  const stub = e.target.closest(".stub");
+
+  // A collapsed stub opens wherever it is clicked (ASIDE-3).
+  if (stub && !stub.classList.contains("is-open") && !stub.dataset.full) {
+    e.preventDefault();
+    close();
+    toggleMargin(stub);
+    return;
+  }
+
   if (t) {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return; // LINK-3: native tabs
-    if (inOpen && kindOf(t) === "circle") { e.preventDefault(); replaceContent(inOpen, t); return; }
-    if (inOpen) { close(); return; }   // other links inside a popup simply navigate
+    const inPopup = e.target.closest(".popup");
+    if (inPopup && kindOf(t) === "circle") { e.preventDefault(); replaceContent(inPopup, t); return; }
+    if (inPopup) { close(); return; }   // other links inside a popup simply navigate
     e.preventDefault();
+    const s = stubFor(t);
+    if (s) { close(); toggleMargin(s, { focus: e.detail === 0 }); return; }
     if (open && open.trigger === t && open.pinned) { close(); return; }
     openFor(t, { pinned: true, focus: e.detail === 0 });
     return;
   }
 
-  const stub = e.target.closest(".stub");
-  if (stub) {
-    if (open && open.box === stub) { close(); return; }
-    close();
-    expandStub(stub, null, true, false);
+  // Clicking the text of an open item closes it ("click again"), unless the
+  // reader was selecting.
+  if (stub && stub.classList.contains("is-open") && !e.target.closest("button, a")) {
+    if (!String(getSelection?.() || "")) collapseMargin();
     return;
   }
 
   // A contents link in the bar's popup: let it navigate (BAR-2), then close.
   if (open && open.mode === "toc" && e.target.closest(".popup a[href^='#']")) { close(); return; }
-  if (open && !inOpen && !e.target.closest(".bar")) close();
+  if (open && !e.target.closest(".popup, .bar")) close();
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && open) { close({ returnFocus: true }); return; }
+  if (e.key === "Escape") {
+    if (open) { close({ returnFocus: true }); return; }
+    if (marginOpen) { collapseMargin({ returnFocus: true }); return; }
+  }
   const stub = e.target.closest?.(".stub");
-  if (stub && (e.key === "Enter" || e.key === " ")) {
+  if (stub && e.target === stub && (e.key === "Enter" || e.key === " ")) {
     e.preventDefault();
-    if (open && open.box === stub) close({ returnFocus: false });
-    else { close(); expandStub(stub, null, true, false); }
+    close();
+    toggleMargin(stub, { focus: true });
   }
 });
 
-// Hover: open after ~300 ms, close ~250 ms after leaving both (§11 table).
+// Hover: popups open after ~300 ms and close ~250 ms after leaving both
+// (§11 table). Hover never opens a margin item; it only pairs circle and
+// stub by colour (ASIDE-3).
 document.addEventListener("pointerover", (e) => {
-  if (e.pointerType !== "mouse" || !canHover.matches) return;
+  if (e.pointerType !== "mouse" || touch.matches) return;
   const t = e.target.closest(TRIGGERS);
-  if (t && !t.closest(OPENED + ", .bar")) {
+  if (t && !t.closest(".popup, .bar")) {
+    const s = stubFor(t);
+    highlight(t, true, s);
+    if (s) return;
     if (kindOf(t) === "xref") fetchFragment(t.getAttribute("href"));   // prefetch
-    highlight(t, true);
     clearTimeout(closeTimer);
     if (open && open.trigger === t) return;
     clearTimeout(openTimer);
@@ -507,52 +544,87 @@ document.addEventListener("pointerover", (e) => {
     return;
   }
   const stub = e.target.closest(".stub");
-  if (stub) highlight(circleFor(stub), true, stub);
-  if (e.target.closest(OPENED)) clearTimeout(closeTimer);
+  if (stub) highlight(stub._trigger, true, stub);
+  if (e.target.closest(".popup")) clearTimeout(closeTimer);
 });
 
 document.addEventListener("pointerout", (e) => {
   if (e.pointerType !== "mouse") return;
-  const from = e.target.closest(TRIGGERS + ", " + OPENED + ", .stub");
+  const from = e.target.closest(TRIGGERS + ", .popup, .stub");
   if (!from) return;
-  const to = e.relatedTarget?.closest?.(TRIGGERS + ", " + OPENED + ", .stub");
+  const to = e.relatedTarget?.closest?.(TRIGGERS + ", .popup, .stub");
   if (to === from) return;
-  if (from.matches(TRIGGERS)) highlight(from, false);
-  if (from.matches(".stub")) highlight(circleFor(from), false, from);
+  if (from.matches(TRIGGERS)) highlight(from, false, stubFor(from));
+  if (from.matches(".stub")) highlight(from._trigger, false, from);
+  if (from.matches(".stub")) return;
   clearTimeout(openTimer);
   if (open && to && (to === open.trigger || to === open.box)) return;
   scheduleClose();
 });
 
-// ASIDE-2: an aside's circle and its stub take the accent together.
-function circleFor(stub) {
-  const id = "aside-" + stub.id.replace("aside-text-", "");
-  return [...document.querySelectorAll(".circle-link")].find((c) => c.dataset.targets.split(" ").includes(id)) || null;
-}
+// ASIDE-2: a circle (or term) and its stub take the accent together.
 function highlight(trigger, on, stub) {
-  if (!trigger) return;
-  const s = stub || (trigger.dataset.targets || "").split(" ").filter((x) => x.startsWith("aside-"))
-    .map((x) => byId("aside-text-" + x.slice(6))).find((x) => x && x.classList.contains("stub"));
-  trigger.classList.toggle("hl", on);
-  s?.classList.toggle("hl", on);
+  trigger?.classList.toggle("hl", on);
+  stub?.classList.toggle("hl", on);
 }
 
-// ── The margin, tier L (POP-8, ASIDE-3/4, MNOTE-2/4, IMG-2) ────────────────
+// ── The margin, tier L (POP-8, ASIDE-3/4, TERM-3, MNOTE-2/4, IMG-2) ────────
 
 let currentTier = null;
+
+// The aside's circle, by its target.
+function circleFor(stub) {
+  const id = "aside-" + stub.id.replace("aside-text-", "");
+  return [...article.querySelectorAll(".circle-link")].find((c) => c.dataset.targets.split(" ").includes(id)) || null;
+}
+
+// TERM-3: a definition's stub, built from the Terms store: the headword and
+// the definition on one line; More and see-also below, shown when open.
+function defStub(t) {
+  const src = byId(t.dataset.targets);
+  if (!src) return null;
+  const c = clean(src);
+  const dfn = c.querySelector("dfn");
+  const head = dfn ? dfn.textContent : "";
+  if (dfn) {
+    const next = dfn.nextSibling;
+    dfn.remove();
+    if (next && next.nodeType === 3) next.textContent = next.textContent.replace(/^\.\s*/, "");
+  }
+  const def = c.querySelector(".definition");
+  const text = el("span", { class: "stub-text" }, el("span", { class: "stub-head" }, head), " ", ...(def ? def.childNodes : []));
+  const extra = el("span", { class: "stub-extra" });
+  const more = c.querySelector(".term-more");
+  if (more) {
+    more.hidden = true;
+    const btn = el("button", { type: "button", class: "popup-more" }, "More");
+    const line = el("span", { class: "stub-more-line" }, btn);
+    btn.addEventListener("click", (e) => { e.stopPropagation(); more.hidden = false; line.hidden = true; positionMargin(); });
+    extra.append(line, more);
+  }
+  const see = c.querySelector(".see-also");
+  if (see) extra.append(see);
+  const s = el("span", { class: "in-margin stub def-stub", tabindex: "0", role: "button", "aria-expanded": "false" }, text);
+  if (extra.childNodes.length) s.append(extra);
+  return s;
+}
 
 function setupMargin() {
   const L = tier() === "L";
   if (L === (currentTier === "L") && currentTier !== null) return;
-  close();
-  for (const a of article?.querySelectorAll(".aside[id^='aside-text-']") || []) {
+  collapseMargin();   // a popup stays open: popups exist at every tier
+  if (!article) return;
+  for (const a of article.querySelectorAll(".aside[id^='aside-text-']")) {
     if (a.closest("#asides")) continue;
+    const t = circleFor(a);
     if (L) {
       a.hidden = false;
       a.classList.add("in-margin", "stub");
       a.tabIndex = 0;
       a.setAttribute("role", "button");
       a.setAttribute("aria-expanded", "false");
+      a._trigger = t;
+      if (t) t._stub = a;
     } else {
       a.hidden = true;
       a.classList.remove("in-margin", "stub", "is-full", "is-open", "hl");
@@ -560,57 +632,108 @@ function setupMargin() {
       a.removeAttribute("role");
       a.removeAttribute("aria-expanded");
       delete a.dataset.full;
-      a.style.transform = "";
+      a.removeAttribute("style");
+      if (t) t._stub = null;
     }
   }
-  for (const m of article?.querySelectorAll(".margin-note") || []) {
+  // TERM-3: definitions in the text get stubs too (not those inside an aside)
+  for (const s of article.querySelectorAll(".def-stub")) { if (s._trigger) s._trigger._stub = null; s.remove(); }
+  if (L) {
+    for (const t of article.querySelectorAll("a.term[data-targets]")) {
+      if (t.closest(".aside, .endmatter, .in-margin, nav.toc") || t.dataset.targets.includes(" ")) continue;
+      const s = defStub(t);
+      if (!s) continue;
+      t.after(s);
+      s._trigger = t;
+      t._stub = s;
+    }
+  }
+  for (const m of article.querySelectorAll(".margin-note")) {
     m.classList.toggle("in-margin", L);
     if (!L) m.style.transform = "";
   }
 }
 
+// ASIDE-4, MNOTE-4: margin notes hold their place by their paragraph and
+// stubs fit around them, moving down just enough to clear; then an open
+// item pushes whatever is below it down, as far as it needs, and everything
+// returns when it closes.
 function positionMargin() {
   if (tier() !== "L" || !article) return;
   const items = [...article.querySelectorAll(".in-margin.stub, .in-margin.margin-note")];
   for (const it of items) it.style.transform = "";
-  // ASIDE-3: an aside that fits in two margin lines is shown in full
-  for (const s of items.filter((i) => i.classList.contains("stub"))) {
+  const isNote = (i) => i.classList.contains("margin-note");
+  // Stubs can sit in smaller text (a caption, a table), where the stylesheet's
+  // em would be wrong; so their place and size are set from the article's.
+  const cs = getComputedStyle(article), fs = parseFloat(cs.fontSize);
+  const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
+  for (const st of items.filter((i) => !isNote(i))) {
+    Object.assign(st.style, { left: `${v("--measure") + v("--gap")}px`, width: `${v("--margin")}px`, fontSize: `${0.85 * fs}px` });
+  }
+  // ASIDE-3: an item that fits in two margin lines is shown in full
+  for (const s of items.filter((i) => !isNote(i) && !i.classList.contains("is-open"))) {
     s.classList.add("is-full");
     const lh = parseFloat(getComputedStyle(s).lineHeight);
-    if (s.offsetHeight <= 2 * lh + 1) s.dataset.full = "1";
+    if (s.offsetHeight <= 2 * lh + 1 && !s.querySelector(".stub-extra")) s.dataset.full = "1";
     else { delete s.dataset.full; s.classList.remove("is-full"); }
   }
   const rect = (x) => x.getBoundingClientRect();
-  // MNOTE-4: margin notes hold their place; IMG-2: wide and full elements take the margin
-  const blocked = [
-    ...items.filter((i) => i.classList.contains("margin-note")).map((n) => [rect(n).top, rect(n).bottom]),
-    ...[...article.querySelectorAll(".w-wide, .w-full")].map((o) => [rect(o).top, rect(o).bottom]),
-  ];
-  let last = -Infinity;
-  for (const it of items) {
-    const r = rect(it);
-    if (it.classList.contains("margin-note")) { last = Math.max(last, r.bottom); continue; }
-    let y = Math.max(r.top, last + 4);
-    // ASIDE-4: move down just enough to clear what is already there
+  const natural = new Map(items.map((i) => [i, rect(i).top]));
+  const height = new Map(items.map((i) => [i, rect(i).height]));
+  const O = marginOpen?.stub;
+  const lineOf = (i) => parseFloat(getComputedStyle(i).lineHeight);
+  const gap = items.length ? lineOf(items[0]) * 0.25 : 4;
+  const order = [...items].sort((a, b) => natural.get(a) - natural.get(b));
+  const wide = [...article.querySelectorAll(".w-wide, .w-full")].map((o) => [rect(o).top, rect(o).bottom]);
+  const clear = (y, h, zones) => {
     for (let moved = true; moved;) {
       moved = false;
-      for (const [top, bottom] of blocked) {
-        if (y < bottom + 4 && y + r.height > top - 4) { y = bottom + 4; moved = true; }
-      }
+      for (const [top, bottom] of zones) if (y < bottom + gap && y + h > top - gap) { y = bottom + gap; moved = true; }
     }
-    if (y !== r.top) it.style.transform = `translateY(${y - r.top}px)`;
-    last = y + r.height;
+    return y;
+  };
+  // Pass 1, everything collapsed: margin notes where they belong; stubs after
+  // the one above, clear of notes and of wide figures and tables.
+  const notes = items.filter(isNote).map((n) => [natural.get(n), natural.get(n) + height.get(n)]);
+  const at = new Map();
+  let last = -Infinity;
+  for (const it of order) {
+    const h = it === O ? lineOf(it) : height.get(it);
+    if (isNote(it)) { at.set(it, natural.get(it)); last = Math.max(last, natural.get(it) + h); continue; }
+    const y = clear(Math.max(natural.get(it), last + gap), h, [...notes, ...wide]);
+    at.set(it, y);
+    last = y + h;
+  }
+  // Pass 2: the open item keeps its place and grows; what is below moves down.
+  if (O && at.has(O)) {
+    let bottom = at.get(O) + height.get(O);
+    for (const it of order.filter((i) => i !== O && at.get(i) >= at.get(O))) {
+      const y = clear(Math.max(at.get(it), bottom + gap), height.get(it), wide);
+      at.set(it, y);
+      bottom = y + height.get(it);
+    }
+  }
+  for (const it of items) {
+    const dy = at.get(it) - natural.get(it);
+    if (Math.abs(dy) > 0.5) it.style.transform = `translateY(${dy}px)`;
   }
 }
 
 let layoutFrame = 0;
+let refreshToc = () => {};   // set by setupBar
 function scheduleLayout() {
   cancelAnimationFrame(layoutFrame);
   layoutFrame = requestAnimationFrame(() => {
     const t = tier();
     if (t !== currentTier) { setupMargin(); currentTier = t; }
     positionMargin();
+    refreshToc();
     repin?.();
+    // an open popup follows its circle (after a size step or a resize)
+    if (open && open.mode === "float" && open.trigger.isConnected) {
+      open.box.style.maxHeight = "";
+      placeFloat(open.box, open.trigger);
+    }
   });
 }
 
@@ -660,6 +783,8 @@ function setupBar() {
   const subsections = [...document.querySelectorAll("article section.level-1 > section.level-2")];
   const tocLinks = [...document.querySelectorAll("nav.toc a[href^='#']")];
   const tocList = document.querySelector("nav.toc .toc-inner > ul");
+  const tocMark = tocList && el("span", { class: "toc-mark", "aria-hidden": "true", hidden: "" });
+  if (tocMark) tocList.append(tocMark);
   let shownTop = null;
   const inBand = new Set();
   const currentOf = (list) => {
@@ -678,6 +803,16 @@ function setupBar() {
       if (ids.has(a.getAttribute("href"))) a.setAttribute("aria-current", "location");
       else a.removeAttribute("aria-current");
     }
+    // TOC-2: a hairline in the gutter beside the deepest current entry
+    if (tocMark) {
+      const deepest = tocList.querySelector(`a[href="#${(sub || current)?.id}"]`);
+      tocMark.hidden = !deepest;
+      if (deepest) {
+        const r = deepest.getBoundingClientRect(), u = tocList.getBoundingClientRect();
+        tocMark.style.top = `${r.top - u.top + tocList.scrollTop + (r.height - tocMark.offsetHeight) / 2}px`;
+        tocMark.style.left = `${r.left - u.left - 0.55 * parseFloat(getComputedStyle(deepest).fontSize)}px`;
+      }
+    }
     // TOC-2: a list too tall for the window scrolls itself, keeping the
     // current section at its top (what is left to read, below it)
     if (current && current.id !== shownTop) {
@@ -693,6 +828,7 @@ function setupBar() {
     update();
   }, { rootMargin: "0px 0px -70% 0px" });
   [...sections, ...subsections].forEach((s) => io.observe(s));
+  refreshToc = update;
   update();
 }
 
@@ -749,9 +885,9 @@ function toggleToc() {
   const box = buildPopup(tocContent(), true);
   box.classList.add("toc-popup");
   let shade = null;
-  if (!canHover.matches) shade = placePopin(box);
+  if (touch.matches) shade = placePopin(box);
   else {
-    document.body.append(box);
+    mount().append(box);
     const r = button.getBoundingClientRect();
     box.style.position = "fixed";
     box.style.left = `${Math.max(8, r.left)}px`;

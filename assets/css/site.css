@@ -391,6 +391,16 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
   }
   .toc a:hover, .toc a:focus-visible { color: var(--accent); }
   .toc a[aria-current] { color: var(--text); }
+  /* the deepest current entry also gets a hairline in the gutter (TOC-2) */
+  .toc-inner > ul { padding-left: 0.7em; }
+  .toc-mark {
+    position: absolute;
+    left: 0;
+    width: 1px;
+    height: 1em;
+    background: var(--rule);
+    transition: top 0.2s ease;
+  }
 }
 
 /* ── Intro paragraph (LAYOUT-3): first line in small caps, narrow tiers only ── */
@@ -460,9 +470,11 @@ a:visited .mark { background-color: var(--accent-visited); }   /* MARK-5 */
 }
 a.circle-link { color: var(--accent); }
 a.circle-link + a.circle-link .circle, .nw + a.circle-link .circle { margin-left: 0.2em; }
-/* Hovered or focused, the circle fills (and so does an aside's stub, ASIDE-2). */
-a.circle-link:hover .circle, a.circle-link:focus-visible .circle,
-a.term:hover .circle, a.term:focus-visible .circle, .circle.is-open { background: var(--accent); }
+/* ASIDE-2: a circle is filled while what it opens is open (a margin item,
+   or a pinned popup), whatever the pointer does; hover only pairs it with
+   its stub by colour. */
+.circle.is-open { background: var(--accent); }
+a.term.hl { color: var(--accent); }
 
 /* MARK-6: an invisible hit area of at least 24 × 24 px around annotated text. */
 a.link, a.term, a.circle-link, a.back { position: relative; }
@@ -556,7 +568,22 @@ figcaption {
   hyphens: manual;
   -webkit-hyphens: manual;
 }
-figcaption .credit { color: var(--text-muted); }
+/* IMG-3a: every credit line (a figure's #:credit, a table's #:source) is
+   set alike, and unlike a caption: muted, italic, smaller, its own line. */
+.credit {
+  display: block;
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 0.75em;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: 0;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  margin-top: 0.3em;
+}
+figcaption .credit { font-size: 0.88em; }   /* 0.75 of the body, inside a 0.85 caption */
+.credit em { font-style: normal; }
 figure + p { text-indent: 0; }
 
 /* IMG-4: in dark mode, invertible images are inverted; others dimmed.
@@ -613,7 +640,11 @@ figure[data-invert="yes"] img { mix-blend-mode: multiply; }
 .a-center { text-align: center; }
 .size-small table { font-size: 0.85em; }
 .size-tiny table { font-size: max(0.7em, 12px); }
-.table-source { font-size: 0.85em; text-align: left; color: var(--text-muted); margin-top: 0.4em; text-indent: 0; }
+/* the caption above a table is set as a figure's caption is (IMG-3a),
+   whatever the table's own size */
+.table-wrap caption { line-height: 1.4; hyphens: manual; -webkit-hyphens: manual; }
+.size-small caption { font-size: 1em; }                 /* the table is 0.85 */
+.size-tiny caption { font-size: calc(0.85em / 0.7); }   /* the table is ~0.7 */
 
 /* ── End matter (CITE-10) ──────────────────────────────────────────── */
 .endmatter {
@@ -789,8 +820,9 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   transition: transform 0.2s ease;
 }
 .bar.is-shown { transform: none; }
-/* BAR-1: on phones (tier S) the bar sits at the bottom, within reach */
-@container page not (min-width: 39em) {
+/* BAR-1: on touch devices the bar sits at the bottom, whatever the tier,
+   so rotating a phone never moves it */
+@media (hover: none) {
   .bar {
     top: auto;
     bottom: 0;
@@ -826,7 +858,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .popup {
   position: absolute;
   z-index: 30;
-  width: min(26em, calc(100vw - 2rem));
+  width: min(22em, calc(100vw - 2rem));   /* in the page's em since THEME-5b */
   max-height: min(70vh, 32em);
   display: flex;
   flex-direction: column;
@@ -862,7 +894,9 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   appearance: none; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0;
 }
 .popup-bar a:hover, .popup-bar button:hover, .popup-bar a:focus-visible, .popup-bar button:focus-visible { color: var(--accent); }
-.popup-close { font-size: 1.3em; line-height: 1; padding: 0 0.15em; }
+.popup-close { display: inline-flex; align-items: center; justify-content: center; align-self: center; }
+.popup-close svg, .popup-back svg { width: 0.85em; height: 0.85em; }
+.popup-back { display: inline-flex; align-items: center; gap: 0.25em; }
 .popup-body { overflow: auto; padding: 0.7em 0.9em 0.8em; overscroll-behavior: contain; }
 .popup-body > :first-child { margin-top: 0; }
 .popup-body > :last-child { margin-bottom: 0; }
@@ -875,7 +909,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .popup-item-head { font-variant-caps: all-small-caps; letter-spacing: 0.05em; color: var(--text-muted); margin: 0 0 0.2em; }
 .popup-bib { color: var(--text-muted); }
 .popup .term-more { margin-top: 0.5em; }
-.popup-more, .popup-back {
+.popup-more {
   appearance: none; border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; padding: 0;
 }
 .card-domain { color: var(--text-muted); }
@@ -891,7 +925,14 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   max-height: 60vh;
   border-radius: 8px 8px 0 0;
   border-width: 1px 0 0;
-  font-size: 0.95em;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* POP-5: on touch devices every title-bar control is at least 44 × 44 px,
+   and the × is drawn large enough to read as tappable. */
+@media (hover: none) {
+  .popup-bar { align-items: center; padding-block: 0; }
+  .popup-bar a, .popup-bar button { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .popup-close svg { width: 1.25em; height: 1.25em; }
 }
 .popin-shade { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / 0.25); }
 
@@ -927,39 +968,31 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
     color: var(--text-muted);
   }
 }
+/* ASIDE-3, TERM-3: asides and definitions start as one margin line with a
+   hairline rule on the right edge of the margin; opening one grows the same
+   text downward in place, and the rule with it. No box, no background. */
 .stub {
-  display: block;
+  display: inline-block;   /* blockified once absolute; inline so it starts on its circle's line */
+  box-sizing: border-box;
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--text-muted);
-  border-radius: 2px;
+  padding-right: 0.6em;
+  border-right: 1px solid var(--rule);
 }
-.stub.is-full { white-space: normal; }
+.stub.is-full, .stub.is-open { white-space: normal; text-overflow: clip; }
+.stub.is-full { cursor: default; }
 .stub:hover, .stub.hl, .stub:focus-visible { color: var(--accent); }
-.stub.is-open {
-  z-index: 15;
-  white-space: normal;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--rule);
-  padding: 0.4em 0.6em;
-  margin: -0.45em -0.65em;
-  max-height: 70vh;
-  overflow: auto;
-}
-.margin-panel {
-  z-index: 16;
-  background: var(--bg);
-  border: 1px solid var(--rule);
-  padding: 0.4em 0.6em;
-  margin: -0.45em -0.65em;
-  max-height: 70vh;
-  overflow: auto;
-}
-.margin-panel .popup-item-head:first-child { margin-top: 0; }
-.circle-link.hl .circle { background: var(--accent); }
+.stub.is-open { color: var(--text); max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
+.stub:focus-visible { outline-offset: 3px; }
+.stub-head { font-variant-caps: all-small-caps; letter-spacing: 0.04em; }
+.stub-extra { display: none; }
+.stub.is-open .stub-extra { display: block; }
+.stub-extra .term-more, .stub-extra .see-also, .stub-more-line { display: block; margin: 0.4em 0 0; }
+.stub-extra .term-more p { margin: 0 0 0.4em; text-indent: 0; }
+.stub-extra .see-also { color: var(--text-muted); }
 
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
