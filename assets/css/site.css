@@ -568,6 +568,8 @@ ol.list > li::before {
 }
 .exhibit-title { margin-bottom: 0.5em; font-weight: 600; }   /* set apart from the caption */
 .exhibit-label { margin-right: 0.25em; }
+/* "Figure 1": the number lines up with the capital, wherever the label is */
+.exhibit-label, .exhibit-ref, .popup-title.plain { font-variant-numeric: lining-nums; }
 .exhibit-meta { margin-top: 0.6em; }
 .exhibit-caption { display: block; }
 .exhibit-body { position: relative; }
@@ -907,6 +909,8 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   font-variant-caps: all-small-caps;
   letter-spacing: 0.05em;
 }
+/* a figure's or table's popup is titled as it is in the margin, not in small caps */
+.popup-title.plain { font-variant-caps: normal; letter-spacing: normal; font-weight: 600; color: var(--text); }
 .popup-bar a, .popup-bar button {
   appearance: none; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0;
 }
@@ -948,7 +952,9 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
    and the × is drawn large enough to read as tappable. */
 @media (hover: none) {
   .popup-bar { align-items: center; padding-block: 0; }
-  .popup-bar a, .popup-bar button { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  /* a figure's or table's popup is titled as it is in the margin, not in small caps */
+.popup-title.plain { font-variant-caps: normal; letter-spacing: normal; font-weight: 600; color: var(--text); }
+.popup-bar a, .popup-bar button { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
   .popup-close svg { width: 1.25em; height: 1.25em; }
 }
 .popin-shade { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / 0.25); }

@@ -693,7 +693,7 @@
         [((tag? 'od-ref) x)
          (define id (attr-ref x 'target))
          (define label (hash-ref labels id (λ () (build-error "◊ref ~s: no figure or table with that id on this page" id))))
-         (link (string-append "#" id) label)]
+         (link (string-append "#" id) `(span ((class "exhibit-ref")) ,label))]
         [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
         [else x]))))
 

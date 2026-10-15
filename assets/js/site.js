@@ -221,7 +221,7 @@ function sectionContent(id) {
   const title = h ? h.textContent.replace(/§\s*$/, "").trim() : "";
   if (h) h.remove();
   for (const x of c.querySelectorAll(".circle-link, .circle")) x.remove();
-  return { title, body: el("div", {}, ...c.childNodes) };
+  return { title, plain: source.classList.contains("exhibit"), body: el("div", {}, ...c.childNodes) };
 }
 
 // Cross-page extracts are build-time fragments, fetched once (POP-7).
@@ -316,7 +316,7 @@ function buildPopup(c, pinned) {
   const id = `popup-title-${++seq}`;
   const box = el("div", { class: "popup", role: pinned ? "dialog" : "tooltip", "aria-labelledby": id, tabindex: "-1" });
   const bar = el("div", { class: "popup-bar" },
-    el("span", { class: "popup-title", id }, c.title || ""),
+    el("span", { class: c.plain ? "popup-title plain" : "popup-title", id }, c.title || ""),
     c.url ? el("a", { class: "popup-open", href: c.url, target: "_blank", rel: "noopener" }, "Open in new tab") : null,
     el("button", { type: "button", class: "popup-close", "aria-label": "Close" }, icon(CROSS)));
   box.append(bar, el("div", { class: "popup-body" }, c.body));
