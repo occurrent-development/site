@@ -1081,6 +1081,34 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .stub-extra .term-more p { margin: 0 0 0.4em; text-indent: 0; }
 .stub-extra .see-also { color: var(--text-muted); }
 
+/* ── Trial, 2026-10-15: headings in sans (?h=sans on any page) ──────────────
+   Every heading, figure and table title, table column heading and popup
+   title in the system sans, semibold and in ordinary case. Not the default;
+   kept until Ryan decides, then made permanent or removed. */
+:root { --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.h-sans .essay-header h1,
+.h-sans section h2, .h-sans section h3, .h-sans section h4,
+.h-sans .exhibit-title, .h-sans .lb-title,
+.h-sans .table-wrap thead th, .h-sans .sticky-head th,
+.h-sans .popup-title, .h-sans .bar-section {
+  font-family: var(--sans);
+  font-variant-caps: normal;
+  font-variant-numeric: lining-nums;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.h-sans .essay-header h1 { font-size: 1.85em; letter-spacing: -0.01em; line-height: 1.2; }
+.h-sans section h2 { font-size: 1.1em; }
+.h-sans section h3 { font-size: 0.95em; }
+.h-sans section h4 { font-size: 0.85em; line-height: 1.75; }          /* run in, on the text's first line */
+.h-sans .exhibit-title, .h-sans .lb-title { font-size: 0.78em; line-height: 1.45; }
+.h-sans .exhibit-label { margin-right: 0.35em; }
+.h-sans .table-wrap thead th, .h-sans .sticky-head th { font-size: 0.8em; font-weight: 500; }
+.h-sans .popup-title { font-size: 0.95em; }
+.h-sans .bar-section { font-size: 0.75em; font-weight: 500; }
+.h-sans .self { font-family: Libertinus Serif, serif; font-weight: 400; }
+
 /* ── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
