@@ -14,10 +14,24 @@
 (provide note-form bib-entry bib-order cite-key-known? normalize-loc external-link)
 
 (define cache #f)
+;; The committed cache, merged with the local one that holds the forms only
+;; drafts cite (not committed, absent in CI; tools/refs.py).
 (define (the-cache)
   (unless cache
-    (define f (project-file "data" "cite-cache.json"))
-    (set! cache (if (file-exists? f) (call-with-input-file f read-json) (hasheq))))
+    (define (load . parts)
+      (define f (apply project-file parts))
+      (if (file-exists? f) (call-with-input-file f read-json) (hasheq)))
+    (define merged
+      (for/fold ([c (load "data" "cite-cache.json")])
+                ([(k v) (in-hash (load "data" "cite-cache.local.json"))])
+        (define old (hash-ref c k #f))
+        (hash-set c k
+                  (if old
+                      (for/fold ([o old]) ([form (in-list '(full short))])
+                        (hash-set o form (for/fold ([h (hash-ref o form)]) ([(loc v2) (in-hash (hash-ref v form))])
+                                           (hash-set h loc v2))))
+                      v))))
+    (set! cache merged))
   cache)
 
 (define (entry key)

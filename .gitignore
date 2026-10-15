@@ -25,6 +25,10 @@ __pycache__/
 \#*\#
 .\#*
 
+# Citations used only by drafts (tools/refs.py): local until publication
+/refs/refs.local.bib
+/data/cite-cache.local.json
+
 # Machine-specific make settings
 local.mk
 

@@ -225,6 +225,8 @@ Build DRAFT-E1 unless Ryan says otherwise.
 
 **PUB-3 (MUST)** `od-commit` (`C-c o C`), for a change to an already-published essay: asks **Typo / Meta / Revision**; prefixes the message `[typo]` or `[meta]` for the first two (REV-1 ignores them for "last revised"); for a Revision, checks that the essay's `◊changelog{…}` (once built; until then, warns and continues) has a new line, then stages the essay folder and the caches as in PUB-1 step 6 and opens `magit-status`. Pages (`pages/*.pm`) and glossary files use the same command with the Revision choice.
 
+*2026-10-16: the caches PUB-3 stages hold only what published pages cite (SPEC CITE-5a), so staging them never carries a draft's references.*
+
 **PUB-4 (MUST)** Refuse to run `od-publish` or `od-commit` when the current branch is not `main`, or when `main` is behind `origin/main` (fetch first, `magit-git-string "rev-list" "--count" "main..origin/main"`); say which.
 
 **PUB-5 (SHOULD)** `od-deploy-status` (`C-c o d`): opens `https://github.com/occurrent-development/site/actions` in the browser, or, if `gh` is installed, runs `gh run watch` for the latest run in a compilation buffer and then opens the essay's URL on success. `od-publish` with the prefix argument calls it after pushing.

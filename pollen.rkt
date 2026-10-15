@@ -52,6 +52,7 @@
   (define-runtime-path fonts "assets/fonts/fonts.rktd")
   (define-runtime-path images "assets/img/images.json")
   (define-runtime-path cite-cache "data/cite-cache.json")
+  (define-runtime-path cite-cache-local "data/cite-cache.local.json")
   (define-runtime-path link-meta "data/link-meta.json")
   (define-runtime-path invert "data/invert.json")
   (define-runtime-path typography "typography.rkt")
@@ -66,7 +67,7 @@
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
       od-summary od-more od-abstract od-epistemic))
   (define cache-watchlist
-    (list css fonts images cite-cache link-meta invert typography head-js site-js specimen-css)))
+    (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css)))
 
 (require (prefix-in files: (submod "." setup)))
 
