@@ -5,6 +5,7 @@
 (require rackunit
          racket/string
          racket/list
+         racket/file
          txexpr
          (except-in "pollen.rkt" list)
          (only-in "lib/util.rkt" parse-tags output->url text-of))
@@ -298,3 +299,29 @@
   (check-equal? (map (λ (a) (attr-ref a 'href)) links) '("#second" "#first"))
   (check-true (and (regexp-match? #rx"Table\u00A02" (text-of (car links))) #t))
   (check-true (fails? (λ () (root "See " (ref "nowhere") ".")))))
+
+(test-case "EDIT-10: Org's table separators: |---+---| under the header, others ignored"
+  (define t (table #:id "o" #:title "T" "| a | b |" "\n" "|---+---|" "\n" "| 1 | 2 |" "\n" "|---+---|" "\n" "| 3 | 4 |" "\n"))
+  (check-equal? (length (find-all t (tag? 'th))) 2)
+  (check-equal? (length (find-all t (tag? 'tr))) 3)        ; header + two body rows
+  (check-true (fails? (λ () (table #:id "o" #:title "T" "| a | b |" "\n" "|---+---|" "\n" "| 1 |" "\n")))))
+
+;; VOCAB-3: the Emacs vocabulary and the tags pollen.rkt provides agree, so
+;; the highlighter never calls a working tag an error, nor the reverse.
+(test-case "VOCAB-3: od-vocabulary's built tags are exactly the tags pollen.rkt provides"
+  (define template-helpers
+    '(root site-css font-preloads head-script asset-url specimen? specimen-css page-title
+      essay-header doc-body format-date revised-date site-menu has-toc?))
+  ;; tags with keyword arguments are exported as syntax, so read both lists
+  (define-values (vars stx) (module->exports (string->path (path->string (build-path (current-directory) "pollen.rkt")))))
+  (define provided
+    (for*/list ([phase (in-list (append vars stx))] #:when (eqv? (car phase) 0) [e (in-list (cdr phase))]
+                #:unless (memq (car e) template-helpers))
+      (car e)))
+  (define el (file->string "emacs/occurrent.el"))
+  (define built
+    (for/list ([m (in-list (regexp-match* #px"(?m:^\\s*\\(([a-z][a-z0-9-]*)\\s+:pos [^\n]*:built t)" el #:match-select cadr))])
+      (string->symbol m)))
+  (check-not-false (pair? built) "no vocabulary entries found in emacs/occurrent.el")
+  ;; define-meta is Pollen's own, not a pollen.rkt export
+  (check-equal? (sort (remq 'define-meta built) symbol<?) (sort provided symbol<?)))

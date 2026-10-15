@@ -67,9 +67,30 @@
 
 (define separator-rx #px"^\\s*:?-+:?\\s*$")
 
+;; Org's separator line (orgtbl-mode, EDIT-10): |---+---|, read as |---|---|.
+(define (org-separator? line)
+  (and (= (length line) 1) (string? (car line))
+       (regexp-match? #px"^\\s*\\|?\\s*-[-+]*-?\\s*\\|?\\s*$" (car line))
+       (regexp-match? #rx"\\+" (car line))))
+
 ;; → (values header-cells aligns body-rows)
 (define (parse-pipe-table elems)
-  (define rows (map split-cells (pipe-lines elems)))
+  (define rows
+    (let* ([lines (pipe-lines elems)]
+           ;; Org writes |---+---|: one cell to the splitter; make it one per column
+           [lines (for/list ([l (in-list lines)])
+                    (if (org-separator? l)
+                        (let ([n (length (regexp-match* #rx"\\+" (car l)))])
+                          (list (string-join (make-list (add1 n) "---") "|")))
+                        l))]
+           [rows (map split-cells lines)]
+           [sep? (λ (r) (and (pair? r) (andmap (λ (c) (and (= (length c) 1) (string? (car c))
+                                                           (regexp-match? separator-rx (car c))))
+                                               r)))])
+      ;; separators after the one under the header only group rows in the source
+      (if (>= (length rows) 2)
+          (list* (first rows) (second rows) (filter (λ (r) (not (sep? r))) (drop rows 2)))
+          rows)))
   (unless (>= (length rows) 2) (build-error "table: needs a header row and a separator row"))
   (define header (first rows))
   (define sep (second rows))
