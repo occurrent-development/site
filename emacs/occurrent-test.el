@@ -114,8 +114,10 @@
   (od-test-errors-are "◊section[#:id \"sec\"]{A}\n\nSee ◊ref[\"sec\"]." '("\"sec\"")))
 
 (ert-deftest od-test-errors-meta ()
-  (od-test-errors-are "◊define-meta[abstract]{A value\nbroken across lines.}\n"
-                      '("◊define-meta[abstract]{A value\nbroken across lines.}"))
+  (od-test-errors-are "◊define-meta[subtitle]{A value\nbroken across lines.}\n"
+                      '("◊define-meta[subtitle]{A value\nbroken across lines.}"))
+  ;; the abstract and epistemic status are tags now (SRC-4a)
+  (od-test-errors-are "◊define-meta[abstract]{old}\n" '("abstract"))
   (od-test-errors-are "◊define-meta[status]{finished}\n" '("finished"))
   (od-test-errors-are "◊define-meta[term]{x}\n" '("term")))
 

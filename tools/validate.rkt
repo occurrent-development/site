@@ -150,9 +150,14 @@
   (make-directory* dir)
   (define metas (get-metas (hash-ref p 'src)))
   (define (meta k) (let ([v (select-from-metas k metas)]) (and v (format "~a" v))))
+  ;; the page's popup: title, subtitle, and the abstract from the document's header (SRC-4a)
+  (define abstract-ps
+    (map fragment-clean (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'p) (class? x "abstract"))))))
   (call-with-output-file (build-path dir "_page.frag") #:exists 'replace
-    (λ (o) (write-string (->html `(div (h1 ,(or (meta 'title) "")) ,@(filter values (list (and (meta 'subtitle) `(p ((class "subtitle")) ,(meta 'subtitle)))
-                                                                                          (and (meta 'abstract) `(p ((class "abstract")) ,(meta 'abstract))))))) o)))
+    (λ (o) (write-string (->html `(div (h1 ,(or (meta 'title) ""))
+                                       ,@(if (meta 'subtitle) `((p ((class "subtitle")) ,(meta 'subtitle))) null)
+                                       ,@abstract-ps))
+                         o)))
   (for ([sec (in-list (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'section) (attrs-have-key? x 'id)
                                                                (not (class? x "endmatter"))))))])
     (call-with-output-file (build-path dir (string-append (attr-ref sec 'id) ".frag")) #:exists 'replace

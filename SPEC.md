@@ -100,7 +100,8 @@ Anything pushed to a public repo is public permanently.
 - **SRC-1 (MUST)** Headings require an explicit permanent `#:id`; ids are never derived from heading text.
 - **SRC-2 (MUST)** An unrecognised tag is a build error.
 - **SRC-3 (MUST)** Source is hard-wrapped freely. A single newline inside a paragraph is a **space**, not a `<br>` (override Pollen's `decode-paragraphs` default via `#:linebreak-proc`). An explicit break is `◊br{}`.
-- **SRC-4 (MUST)** A `◊define-meta` value stays on **one line**: Pollen reads further lines as extra key/value pairs and the build fails. `occurrent.el` keeps meta lines out of `fill-paragraph`. (Longer header text, such as the abstract, may later move to body tags; until then, one line.)
+- **SRC-4 (MUST)** A `◊define-meta` value stays on **one line**: Pollen reads further lines as extra key/value pairs and the build fails. `occurrent.el` keeps meta lines out of `fill-paragraph`.
+- **SRC-4a (MUST) Header text in the body.** The abstract and the epistemic status are tags, `◊abstract{…}` and `◊epistemic{…}`, written at the top of the source after the meta lines and before the first paragraph or heading, once each. They wrap like any paragraph and may hold markup (emphasis, citations, terms, `◊ref`); the root pass takes them out of the body and sets them in the header (LAYOUT-1), so a citation in the abstract is numbered first. Empty, they count as absent. `◊define-meta[abstract]` and `◊define-meta[epistemic]` are build errors that name the new form. *Changed 2026-10-15: they were one-line meta values.*
 
 ### 3.2 Example
 
@@ -108,8 +109,12 @@ Anything pushed to a public repo is public permanently.
 ◊define-meta[title]{Occurrent development}
 ◊define-meta[status]{published}
 ◊define-meta[published]{2026-10-01}
-◊define-meta[epistemic]{Speculative; argued from theory rather than data.}
-◊define-meta[abstract]{Why development is better described as a process than a sequence of states.}
+◊define-meta[tags]{philosophy, child development}
+
+◊epistemic{Speculative; argued from theory rather than data.}
+
+◊abstract{Why development is better described as a process than a sequence
+of states.}
 
 ◊margin{Small stuff matters too.} A child is not a sequence of states◊aside{Whitehead
 makes the same move against "simple location" ◊cite["whitehead1925"].} but an
@@ -138,6 +143,7 @@ Citation keys are Better BibTeX keys from Zotero (`hackingMakingPeople2006`); th
 | `◊margin{…}` | Paragraph gloss (§7.2) | body | — |
 | `◊section` `◊subsection` `◊subsubsection` `[#:id]{title}` | Heading markers (§8) | title, id | `#:short` |
 | `◊summary{…}` | One-line section summary for popups | body | — |
+| `◊abstract{…}` / `◊epistemic{…}` | The header's abstract and epistemic status, written in the body (SRC-4a) | body | — |
 | `◊more{…}` | Long text of a glossary definition (§6); glossary files only | body | — |
 | `◊list{…}` | Lists (§3.4) | body | `#:start`, `#:columns` |
 | `◊table{…}` / `◊table-csv[path]` | Tables (§9.2) | body / path, `#:id`, `#:title` | `#:caption`, `#:source`, `#:size`, `#:sortable`, `#:align`, `#:row-headers` |
@@ -544,8 +550,8 @@ Site-wide:
 | `title`, `subtitle` | title | |
 | `status` | yes | `draft` / `published` / `revised` / `superseded` |
 | `published` | yes | ISO date of first publication |
-| `epistemic` | SHOULD | One sentence on confidence and what it rests on |
-| `abstract` | SHOULD | Header, cross-essay popups, feed |
+| `◊epistemic{…}` (a tag, SRC-4a) | SHOULD | One sentence on confidence and what it rests on |
+| `◊abstract{…}` (a tag, SRC-4a) | SHOULD | Header, cross-essay popups, feed |
 | `tags` | MAY | Comma-separated lowercase words, on one line: `◊define-meta[tags]{philosophy, child development}` (INDEX-3); shown in the header (LAYOUT-1) |
 
 - **REV-1 (MUST)** "Last revised" comes from the git log (latest commit touching the file, ignoring `[typo]`/`[meta]` commits), never typed by hand.

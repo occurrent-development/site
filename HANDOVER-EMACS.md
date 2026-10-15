@@ -46,6 +46,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 |---|---|---|---|---|
 | `define-meta` | key | — | value | yes |
 | `section` `subsection` `subsubsection` | — | `#:id` (required), `#:short` | title | yes |
+| `abstract` `epistemic` | — | — | yes | yes (SRC-4a, added 2026-10-15) |
 | `summary` | — | — | yes | yes |
 | `link` | target | `#:note` `#:title` `#:author` `#:date` | yes | no |
 | `cite` | key | `#:loc` `#:note` | no | no |
@@ -71,7 +72,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 
 **VOCAB-3 (MUST) Sync test.** `pollen-test.rkt` gains a test that reads `emacs/occurrent.el`, extracts the tag names with `:built t` from `od-vocabulary`, and asserts the set equals the tag functions `pollen.rkt` provides (the `provide` form minus the template helpers and `root`). `make test` therefore fails when the two drift. Keep `od-vocabulary` a plain quoted list with one entry per line so the Racket side can parse it with a regexp.
 
-**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published epistemic abstract tags specimen unlisted`; glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
+**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published tags specimen unlisted` (`abstract` and `epistemic` became tags on 2026-10-15, SRC-4a, so as meta keys they are errors); glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
 
 ---
 
@@ -153,7 +154,7 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 
 ```
 essays/<slug>/
-├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, epistemic, abstract, tags; then a blank line, point there
+├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, tags; then ◊epistemic{} and ◊abstract{} (SRC-4a); point at the end
 ├── img/                # figures; published with the essay
 └── support/            # everything else: notes, sources, drafts in other formats, sketches; never published (BUILD-3a)
     └── notes.md        # created empty, with the title as its first line

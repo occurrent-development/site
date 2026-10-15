@@ -5,7 +5,8 @@
 ◊define-meta[status]{published}
 ◊define-meta[published]{2026-10-14}
 ◊define-meta[tags]{philosophy, site}
-◊define-meta[epistemic]{A placeholder. Nothing here is claimed.}
+
+◊epistemic{A placeholder. Nothing here is claimed.}
 
 This essay is a placeholder. It gives the home page a second row, so that
 the table of essays can be sorted and filtered, and it will be removed before

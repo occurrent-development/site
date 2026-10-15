@@ -35,13 +35,15 @@
          (rename-out [section-break break])
          ;; annotations (§4–7)
          link cite term aside margin more
+         ;; the essay header's text (LAYOUT-1, SRC-4a)
+         abstract epistemic
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv sort-key figure ref
          ;; the home page (§13a); the specimen's sample header (THEME-7)
          essay-index header-sample
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
-         page-title essay-header doc-body format-date revised-date site-menu has-toc?)
+         page-title doc-body format-date revised-date site-menu has-toc?)
 
 (module setup racket/base
   (require racket/runtime-path)
@@ -62,7 +64,7 @@
   (define block-tags
     '(root address article aside blockquote body div dl dt dd figure figcaption
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
-      od-summary od-more))
+      od-summary od-more od-abstract od-epistemic))
   (define cache-watchlist
     (list css fonts images cite-cache link-meta invert typography head-js site-js specimen-css)))
 
@@ -121,6 +123,11 @@
   (check-id id 'term)
   (when (null? text) (build-error "◊term ~s has no text" id))
   (txexpr 'od-term `((ref ,id) ,@(if force '((force "1")) null)) text))
+
+;; SRC-4a: the abstract and the epistemic status are written in the body, so
+;; they may wrap and hold markup; the root pass moves them into the header.
+(define (abstract . xs) (txexpr 'od-abstract null xs))
+(define (epistemic . xs) (txexpr 'od-epistemic null xs))
 
 (define (aside . xs) (txexpr 'od-aside null xs))      ; §7.1
 (define (margin . xs) (txexpr 'od-margin null xs))    ; §7.2
@@ -325,7 +332,8 @@
   (for ([x (in-list (find-all elems (apply tag? tags)))])
     (build-error "~a cannot contain ◊~a" where
                  (case (get-tag x) [(od-aside) "aside"] [(od-margin) "margin"] [(od-more) "more"]
-                   [(od-cite) "cite"] [(od-term) "term"] [(od-link) "link"] [else (get-tag x)]))))
+                   [(od-cite) "cite"] [(od-term) "term"] [(od-link) "link"]
+                   [(od-abstract) "abstract"] [(od-epistemic) "epistemic"] [else (get-tag x)]))))
 
 ;; MARK-3: a note or aside numeral follows its word directly, so the space
 ;; typed before ◊cite or ◊aside is removed.
@@ -754,6 +762,10 @@
         x)))
 
 (define (check-essay-metas)
+  ;; SRC-4a: the abstract and epistemic status moved from meta lines to tags
+  (for ([k '(abstract epistemic)])
+    (when (and (current-metas) (select-from-metas k (current-metas)))
+      (build-error "◊define-meta[~a] is now ◊~a{…}, written in the body (SRC-4a)" k k)))
   ;; VAL-1: essays need their meta fields.
   (define p (source-path))
   (when (and p (essay-source? p))
@@ -768,14 +780,14 @@
 (define (glossary-root elems)
   (define flat (prepare elems))
   (check-headings-top-level flat)
-  (forbid flat '(od-aside od-margin) "a glossary definition")
+  (forbid flat '(od-aside od-margin od-abstract od-epistemic) "a glossary definition")
   (when (pair? (find-all flat heading?)) (build-error "a glossary definition cannot contain headings"))
   (txexpr 'root null flat))
 
 (define (page-root elems)
   (check-essay-metas)
   (let ([t (and (current-metas) (select-from-metas 'tags (current-metas)))]) (when t (parse-tags t)))
-  (define flat (prepare elems))
+  (define-values (abstract-el epistemic-el flat) (take-header-text (prepare elems)))
   (check-headings-top-level flat)
   (forbid flat '(od-more) "an essay")
   (for ([a (in-list (find-all flat (tag? 'od-aside)))])
@@ -783,12 +795,18 @@
   (define lifted (lift-margin-notes flat))
   (when (pair? (find-all lifted (tag? 'od-margin)))
     (build-error "◊margin must open its paragraph"))
-  (define-values (nested toc-entries) (nest-sections (mark-intro (number-exhibits lifted))))
+  ;; LAYOUT-1: the header is part of the document, so a citation or term in
+  ;; the abstract is numbered and resolved like any other
+  (define header (essay-header (current-metas) abstract-el epistemic-el))
+  (define numbered (number-exhibits (if header (cons header lifted) lifted)))
+  (define-values (nested toc-entries)
+    (nest-sections (mark-intro (if header (cdr numbered) numbered))))
   (define toc (make-toc toc-entries))
   ;; TOC-1: after the abstract (in the header) and any epigraph, before the text.
   (define-values (epigraphs body)
     (splitf-at nested (λ (x) (has-class? x "epigraph"))))
-  (define annotated (annotate (append epigraphs (if toc (list toc) null) body)))
+  (define annotated (annotate (append (if header (list (car numbered)) null)
+                                      epigraphs (if toc (list toc) null) body)))
   (define doc (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated)))))))
   (check-unique-ids doc)
   doc)
@@ -960,10 +978,37 @@
 ;; The document's elements, without the root tag.
 (define (doc-body doc) (->html (get-elements doc)))
 
+;; SRC-4a: take ◊abstract and ◊epistemic out of the body. Each may appear
+;; once, at the top level (not inside a paragraph or another tag).
+(define (take-header-text flat)
+  (define (one tag name)
+    (define found (filter (tag? tag) flat))
+    (when (> (length found) 1) (build-error "◊~a appears more than once" name))
+    (and (pair? found) (car found)))
+  (define a (one 'od-abstract "abstract"))
+  (define e (one 'od-epistemic "epistemic"))
+  ;; at the top: no paragraph or heading before them (Pollen would otherwise
+  ;; lift one out of a paragraph and split the paragraph around it)
+  (for ([el (in-list (list a e))] [name (in-list '("abstract" "epistemic"))] #:when el)
+    (define before (takef flat (λ (x) (not (eq? x el)))))
+    (when (ormap (λ (x) (or ((tag? 'p) x) (heading? x))) before)
+      (build-error "◊~a goes at the top, before the essay's first paragraph or heading" name)))
+  (define rest (filter (λ (x) (not (or (eq? x a) (eq? x e)))) flat))
+  (for ([x (in-list rest)] #:when (txexpr? x))
+    (forbid (list x) '(od-abstract od-epistemic) "a paragraph or another tag"))
+  (when (and (or a e) (not (and (current-metas) (select-from-metas 'title (current-metas)))))
+    (build-error "◊abstract and ◊epistemic belong to a page with a title"))
+  (values a e rest))
+
+;; An element's text, or #f when it is empty (as `od-new-essay' writes it).
+(define (non-empty el)
+  (and el (regexp-match? #px"\\S" (text-of el)) el))
+
 ;; The header's parts, shared by the essay header and the specimen's sample.
 ;; Inline order: title, subtitle, the metadata block (dates, tags, epistemic
 ;; status), abstract. On tier L CSS lifts the block into the margin, where it
 ;; sits level with the abstract because it comes just before it (LAYOUT-1).
+;; EPISTEMIC is a list of inline elements; ABSTRACT a list of paragraphs.
 (define (header-parts title-el subtitle published revised tags epistemic abstract)
   (define (date label iso) `(span ((class "date")) ,(string-append label " " (format-date iso))))
   (define dates
@@ -975,39 +1020,47 @@
     (for/list ([t (in-list tags)])
       `(a ((class "tag-link") (href ,(string-append "/?tags=" (string-replace t " " "%20"))))
           ,@(with-mark (list t) 'xref))))
-  (when (and epistemic (> (string-length epistemic) 220))
+  (when (and epistemic (> (string-length (text-of epistemic)) 220))
     (warn "the epistemic status runs to ~a characters; it should be one sentence, four or five margin lines (LAYOUT-1)"
-          (string-length epistemic)))
+          (string-length (text-of epistemic))))
   (define meta-block
     (and (or (pair? dates) (pair? tags) epistemic)
          `(div ((class "header-meta"))
                ,@(if (pair? dates) `((p ((class "dates")) ,@(add-between dates (sep)))) null)
                ,@(if (pair? tags) `((p ((class "tags")) ,@(add-between tag-links (sep)))) null)
-               ,@(if epistemic (list (typeset `(p ((class "epistemic")) ,epistemic))) null))))
+               ,@(if epistemic `((p ((class "epistemic")) ,@epistemic)) null))))
   (filter values
-          (list title-el
-                (and subtitle (typeset `(p ((class "subtitle")) ,subtitle)))
-                meta-block
-                (and abstract (typeset `(p ((class "abstract")) ,abstract))))))
+          (append (list title-el
+                        (and subtitle (typeset `(p ((class "subtitle")) ,subtitle)))
+                        meta-block)
+                  (or abstract null))))
 
-;; LAYOUT-1: left-aligned, ragged right. Meta values go through the same
-;; typography as the body.
-(define (essay-header metas)
-  ;; an empty meta line (as od-new-essay writes them) counts as absent
+;; LAYOUT-1: the essay header, left-aligned and ragged right, from the metas
+;; and the ◊abstract and ◊epistemic taken from the body. #f for a page with no
+;; title (the home page).
+(define (essay-header metas abstract-el epistemic-el)
+  ;; an empty meta line counts as absent
   (define (meta key)
-    (let* ([v (select-from-metas key metas)]
+    (let* ([v (and metas (select-from-metas key metas))]
            [s (and v (string-trim (if (string? v) v (text-of v))))])
       (and s (not (equal? s "")) s)))
   (define title (meta 'title))
-  (define abstract (meta 'abstract))
-  (txexpr 'header `((class ,(if abstract "essay-header" "essay-header no-abstract")))
-          (header-parts (and title (typeset `(h1 ,title)))
-                        (meta 'subtitle)
-                        (meta 'published)
-                        (revised-date (select-from-metas 'here-path metas))
-                        (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
-                        (meta 'epistemic)
-                        abstract)))
+  (define abs (non-empty abstract-el))
+  (define epi (non-empty epistemic-el))
+  (and title
+       (txexpr 'header `((class ,(if abs "essay-header" "essay-header no-abstract")))
+               (header-parts (typeset `(h1 ,title))
+                             (meta 'subtitle)
+                             (meta 'published)
+                             (revised-date (select-from-metas 'here-path metas))
+                             (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
+                             (and epi (get-elements (txexpr 'span null (newlines->spaces-list (get-elements epi)))))
+                             (and abs (for/list ([p (in-list (paragraphs (get-elements abs)))])
+                                        (if (txexpr? p) (attr-set p 'class "abstract")
+                                            `(p ((class "abstract")) ,p))))))))
+
+(define (newlines->spaces-list els)
+  (for/list ([e (in-list els)]) (if (and (string? e) (regexp-match? #px"^\\s+$" e)) " " e)))
 
 ;; THEME-7: a sample header inside the specimen, to show the forms the page's
 ;; own header does not (no abstract, say). Its title is not an h1.
@@ -1021,5 +1074,5 @@
           (header-parts `(p ((class "essay-title")) ,(clean title))
                         (clean subtitle) published revised
                         (if tags (parse-tags tags) null)
-                        (clean epistemic)
-                        abs)))
+                        (and epistemic (list (clean epistemic)))
+                        (and abs (list `(p ((class "abstract")) ,abs))))))

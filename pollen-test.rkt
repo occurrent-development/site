@@ -325,3 +325,28 @@
   (check-not-false (pair? built) "no vocabulary entries found in emacs/occurrent.el")
   ;; define-meta is Pollen's own, not a pollen.rkt export
   (check-equal? (sort (remq 'define-meta built) symbol<?) (sort provided symbol<?)))
+
+;; SRC-4a: ◊abstract and ◊epistemic are written in the body and set in the header.
+(define (with-title thunk) (parameterize ([current-metas (hasheq 'title "T")]) (thunk)))
+
+(test-case "SRC-4a: abstract and epistemic move into the header, with their markup"
+  (define doc (with-title (λ () (root (epistemic "Fairly " (em "sure") ".") "\n\n"
+                                      (abstract "An abstract " (cite "hackingMakingPeople2006") ".") "\n\n"
+                                      "The text " (cite "hackingSocialConstructionWhat2000" #:loc "pp. 31-34") "."))))
+  (define header (car (get-elements doc)))
+  (check-equal? (get-tag header) 'header)
+  (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all header txexpr?)))
+  (check-not-false (findf (λ (x) (has-class* x "epistemic")) (find-all header txexpr?)))
+  (check-equal? (length (find-all header (tag? 'em))) 1)
+  ;; the abstract's citation is note 1, the body's note 2
+  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#note-1")
+  (check-equal? (map (λ (p) (classes p)) (filter (tag? 'p) (cdr (get-elements doc)))) '("intro")))
+
+(test-case "SRC-4a: once each, at the top level; the old meta lines fail"
+  (check-true (fails? (λ () (with-title (λ () (root (abstract "a") "\n\n" (abstract "b")))))))
+  (check-true (fails? (λ () (with-title (λ () (root "Text " (abstract "inside a paragraph") "."))))))
+  (check-true (fails? (λ () (parameterize ([current-metas (hasheq 'title "T" 'abstract "old")]) (root "x"))))))
+
+(test-case "SRC-4a: an empty ◊abstract{} counts as absent"
+  (define doc (with-title (λ () (root (abstract "") "\n\n" "Text."))))
+  (check-equal? (attr-ref (car (get-elements doc)) 'class) "essay-header no-abstract"))

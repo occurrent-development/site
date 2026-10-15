@@ -413,6 +413,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (subsection    :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t)
     (subsubsection :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t)
     (summary       :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
+    (abstract      :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
+    (epistemic     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
     (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t)
     (cite          :pos key    :kw (loc note)                                            :req ()                    :body nil :block nil :built t)
     (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t)
@@ -449,8 +451,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 
 ;; VOCAB-4: meta keys by kind of file.
 (defconst od-meta-keys
-  '((essay    . (title subtitle status published epistemic abstract tags specimen unlisted))
-    (page     . (title subtitle status published epistemic abstract tags specimen unlisted))
+  '((essay    . (title subtitle status published tags specimen unlisted))
+    (page     . (title subtitle status published tags specimen unlisted))
     (glossary . (term aliases see-also added)))
   "Allowed ◊define-meta keys for each kind of file.")
 
@@ -631,9 +633,12 @@ do nothing for now; the marks go as the commands arrive.
    The essay is a draft: git cannot see it, so it cannot be committed or
    pushed by accident.
 
-2. Fill in the meta lines at the top. Each stays on one line (M-q leaves
-   them alone): subtitle, epistemic (one sentence on how sure you are),
-   abstract (optional). Tags: {od-set-tags}.
+2. Fill in the meta lines at the top: subtitle, and tags with
+   {od-set-tags}. Each stays on one line (M-q leaves them alone).
+   Below them, write ◊epistemic{…}, one sentence on how sure you are, and
+   ◊abstract{…} if the essay has one. These wrap like any paragraph and
+   may hold emphasis, citations and terms; the build moves them into the
+   header. Left empty, they are left out.
 
 3. Write. Paragraphs are separated by a blank line; hard-wrap freely.
    - ◊ is {od-insert-lozenge}
@@ -1322,9 +1327,9 @@ The new essay is a draft and is kept out of git until `od-publish' (DRAFT-E1)."
               "◊define-meta[subtitle]{}\n"
               "◊define-meta[status]{draft}\n"
               (format "◊define-meta[published]{%s}\n" (format-time-string "%Y-%m-%d"))
-              "◊define-meta[epistemic]{}\n"
-              "◊define-meta[abstract]{}\n"
-              "◊define-meta[tags]{}\n\n"))
+              "◊define-meta[tags]{}\n\n"
+              "◊epistemic{}\n\n"
+              "◊abstract{}\n\n"))
     (find-file file)
     (goto-char (point-max))
     (message "Draft essays/%s/ started; git cannot see it until C-c o P" slug)))

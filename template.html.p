@@ -35,7 +35,7 @@
 </div>
 </div>
 <article>
-◊(if (select-from-metas 'title metas) (->html (essay-header metas)) "<h1 class=\"vh\">Occurrent Development</h1>")
+◊(if (select-from-metas 'title metas) "" "<h1 class=\"vh\">Occurrent Development</h1>")
 ◊(doc-body doc)
 </article>
 ◊when/splice[(specimen? metas)]{<div class="tier" aria-hidden="true"></div>}
