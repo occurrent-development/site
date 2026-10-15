@@ -163,6 +163,8 @@ then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored f
 
 **EDIT-7 (MUST) Figures and tables.** `od-insert-figure` (`C-c o F`): picks an image from the essay's `img/` folder (or any path), asks for a title, proposes an id from it (checked against the file's ids), asks for alt text and a licence (`own`, `public-domain`, a CC licence, `permission`, completing), and inserts a complete `◊figure` with all four required keywords so the build cannot reject it for a missing one. `od-insert-table` (`C-c o B`): asks for title and id and inserts `◊table[#:id "…" #:title "…"]{` with an empty pipe-table skeleton (header row, rule row, one body row) and point in the first cell. `od-insert-ref` stays as built.
 
+**EDIT-8 (MUST) Comments.** `M-;` (`comment-dwim`) works as elsewhere, using Pollen's line comment: with a region it puts `◊; ` at the start of each line, and again removes it; with none it adds an end-of-line comment one space after the text (not at a comment column, and never with tabs). `◊;` hides the rest of the line and its line break, so commented lines vanish cleanly and an end-of-line comment joins the next line on, which in prose reads as the space it would have been. Block comments (`◊;{…}`) are highlighted and parsed (SYN-2) but not produced by `M-;`. *Added 2026-10-15; built into the existing minor mode, to carry into the major mode.*
+
 ---
 
 ## 7. Checking before publishing

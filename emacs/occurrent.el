@@ -669,6 +669,16 @@ scanned from its lozenge. Return (START . END) when the region changed."
         ;; Pollen reads a wrapped ◊define-meta value as extra key/value pairs,
         ;; so filling never touches meta lines.
         (setq-local paragraph-separate (concat "◊define-meta\\[.*$\\|" paragraph-separate))
+        ;; EDIT-8: M-; comments with Pollen's line comment, as elsewhere.
+        ;; ◊; hides the rest of the line and its line break.
+        (setq-local comment-start "◊; ")
+        (setq-local comment-end "")
+        (setq-local comment-start-skip "◊;+[ \t]*")
+        (setq-local comment-end-skip "[ \t]*$")
+        (setq-local comment-padding "")
+        (setq-local comment-use-syntax nil)
+        (setq-local comment-style 'plain)
+        (setq-local comment-column 0)   ; an end-of-line comment goes one space after the text
         (add-hook 'fill-nobreak-predicate #'od--meta-line-p nil t)
         (font-lock-add-keywords nil od--font-lock 'append))
     (outline-minor-mode -1)
