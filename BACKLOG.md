@@ -8,23 +8,11 @@ Each item says **why it's deferred** — usually because it needs design iterati
 
 ## 1. Running map (left margin)
 
-*Deferred: needs a very wide window to appear at all, and the positioning wants iteration. The reading bar (BAR-1) covers navigation in v1.*
-
-A compact outline of the essay, pinned in the left margin, showing where the reader is.
-
-- Sticky outline generated from the section tree, using `#:short` titles; levels 1–2, with the current level-1 section expanded.
-- Current section tracked with IntersectionObserver: the last section whose heading has crossed ~25% down the viewport.
-- A hairline progress rule beside the current entry shows progress through that section.
-- Clicking pushes a history entry (as BAR-2 already does).
-- Hovering an entry opens that section's extract popup.
-- Quiet: muted, small, no panel; fades further while scrolling, returns on stop; disabled under `prefers-reduced-motion`.
-- `<nav aria-label="Essay map">`, JS-only; the top TOC is the no-JS equivalent.
-- A full-width figure or table crossing the left margin fades the map out while it passes.
-- **Width reality check:** with a 90-character column plus a right margin, the map needs roughly 1,500 px. Many laptops are 1,280–1,440 and would never see it. Decide whether that is worth the complexity before building.
+*Retired 2026-10-15: superseded by the contents in the left margin (SPEC TOC-2), which does what this item was for. The one idea taken from it is the hairline beside the current entry. Kept here so the numbering of later items does not shift.*
 
 ## 2. Nested popups
 
-*Deferred: the stacking, focus and lifetime rules are where a popup system gets expensive. v1 has one level, plus the single `see-also` replacement inside term popups.*
+*Deferred: the stacking, focus and lifetime rules are where a popup system gets expensive. v1 has one level: a circle inside an open margin item opens one popup, and a circle inside a popup replaces its content (POP-6, revised 2026-10-15). This item is everything beyond that.*
 
 - A link inside a popup opens a child popup; children close with their parent; cap the depth (~4).
 - Pinned popups stack with an offset; Esc closes the topmost only.
@@ -53,11 +41,7 @@ A compact outline of the essay, pinned in the left margin, showing where the rea
 
 ## 6. Local archives of external pages
 
-*Rejected on legal grounds, recorded so the decision isn't revisited by accident.*
-
-Serving copies of other people's pages from your domain is reproduction and communication to the public. Australia has fair dealing, not US-style fair use, and "archiving for readers" doesn't fit its purposes. You publish as an identifiable professional. v1 links to the Internet Archive's copy instead (CARD-3, CARD-5).
-
-If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown address and policy; no paywalled content; credit and a link to the original on every card; storage outside git (e.g. R2), a manifest in the repo, sanitising (no scripts, no third-party requests), and a review step. Get advice first.
+*Removed 2026-10-15: not wanted; nothing to record. Number kept so later items do not shift.*
 
 ## 7. Image zoom, slideshows and galleries
 
@@ -76,11 +60,11 @@ If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown
 
 ## 9. Domain link icons
 
-*Deferred, low value:* gwern.net-style per-site marks (W for Wikipedia, an arXiv glyph, and so on) in place of the generic ↗.
+*Removed 2026-10-15: not wanted. Number kept so later items do not shift.*
 
 ## 10. Cycling section-break glyphs
 
-*Deferred, ornamental:* gwern.net cycles three designs down a page (sun, moon, asterism), with smaller variants on mobile. v1 uses one glyph. If adopted, count breaks down the page modulo the number of designs.
+*Removed 2026-10-15: not wanted; one glyph stays. Number kept so later items do not shift.*
 
 ## 11. Automatic small caps for acronyms
 
@@ -92,7 +76,7 @@ If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown
 
 ## 13. Glossary term pages
 
-*Cut deliberately (TERM-3): terms are read in popups and are not destinations.* Recorded so the decision isn't reversed by habit. If ever wanted: pages at `/glossary/<id>` with see-also links and backlinks, plus an index page.
+*Moved to v1 on 2026-10-15, as a single `/glossary` page built from the glossary files: see SPEC TERM-8. Per-term pages stay cut, and `◊term` still never navigates (TERM-3). Kept here so the numbering of later items does not shift.*
 
 ## 14. Aside fallback for very crowded margins
 
@@ -102,7 +86,7 @@ If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown
 
 *Deferred; v1 has the pickers that matter.*
 
-- `od-promote` / `od-demote` for heading levels.
+- ~~`od-promote` / `od-demote` for heading levels.~~ *Moved to v1 2026-10-15 (HANDOVER-EMACS.md, EDIT-5).*
 - `od-term-backlinks`: a grep/xref buffer of every use of a term across essays.
 - A lint for essays that use a term's headword or alias without marking it up (probably noise; decide by trying it once).
 
@@ -125,8 +109,4 @@ If ever reconsidered, it would need: `noindex` and sitemap exclusion; a takedown
 
 ## 18. Paid typefaces (parked)
 
-*v1 uses Libertinus Serif (TYPE-7): free, OFL, committed to the repo, no traffic tiers. These two stay here as upgrades if the site ever wants more voice. Swapping is confined to the `@font-face` rules and the measure calibration.*
-
-- **Heldane Text** (Sowersby, Klim) — Renaissance-inspired, literary, sharper. Heldane Display sold separately for the title and level-1 headings. Licence is one-off and perpetual but priced by monthly pageviews, WOFF2 only, subsetting allowed solely to reduce file size.
-- **Century Supra** (Butterick, MB Type) — Century Schoolbook revival, "darker and narrower" than the original; plain and scholarly. US$119 once for up to three of your own sites. Comes in grades A and B: if the grades share metrics, the lighter grade is an elegant answer to light-on-dark text reading heavy.
-- **Either paid face reinstates the repo constraint**: the files must not be committed, so `assets/fonts/` would be gitignored again and CI would fetch them from a private store with a secret (the old TYPE-9a rule).
+*Removed 2026-10-15: Libertinus Serif is the typeface (TYPE-7). Number kept so later items do not shift.*
