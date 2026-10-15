@@ -112,6 +112,14 @@ a:hover, a:focus-visible { color: var(--accent); }
   font-synthesis: none;        /* no faked bold or italic */
   hyphens: auto;
   -webkit-hyphens: auto;
+  /* TYPE-4a: at most two hyphenated lines in a row; no hyphen in a word under
+     six letters, nor fewer than three letters either side. Safari has no
+     hyphenate-limit-chars, but its before/after limits of 3 come to the same. */
+  hyphenate-limit-lines: 2;
+  -webkit-hyphenate-limit-lines: 2;
+  hyphenate-limit-chars: 6 3 3;
+  -webkit-hyphenate-limit-before: 3;
+  -webkit-hyphenate-limit-after: 3;
   text-align: left;
   padding-block: 1em 4em;
 }
