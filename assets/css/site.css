@@ -1099,7 +1099,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 }
 /* the essay title stays in the text face, larger; level-1 headings larger and lighter */
 .h-sans .essay-header h1 { font-size: 2.6em; line-height: 1.1; }
-.h-sans section h2 { font-size: 1.4em; font-weight: 400; letter-spacing: -0.005em; }
+.h-sans section h2 { font-size: 1.4em; font-weight: 400; font-variant-caps: small-caps; letter-spacing: 0.02em; }
 .h-sans section h3 { font-size: 0.95em; }
 .h-sans section h4 { font-size: 0.85em; line-height: 1.75; }          /* run in, on the text's first line */
 .h-sans .exhibit-title, .h-sans .lb-title { font-size: 0.78em; line-height: 1.45; }
