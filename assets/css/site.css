@@ -188,6 +188,11 @@ code {
 }
 
 blockquote { margin: 1em 0 1em 1.5em; }
+/* LAYOUT-4b: a block quotation is italic, its source set as an epigraph's */
+blockquote.quote { font-style: italic; }
+blockquote.quote em { font-style: normal; }
+blockquote.quote footer { font-style: normal; text-align: right; margin-top: 0.25em; }
+blockquote.quote footer::before { content: "— "; }
 blockquote + p { text-indent: 0; }
 /* LAYOUT-4a: indented 1em from the column's edge, left-aligned, ragged,
    no first-line indent; the attribution right-aligned on its own line. */
@@ -306,6 +311,14 @@ blockquote.epigraph footer::before { content: "— "; }
 .tags a.tag-link:hover, .tags a.tag-link:focus-visible { color: var(--accent); }
 .epistemic { font-style: italic; }
 .abstract { font-size: 0.95em; margin: 1.5em 0 0; text-align: left; }
+.abstract + .abstract { margin-top: 0.5em; }
+/* LAYOUT-1a: "Abstract" run in, as a level-3 heading is (LAYOUT-2a) */
+.abstract-head {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.85em;
+  margin-right: 0.6em;
+}
 /* tier S: one date per line, no separator */
 .date { display: block; }
 .dates .sep { display: none; }

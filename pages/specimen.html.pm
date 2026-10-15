@@ -182,15 +182,18 @@ lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
 block beside it would be level with the essay's first paragraph."]
 
 The epigraph at the top of the page is set a little in from the left edge, in
-italic, with its source on a line of its own at the right.
+italic, with its source on a line of its own at the right. The abstract is
+introduced by a small heading of its own, run into its first line.
 
 ◊subsection[#:id "quotations"]{Quotations}
 
 A long quotation is set as a block, indented from the left, at the size of
-the text. Darwin's closing sentence to the first edition of the ◊em{Origin}
-is the standard example of a long sentence that still holds together:
+the text and in italic, with its source, when it has one, on a line of its
+own at the right, as an epigraph's is. Darwin's closing sentence to the first
+edition of the ◊em{Origin} is the standard example of a long sentence that
+still holds together:
 
-◊blockquote{There is grandeur in this view of life, with its several powers,
+◊blockquote[#:source "Charles Darwin, On the Origin of Species, 1859"]{There is grandeur in this view of life, with its several powers,
 having been originally breathed into a few forms or into one; and that, whilst
 this planet has gone cycling on according to the fixed law of gravity, from so
 simple a beginning endless forms most beautiful and most wonderful have been,

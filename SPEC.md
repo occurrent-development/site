@@ -153,7 +153,7 @@ Citation keys are Better BibTeX keys from Zotero (`hackingMakingPeople2006`); th
 | `◊embed[name]{caption}` | Interactive figure (§9.3) | name, `#:alt`, `#:fallback` | `#:width`, `#:sticky` |
 | `◊break{}` | Section-break glyph (§10.5) | — | — |
 | `◊sc{…}` | Small caps (acronyms) | body | — |
-| `◊anchor[id]`, `◊em`, `◊strong`, `◊code`, `◊blockquote`, `◊epigraph`, `◊br{}` | Standard elements | | `◊epigraph[#:source "…"]` |
+| `◊anchor[id]`, `◊em`, `◊strong`, `◊code`, `◊blockquote`, `◊epigraph`, `◊br{}` | Standard elements | | `◊epigraph[#:source "…"]`, `◊blockquote[#:source "…"]` |
 | `◊changelog{…}` | Revision notes (§13) | body | — |
 
 A block quotation is `◊blockquote`, not `◊quote`: Racket's `quote` would swallow the tag silently, so `make test` rejects `◊quote`. Any tag name must avoid Racket's syntactic forms for the same reason; `◊list` is safe.
@@ -471,6 +471,8 @@ Rotate to see the second axis. ◊cite["springer2004"]
 - **LAYOUT-3 (MUST) Intro paragraph.** The first paragraph after the abstract is marked `.intro`; its first line is small caps (`::first-line`) **in narrow tiers only**. With TYPE-3, rotating a phone changes both the small caps and the justification, as on gwern.net.
 - **LAYOUT-4 (MUST) Section break.** `◊break{}` renders a centred glyph (SVG, `currentColor`, smaller variant when narrow), `role="separator"`, generous equal space above and below. Author-placed, never automatic. One glyph; no cycling.
 - **LAYOUT-4a (MUST) Epigraph.** The whole epigraph is indented 1em from the column's left edge, left-aligned, ragged right, with **no first-line indent** inside it (the body's paragraph indent does not apply). The attribution (`#:source`) is right-aligned on its own line, as now. Italic text, roman attribution with its dash, as now. *Added 2026-10-15 (evening).*
+- **LAYOUT-4b (MUST) Block quotation.** `◊blockquote{…}` is indented from the left, at text size, in **italic** (emphasis inside turns roman), and takes an optional `#:source`, set exactly as an epigraph's: right-aligned on its own line, roman, after a dash (LAYOUT-4a). *Added 2026-10-16.*
+- **LAYOUT-1a (MUST) The abstract's heading.** The abstract opens with a small heading, "Abstract", set as a level-3 heading is (sans, semibold, smaller; LAYOUT-2a) and run into its first line. *Added 2026-10-16.*
 - **LAYOUT-5 (SHOULD)** Print stylesheet: asides and notes become footnotes, and each note's **numeral is printed in the text** in place of its circle (paper has nothing to open); asides, being unnumbered, need a printed key of their own (symbols such as * † ‡, to settle with the print CSS in Phase 3); external URLs printed after their link text; arrows, circles for definitions, the bar and popups hidden.
 - **LAYOUT-6 (MUST) Width tiers** (container queries, §10.6):
 

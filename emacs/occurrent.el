@@ -438,7 +438,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (ref           :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t)
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t)
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t)
-    (blockquote    :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
+    (blockquote    :pos nil    :kw (source)                                              :req ()                    :body t   :block t   :built t)
     (epigraph      :pos nil    :kw (source)                                              :req ()                    :body t   :block t   :built t)
     (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t)
     (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t)

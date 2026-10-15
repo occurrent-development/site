@@ -82,8 +82,11 @@
 (define (anchor id) (txexpr 'span `((id ,(check-id id 'anchor))) null))
 
 ;; `◊quote` cannot be a tag: Racket's `quote` would silently swallow it.
-(define (blockquote . xs)
-  (txexpr 'blockquote null (paragraphs xs)))
+(define (blockquote #:source [source #f] . xs)
+  ;; LAYOUT-4b: italic, with an optional source set as an epigraph's is
+  (txexpr 'blockquote '((class "quote"))
+          (append (paragraphs xs)
+                  (if source `((footer ,(norm source))) null))))
 
 (define (epigraph #:source [source #f] . xs)
   (txexpr 'blockquote '((class "epigraph"))
@@ -1064,9 +1067,15 @@
                              (revised-date (select-from-metas 'here-path metas))
                              (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
                              (and epi (get-elements (txexpr 'span null (newlines->spaces-list (get-elements epi)))))
-                             (and abs (for/list ([p (in-list (paragraphs (get-elements abs)))])
-                                        (if (txexpr? p) (attr-set p 'class "abstract")
-                                            `(p ((class "abstract")) ,p))))))))
+                             (and abs (abstract-paragraphs (paragraphs (get-elements abs))))))))
+
+;; LAYOUT-1a: "Abstract", a small heading run into its first paragraph.
+(define (abstract-paragraphs ps)
+  (for/list ([p (in-list ps)] [i (in-naturals)])
+    (define p* (if (txexpr? p) (attr-set p 'class "abstract") `(p ((class "abstract")) ,p)))
+    (if (= i 0)
+        (txexpr 'p (get-attrs p*) (cons '(span ((class "abstract-head")) "Abstract") (get-elements p*)))
+        p*)))
 
 (define (newlines->spaces-list els)
   (for/list ([e (in-list els)]) (if (and (string? e) (regexp-match? #px"^\\s+$" e)) " " e)))
@@ -1084,4 +1093,4 @@
                         (clean subtitle) published revised
                         (if tags (parse-tags tags) null)
                         (and epistemic (list (clean epistemic)))
-                        (and abs (list `(p ((class "abstract")) ,abs))))))
+                        (and abs (abstract-paragraphs (list `(p ,abs)))))))
