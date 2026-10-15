@@ -37,8 +37,8 @@
          link cite term aside margin more
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv sort-key figure ref
-         ;; the home page (§13a)
-         essay-index
+         ;; the home page (§13a); the specimen's sample header (THEME-7)
+         essay-index header-sample
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
          page-title essay-header doc-body format-date revised-date site-menu has-toc?)
@@ -960,22 +960,62 @@
 ;; The document's elements, without the root tag.
 (define (doc-body doc) (->html (get-elements doc)))
 
-;; LAYOUT-1: title, subtitle, dates, epistemic status, abstract. Meta values
-;; go through the same typography as the body.
+;; The header's parts, shared by the essay header and the specimen's sample.
+;; Inline order: title, subtitle, the metadata block (dates, tags, epistemic
+;; status), abstract. On tier L CSS lifts the block into the margin, where it
+;; sits level with the abstract because it comes just before it (LAYOUT-1).
+(define (header-parts title-el subtitle published revised tags epistemic abstract)
+  (define (date label iso) `(span ((class "date")) ,(string-append label " " (format-date iso))))
+  (define dates
+    (filter values (list (and published (date "Published" published))
+                         ;; pages have no dates (LAYOUT-1): a revision shows only beside a publication
+                         (and published revised (string>? revised published) (date "Revised" revised)))))
+  (define (sep) '(span ((class "sep")) " · "))
+  (define tag-links
+    (for/list ([t (in-list tags)])
+      `(a ((class "tag-link") (href ,(string-append "/?tags=" (string-replace t " " "%20"))))
+          ,@(with-mark (list t) 'xref))))
+  (when (and epistemic (> (string-length epistemic) 220))
+    (warn "the epistemic status runs to ~a characters; it should be one sentence, four or five margin lines (LAYOUT-1)"
+          (string-length epistemic)))
+  (define meta-block
+    (and (or (pair? dates) (pair? tags) epistemic)
+         `(div ((class "header-meta"))
+               ,@(if (pair? dates) `((p ((class "dates")) ,@(add-between dates (sep)))) null)
+               ,@(if (pair? tags) `((p ((class "tags")) ,@(add-between tag-links (sep)))) null)
+               ,@(if epistemic (list (typeset `(p ((class "epistemic")) ,epistemic))) null))))
+  (filter values
+          (list title-el
+                (and subtitle (typeset `(p ((class "subtitle")) ,subtitle)))
+                meta-block
+                (and abstract (typeset `(p ((class "abstract")) ,abstract))))))
+
+;; LAYOUT-1: left-aligned, ragged right. Meta values go through the same
+;; typography as the body.
 (define (essay-header metas)
   (define (meta key) (let ([v (select-from-metas key metas)]) (and v (string-trim (if (string? v) v (text-of v))))))
-  (define (block tag class text) (and text (typeset (txexpr tag (if class `((class ,class)) null) (list text)))))
-  (define published (meta 'published))
-  (define revised (revised-date (select-from-metas 'here-path metas)))
-  (define dates
-    (filter values
-            (list (and published (string-append "Published " (format-date published)))
-                  (and revised (or (not published) (string>? revised published))
-                       (string-append "Revised " (format-date revised))))))
-  (txexpr 'header '((class "essay-header"))
-          (filter values
-                  (list (block 'h1 #f (meta 'title))
-                        (block 'p "subtitle" (meta 'subtitle))
-                        (and (pair? dates) `(p ((class "dates")) ,(string-join dates " · ")))
-                        (block 'p "epistemic" (meta 'epistemic))
-                        (block 'p "abstract" (meta 'abstract))))))
+  (define title (meta 'title))
+  (define abstract (meta 'abstract))
+  (txexpr 'header `((class ,(if abstract "essay-header" "essay-header no-abstract")))
+          (header-parts (and title (typeset `(h1 ,title)))
+                        (meta 'subtitle)
+                        (meta 'published)
+                        (revised-date (select-from-metas 'here-path metas))
+                        (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
+                        (meta 'epistemic)
+                        abstract)))
+
+;; THEME-7: a sample header inside the specimen, to show the forms the page's
+;; own header does not (no abstract, say). Its title is not an h1.
+(define (header-sample #:title [title #f] #:subtitle [subtitle #f] #:published [published #f]
+                       #:revised [revised #f] #:tags [tags #f] #:epistemic [epistemic #f] . abstract)
+  (unless title (build-error "◊header-sample needs a #:title"))
+  (define (clean v) (and v (string-normalize-spaces v)))
+  (define abs (and (pair? abstract) (string-normalize-spaces (text-of abstract))))
+  (txexpr 'div `((class ,(if abs "essay-header sample" "essay-header sample no-abstract")) (role "group")
+                 (aria-label "Sample header"))
+          (header-parts `(p ((class "essay-title")) ,(clean title))
+                        (clean subtitle) published revised
+                        (if tags (parse-tags tags) null)
+                        (clean epistemic)
+                        abs)))

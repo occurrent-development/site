@@ -724,7 +724,7 @@ function setupMargin() {
     m.classList.toggle("in-margin", L);
     if (!L) m.style.transform = "";
   }
-  if (!L) for (const x of article.querySelectorAll(".exhibit-title, .exhibit-meta")) x.style.transform = "";
+  if (!L) for (const x of article.querySelectorAll(".exhibit-title, .exhibit-meta, .header-meta")) x.style.transform = "";
 }
 
 // ASIDE-4, MNOTE-4, IMG-7: margin notes and the words of figures and tables
@@ -738,7 +738,8 @@ function positionMargin() {
   const notes = [...article.querySelectorAll(".in-margin.margin-note")];
   const exhibits = [...article.querySelectorAll(".exhibit")]
     .map((x) => [x.querySelector(".exhibit-title"), x.querySelector(".exhibit-meta")].filter(Boolean));
-  for (const e of [...stubs, ...notes, ...exhibits.flat()]) e.style.transform = "";
+  const headers = [...article.querySelectorAll(".header-meta")];
+  for (const e of [...stubs, ...notes, ...exhibits.flat(), ...headers]) e.style.transform = "";
   // ASIDE-3: an item that fits in two margin lines is shown in full
   // Stubs can sit in smaller text (a table), where the stylesheet's em would
   // be wrong; so their place and size are set from the article's.
@@ -758,10 +759,32 @@ function positionMargin() {
     const rs = els.flatMap((e) => [rect(e), ...[...e.children].map(rect)]).filter((r) => r.height);
     return rs.length ? [Math.min(...rs.map((r) => r.top)), Math.max(...rs.map((r) => r.bottom))] : [rect(els[0]).top, rect(els[0]).top];
   };
+  // the bottom of a block's first character: its baseline, near enough
+  const baseline = (el) => {
+    const n = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (t) => (t.data.trim() ? 1 : 3) }).nextNode();
+    if (!n) return rect(el).top;
+    const r = document.createRange();
+    r.setStart(n, 0); r.setEnd(n, 1);
+    return r.getBoundingClientRect().bottom;
+  };
+  // LAYOUT-1: the header's block sits level with the abstract (CSS does
+  // that); with no abstract, level with the first paragraph of the essay.
+  const headerItems = headers.map((m) => {
+    const r = rect(m);
+    let top = r.top;
+    const head = m.closest(".essay-header");
+    if (head.classList.contains("no-abstract") && !head.classList.contains("sample")) {
+      const first = article.querySelector("p.intro");
+      if (first) top += baseline(first) - baseline(m);   // first baselines level
+    }
+    return { els: [m], top, h: r.height, fixed: true, header: true, natural: r.top };
+  });
   const items = [
     ...stubs.map((s) => ({ els: [s], top: rect(s).top, h: rect(s).height, fixed: false })),
     ...[...notes.map((n) => [n]), ...exhibits].map((els) => { const [t, b] = extent(els); return { els, top: t, h: b - t, fixed: true }; }),
+    ...headerItems,
   ].sort((a, b) => a.top - b.top);
+  for (const it of items) if (it.natural === undefined) it.natural = it.top;
   const O = marginOpen?.stub;
   const lineOf = (i) => parseFloat(getComputedStyle(i).lineHeight);
   const gap = stubs.length ? lineOf(stubs[0]) * 0.25 : 4;
@@ -772,13 +795,17 @@ function positionMargin() {
     }
     return y;
   };
-  // Pass 1, everything collapsed: fixed items where they belong; stubs after
-  // the one above, clear of the fixed ones.
-  const fixedZones = items.filter((i) => i.fixed).map((i) => [i.top, i.top + i.h]);
+  // Pass 1, everything collapsed: the header's block where it belongs; other
+  // fixed items (margin notes, figure words) where they belong unless the
+  // header's block is there, in which case below it; stubs after the one
+  // above, clear of every fixed item.
+  const headerZones = headerItems.map((i) => [i.top, i.top + i.h]);
+  for (const it of items) if (it.fixed) it.y = it.header ? it.top : clear(it.top, it.h, headerZones);
+  const fixedZones = items.filter((i) => i.fixed).map((i) => [i.y, i.y + i.h]);
   let last = -Infinity;
   for (const it of items) {
     const h = it.els[0] === O ? lineOf(O) : it.h;
-    if (it.fixed) { it.y = it.top; last = Math.max(last, it.top + h); continue; }
+    if (it.fixed) { last = Math.max(last, it.y + h); continue; }
     it.y = clear(Math.max(it.top, last + gap), h, fixedZones);
     last = it.y + h;
   }
@@ -792,7 +819,7 @@ function positionMargin() {
     }
   }
   for (const it of items) {
-    const dy = it.y - it.top;
+    const dy = it.y - it.natural;
     if (Math.abs(dy) > 0.5) for (const e of it.els) e.style.transform = `translateY(${dy}px)`;
   }
 }

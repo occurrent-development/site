@@ -150,15 +150,33 @@ around it, and the mark after it is the only signal, as on Matthew Butterick's
 ◊link["#marks"]{marks and links} below.
 
 ◊section[#:id "furniture" #:short "Furniture"]{Page furniture}
-◊summary{Headings, breaks, quotations and the intro paragraph.}
+◊summary{The header, headings, breaks, quotations and the intro paragraph.}
 
 Headings come in three levels and are never numbered. The first level is set
 in small capitals, aligned right, with a hairline rule running the width of
-the column beneath it; the second is in smaller small capitals, aligned left,
-without a rule; the third is italic, at the size of the text, and runs into
-its paragraph. Each heading carries a section mark, visible on hover, which
-links to the section itself, so a reader can copy a link to any part of an
-essay.
+the column beneath it; the second is in a semibold sans, aligned left,
+without a rule; the third is in the same sans, at a smaller size, and runs
+into its paragraph. Each heading carries a section mark, visible on hover,
+which links to the section itself, so a reader can copy a link to any part of
+an essay.
+
+◊subsection[#:id "header"]{The header}
+
+Nothing on a page is centred but the section break. The header at the top of
+this page shows the full form: title, subtitle and abstract in the column, and,
+on a wide screen, the dates, the tags and the epistemic status in the margin,
+level with the first line of the abstract, so that the title has the width of
+the page to itself. On a narrower screen the same lines fall back between the
+subtitle and the abstract. An essay without an abstract looks like this, its
+margin block level with the first line of what follows:
+
+◊header-sample[#:title "A sample header, with a title long enough to need two
+lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
+#:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. The
+block beside it would be level with the essay's first paragraph."]
+
+The epigraph at the top of the page is set a little in from the left edge, in
+italic, with its source on a line of its own at the right.
 
 ◊subsection[#:id "quotations"]{Quotations}
 
