@@ -25,7 +25,7 @@ from PIL import Image
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "img"
 MANIFEST = OUT / "images.json"
-SKIP_DIRS = {"public", "compiled", ".git", "node_modules"}
+SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support"}  # BUILD-3a: an essay's support/ is never read
 WIDTHS = [480, 800, 1200, 1600, 2400]
 WARN_BYTES = 2 * 1024 * 1024
 FIGURE = re.compile(r'◊figure\[\s*"([^"]+)"')

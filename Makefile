@@ -19,7 +19,7 @@ PYTHON  ?= python3
 PORT    ?= 8080
 
 FONTS_SRC := $(wildcard assets/fonts/*.otf)
-SOURCES   := $(shell find . -name '*.pm' -not -path './public/*') \
+SOURCES   := $(shell find . -name '*.pm' -not -path './public/*' -not -path './essays/*/support/*') \
              template.html.p pollen.rkt typography.rkt
 FONTS     := assets/fonts/fonts.rktd
 IMAGES    := assets/img/images.json

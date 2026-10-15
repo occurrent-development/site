@@ -65,12 +65,19 @@
             'sections sections 'ids ids 'xrefs xrefs 'terms terms)))
 
 ;; An essay missing from index.ptree would be neither rendered nor listed.
+;; A draft is the exception (DRAFT-E1: drafts sit at their final path, kept
+;; out of git, and od-publish adds the index.ptree line), so it only warns.
 (when (directory-exists? "essays")
   (define listed (for/list ([p (in-list all-pages)]) (path->string (hash-ref p 'src))))
-  (for ([f (in-directory "essays")]
+  (for ([f (in-directory "essays" (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
         #:when (regexp-match? #px"^essays/[^/]+/[^/]+\\.html\\.pm$" (path->string f))
         #:unless (member (path->string f) listed))
-    (fail "~a is not in index.ptree" f)))
+    (define status
+      (let ([m (regexp-match #px"◊define-meta\\[status\\]\\{\\s*([a-z]+)\\s*\\}" (file->string (path->string f)))])
+        (and m (cadr m))))
+    (if (equal? status "draft")
+        (warn "~a is a draft and not in index.ptree, so it is not built (od-publish adds it)" f)
+        (fail "~a is not in index.ptree" f))))
 
 (define pages (filter (λ (p) (hash-ref p 'published)) all-pages))
 (define drafts (for/hash ([p (in-list all-pages)] #:unless (hash-ref p 'published)) (values (hash-ref p 'url) p)))

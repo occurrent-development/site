@@ -50,7 +50,7 @@ FEATURES = [
 ]
 
 SOURCE_GLOBS = ["**/*.pm", "**/*.p", "*.rkt", "lib/*.rkt", "**/*.svg", "**/*.csv", "data/*.json"]
-SKIP_DIRS = {"public", "compiled", ".git", "node_modules"}
+SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support"}  # BUILD-3a: an essay's support/ is never read
 
 
 def source_chars():

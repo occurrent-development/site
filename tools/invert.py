@@ -21,7 +21,7 @@ import uuid
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "invert.json"
 API = "https://invertornot.com/api"
-SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "tests"}
+SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "tests", "support"}  # BUILD-3a: an essay's support/ is never read
 FIGURE = re.compile(r'◊figure\[\s*"([^"]+)"([^\]]*)\]', re.S)
 TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".pdf": "application/pdf"}
 LICENCE = re.compile(r'#:licence\s+"([^"]+)"')

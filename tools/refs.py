@@ -28,7 +28,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BIB = ROOT / "refs" / "refs.bib"
 CSL = ROOT / "refs" / "chicago-notes-bibliography.csl"
 CACHE = ROOT / "data" / "cite-cache.json"
-SKIP_DIRS = {"public", "compiled", ".git", "node_modules"}
+SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support"}  # BUILD-3a: an essay's support/ is never read
 
 PRIVATE_FIELDS = {
     "abstract", "file", "keywords", "annotation", "annote", "note", "copyright",
