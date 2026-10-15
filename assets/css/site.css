@@ -160,7 +160,10 @@ article { --tier: S; }
 }
 
 /* ── Running text (§10.1) ──────────────────────────────────────────────── */
-p { margin: 0; text-wrap: pretty; hanging-punctuation: first; }
+p { margin: 0; text-wrap: wrap; hanging-punctuation: first; }
+/* TYPE-6: pretty only where the text is justified. In tier S Safari's
+   pretty trades hyphens for short lines and wrecks a narrow rag. */
+@container page (min-width: 39em) { p { text-wrap: pretty; } }
 p + p { text-indent: 1.5em; }
 
 em, i { font-style: italic; }
