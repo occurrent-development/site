@@ -1,6 +1,6 @@
 # Handover to Claude Code — Emacs
 
-Status: draft 1.1 · Owner: Ryan · 2026-10-15 (revised the same day for IMG-7: figure and table ids, titles and `◊ref`)
+Status: draft 1.2 · Owner: Ryan · 2026-10-15 (revised the same day for IMG-7: figure and table ids, titles and `◊ref`; and again for the per-essay `support/` folder)
 
 Read `SPEC.md` §3 (authoring format), §6 (glossary), §13 (revisions), §16 (Emacs) and `emacs/occurrent.el` first. This file specifies two things on top of what exists: a **major mode** for the site's Pollen dialect, with syntax highlighting that catches build errors before `make` does, and **publishing from Emacs with Magit**. Requirements carry IDs so commits and tests can reference them. **MUST** = required; **SHOULD** = expected, may slip; **MAY** = optional.
 
@@ -149,7 +149,17 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 
 **EDIT-5 (SHOULD) Outline.** Keep `outline-minor-mode` with the three heading levels; add `od-promote` / `od-demote` (BACKLOG §15, cheap once the mode exists), which also rename the tag and leave `#:id` untouched (ids are permanent).
 
-**EDIT-6 (MUST) Templates.** `od-new-essay` (`C-c o N`): prompts for a title, proposes a slug, creates `essays/<slug>/<slug>.html.pm` with the meta block (`title`, `status` = `draft`, `published` = today, `epistemic`, `abstract`, `tags`) and `img/`, applies DRAFT-E1 (§8), and opens it. `od-new-term` exists; `od-new-page` is not needed.
+**EDIT-6 (MUST) Templates.** `od-new-essay` (`C-c o N`): prompts for a title, proposes a slug (checked: lowercase-hyphenated, not already an essay), and creates
+
+```
+essays/<slug>/
+├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, epistemic, abstract, tags; then a blank line, point there
+├── img/                # figures; published with the essay
+└── support/            # everything else: notes, sources, drafts in other formats, sketches; never published (BUILD-3a)
+    └── notes.md        # created empty, with the title as its first line
+```
+
+then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored for every essay by one committed rule, `essays/*/support/`, so it stays private after publication too; the BUILD-3a filename patterns remain as a second guard. The Emacs scans that walk the repository for `.pm` files (`od--used-urls`, `od--used-tags`, and the id collector of FL-6) skip `support/`. When an essay in `../Essays/` is started in Pollen (E3), its existing material moves into that essay's `support/`. `od-new-term` exists; `od-new-page` is not needed.
 
 **EDIT-7 (MUST) Figures and tables.** `od-insert-figure` (`C-c o F`): picks an image from the essay's `img/` folder (or any path), asks for a title, proposes an id from it (checked against the file's ids), asks for alt text and a licence (`own`, `public-domain`, a CC licence, `permission`, completing), and inserts a complete `◊figure` with all four required keywords so the build cannot reject it for a missing one. `od-insert-table` (`C-c o B`): asks for title and id and inserts `◊table[#:id "…" #:title "…"]{` with an empty pipe-table skeleton (header row, rule row, one body row) and point in the first cell. `od-insert-ref` stays as built.
 
@@ -185,7 +195,7 @@ So the deliverable is a command that does 1–6 and then **hands over to Magit f
 
 The spec's DRAFT-1 options both have a problem for an Emacs workflow. A **separate private repo** cannot be previewed: Pollen needs the essay inside the project that holds `pollen.rkt`, so `make serve` and `od-preview` don't work on a file in another clone. A **never-pushed branch** is one `P p` away from publishing a draft, and Magit makes that keystroke easy.
 
-**DRAFT-E1 (recommended)** Drafts live **inside the site working tree** at their final path, `essays/<slug>/`, and are kept out of git by `.git/info/exclude` (per-clone, never committed): `od-new-essay` appends `essays/<slug>/` to it, and `od-publish` removes that line as its first step. Consequences: the essay renders and previews like any other; Magit never shows it, so it cannot be staged, committed or pushed by accident; DRAFT-2 (`status` guard) remains the second guard; and the essay is invisible to `git` until the moment of publication, which is exactly DRAFT-1's intent. Cost: a draft is not in any git history until it is published. If that matters, `od-backup-drafts` (**MAY**) copies every excluded essay into the existing private `drafts` repo (cloned beside `site/` as `../drafts`) and commits and pushes there.
+**DRAFT-E1 (recommended)** Drafts live **inside the site working tree** at their final path, `essays/<slug>/`, and are kept out of git by `.git/info/exclude` (per-clone, never committed): `od-new-essay` appends `essays/<slug>/` to it, and `od-publish` removes that line as its first step. (The essay's `support/` folder is ignored separately and permanently by `.gitignore`, EDIT-6; the exclude line covers the rest of the folder only until publication.) Consequences: the essay renders and previews like any other; Magit never shows it, so it cannot be staged, committed or pushed by accident; DRAFT-2 (`status` guard) remains the second guard; and the essay is invisible to `git` until the moment of publication, which is exactly DRAFT-1's intent. Cost: a draft is not in any git history until it is published, and `support/` never is. If that matters, `od-backup-drafts` (**MAY**) copies every excluded essay, `support/` included, into the existing private `drafts` repo (cloned beside `site/` as `../drafts`) and commits and pushes there.
 
 **DRAFT-E2 (alternative)** Keep the private `drafts` repo as the place drafts are written, and make `od-preview` work there by symlinking `drafts/essays/<slug>` into `site/essays/` while editing. Rejected by default: a symlink inside `site/essays/` is itself something Magit could stage.
 
@@ -199,7 +209,7 @@ Build DRAFT-E1 unless Ryan says otherwise.
 3. If `status` is `draft`, set it to `published` after confirming; set `published` to today if absent; refuse if `title` is missing.
 4. Add `essays/<slug>/<slug>.html` to `index.ptree` if absent (after the last essay line).
 5. Run `make refresh` then `make` in the `od-check` compilation buffer; stop on failure and leave the buffer visible.
-6. Stage, with Magit (`magit-stage-files`): the essay folder, `index.ptree`, `refs/refs.bib`, `data/cite-cache.json`, `data/invert.json`, `data/link-meta.json`, and any new or modified `glossary/*.pm`. Refuse if `git status --porcelain` on the essay folder lists anything matching BUILD-3a (belt and braces over `.gitignore`), or if the staged diff contains `@` followed by a domain other than `occurrentdevelopment.com`.
+6. Stage, with Magit (`magit-stage-files`): the essay folder (`support/` is ignored and cannot be staged), `index.ptree`, `refs/refs.bib`, `data/cite-cache.json`, `data/invert.json`, `data/link-meta.json`, and any new or modified `glossary/*.pm`. Refuse if `git status --porcelain` on the essay folder lists anything matching BUILD-3a (belt and braces over `.gitignore`), or if the staged diff contains `@` followed by a domain other than `occurrentdevelopment.com`.
 7. Open `magit-status` with the commit message proposed via `git-commit-setup-hook` for the next commit: `Publish: <title>`. Say in the echo area: *staged; `c c` to commit, `P p` to push and deploy*.
 
 **PUB-2 (MUST)** `od-publish` never pushes on its own. With a prefix argument (`C-u C-c o P`) it commits with the proposed message and pushes to `origin/main` in one step, after a `yes-or-no-p` that quotes the branch and remote. That is the only path that skips the Magit review.

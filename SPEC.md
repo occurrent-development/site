@@ -48,7 +48,8 @@ Pollen is settled; the Hugo shortcode approach sketched in earlier essay notes i
 occurrentdevelopment/
 ├── essays/<slug>/
 │   ├── <slug>.html.pm         # the essay
-│   └── img/                   # images belonging to that essay
+│   ├── img/                   # images belonging to that essay
+│   └── support/               # notes, sources, drafts in other formats; gitignored, never published
 ├── glossary/<id>.pm           # one file per term; never rendered as a page
 ├── widgets/<name>/            # source of an interactive figure (§9.3); built by CI
 ├── pages/                     # about, colophon, specimen; later correspondence, changelog
@@ -78,7 +79,7 @@ occurrentdevelopment/
 - **BUILD-1 (MUST)** Generated HTML is never committed; CI builds and deploys.
 - **BUILD-2 (MUST)** `make` builds offline from committed caches, with no network access.
 - **BUILD-3 (MUST)** `make refresh` is the only step that reaches outside the repository: it copies the cited entries from the Zotero export (`ZOTERO_BIB`, set in `local.mk`) into `refs.bib` and runs pandoc over them; later it also classifies new images and saves new external URLs to the Wayback Machine. It updates the committed caches, which you then commit. Network flakiness can never break a deploy.
-- **BUILD-3a (MUST)** Each essay is a **folder**, holding the `.pm` file and its own images. Working notes live with the essay while it is private; nothing whose filename matches `*-Notes.md`, `*.graffle`, `*.docx` or `*.tex` is ever copied into the public repo (gitignored, and the build refuses to publish them). Published essays keep the same folder shape.
+- **BUILD-3a (MUST)** Each essay is a **folder**, holding the `.pm` file, its own images in `img/`, and a `support/` folder for everything else: notes, sources, sketches, drafts in other formats. `support/` is gitignored for every essay by one rule (`essays/*/support/`), so it never reaches the public repo, before or after publication; the build never reads it. As a second guard, nothing whose filename matches `*-Notes.md`, `*.graffle`, `*.docx` or `*.tex` is ever copied into the public repo either (gitignored, and the build refuses to publish them). Published essays keep the same folder shape. `od-new-essay` creates the three (HANDOVER-EMACS.md, EDIT-6). *Revised 2026-10-15 (evening): `support/` added.*
 - **BUILD-4 (MUST)** CI always does a **full rebuild** (backlinks make every page depend on every other). The local Pollen project server may show stale backlinks until `make` runs; say so in the README.
 
 ### 2.3 Drafts
