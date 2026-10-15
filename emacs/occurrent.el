@@ -616,6 +616,141 @@ scanned from its lozenge. Return (START . END) when the region changed."
             (when (eq (char-after) ?\{) (goto-char (scan-lists (point) 1 0))))
         (let ((forward-sexp-function nil)) (forward-sexp 1))))))
 
+;;; The guide (EDIT-9) -----------------------------------------------------------
+
+(defconst od--guide
+  "#+title: Writing occurrentdevelopment.com: the three workflows
+Press q to close. TAB on a heading folds it. Keys marked (not built yet)
+do nothing for now; the marks go as the commands arrive.
+
+* 1. Starting a new essay
+
+1. {od-new-essay} and give the title. It proposes a slug (the URL,
+   /slug, permanent once published) and creates:
+   - essays/<slug>/<slug>.html.pm, the essay, opened for you
+   - essays/<slug>/img/, for its figures
+   - essays/<slug>/support/notes.md, for everything else: notes, sources,
+     old drafts in Word or LaTeX. support/ is never published, before or
+     after publication.
+   The essay is a draft: git cannot see it, so it cannot be committed or
+   pushed by accident.
+
+2. Fill in the meta lines at the top. Each stays on one line (M-q leaves
+   them alone): subtitle, epistemic (one sentence on how sure you are),
+   abstract (optional). Tags: {od-set-tags}.
+
+3. Write. Paragraphs are separated by a blank line; hard-wrap freely.
+   - ◊ is {od-insert-lozenge}
+   - a section heading: {od-insert-section} (its id is permanent: links
+     depend on it)
+   - a citation: {od-insert-cite}; a defined term: {od-insert-term}
+     (a new one: {od-new-term})
+   - an aside: {od-insert-aside}; a margin note: {od-insert-margin}
+   - links: within the essay {od-insert-link-internal}, to another essay
+     {od-insert-link-essay}, to the web {od-insert-link-external}
+   - a figure: put the image in img/, then {od-insert-figure}; a table:
+     {od-insert-table}; refer to either with {od-insert-ref}
+   - a note to yourself: M-; (hidden from the page)
+   - jump between sections: {od-goto-section}
+
+4. Look at it: {od-preview} opens it in the browser. Check it: {od-check}
+   runs the tests and renders this file; errors open with M-g n. Anything
+   highlighted in red in the buffer is an error the build would refuse.
+
+5. Leave it as long as you like. Drafts are not in git, so they are not
+   backed up by it: keep the Mac's backup running.
+
+* 2. Publishing an essay
+
+1. {od-check} first, and fix anything it reports.
+
+2. {od-publish}. It:
+   - makes the essay visible to git
+   - sets status to published (after asking) and the published date to
+     today if there is none
+   - adds the essay to the site's index
+   - runs make refresh (needs the network and your current Zotero export:
+     it copies the essay's references into the site) and then make
+   - shows the row the home page will gain: check the title, date and tags
+   - stages everything and opens Magit
+   It never pushes by itself.
+
+3. In Magit, read the diff: this is what becomes public, permanently.
+   Then c c to commit (the message Publish: <title> is proposed),
+   C-c C-c to confirm, and P p to push. The push is the publication.
+
+4. {od-deploy-status} watches the build on GitHub and opens the essay
+   when it is live, at occurrentdevelopment.com/<slug>, about a minute
+   later.
+
+Shortcut, once you trust it: C-u {od-publish} does all of the above and
+commits and pushes after one confirmation.
+
+To withdraw an essay there is no command: set status to superseded and
+commit it as a revision. The source stays in the history.
+
+* 3. Revising a published essay
+
+1. Edit the essay. It is in git now, so Magit shows every change.
+
+2. {od-check}.
+
+3. {od-commit} asks what kind of change it is:
+   - Typo: spelling, punctuation. The essay's Revised date stays.
+   - Meta: tags, subtitle and the like. The Revised date stays.
+   - Revision: anything a reader should know changed. The Revised date
+     moves to today (it comes from git), and the essay's changelog should
+     gain a line saying what changed.
+   It stages the essay and opens Magit.
+
+4. As before: c c, C-c C-c, P p, then {od-deploy-status}.
+
+* When something goes wrong
+
+- The build error names the file but not the line: look for red in the
+  buffer, which marks the place.
+- make refresh failed: you are offline, or the Zotero export is stale.
+  Reconnect, let Better BibTeX update the export, and publish again.
+- Magit refused, or this guide's commands say you are not on main or
+  are behind origin: in Magit, F p to pull, then try again.
+- Pushed something by mistake: tell Claude before doing anything else.
+"
+  "The text of `od-guide': {command} is replaced by its key.")
+
+(defvar occurrent-mode-map)
+
+(defconst od--planned-keys
+  '((od-new-essay . "C-c o N") (od-insert-figure . "C-c o F") (od-insert-table . "C-c o B")
+    (od-check . "C-c o k") (od-publish . "C-c o P") (od-commit . "C-c o C")
+    (od-deploy-status . "C-c o d") (od-unwrap . "C-c o u") (od-up . "C-c o U"))
+  "Keys for commands still to be built (HANDOVER-EMACS LOAD-4), for the guide.")
+
+(defun od--guide-key (cmd)
+  "CMD's key, marked when CMD is not built yet."
+  (let ((key (where-is-internal cmd occurrent-mode-map t)))
+    (concat (cond (key (key-description key))
+                  ((alist-get cmd od--planned-keys))
+                  (t (format "M-x %s" cmd)))
+            (if (fboundp cmd) "" " (not built yet)"))))
+
+;;;###autoload
+(defun od-guide ()
+  "Open the guide to starting, publishing and revising an essay (EDIT-9)."
+  (interactive)
+  (let ((buf (get-buffer-create "*Occurrent guide*")))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (replace-regexp-in-string
+                 "{\\([a-z-]+\\)}"
+                 (lambda (m) (od--guide-key (intern (match-string 1 m))))
+                 od--guide t t))
+        (if (fboundp 'org-mode) (org-mode) (text-mode))
+        (goto-char (point-min)))
+      (view-mode 1)
+      (setq-local view-exit-action #'kill-buffer))
+    (pop-to-buffer buf)))
+
 ;;; Mode: keys, imenu and outline (EMACS-4), dimmed markup (EMACS-5) ----------
 
 (defvar occurrent-mode-map
@@ -635,6 +770,7 @@ scanned from its lozenge. Return (START . END) when the region changed."
     (define-key m (kbd "C-c o p") #'od-preview)
     (define-key m (kbd "C-c o T") #'od-set-tags)
     (define-key m (kbd "C-c o r") #'od-insert-ref)
+    (define-key m (kbd "C-c o I") #'od-guide)
     m)
   "Keys for `occurrent-mode'.")
 

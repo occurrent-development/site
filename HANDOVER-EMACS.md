@@ -165,6 +165,8 @@ then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored f
 
 **EDIT-8 (MUST) Comments.** `M-;` (`comment-dwim`) works as elsewhere, using Pollen's line comment: with a region it puts `◊; ` at the start of each line, and again removes it; with none it adds an end-of-line comment one space after the text (not at a comment column, and never with tabs). `◊;` hides the rest of the line and its line break, so commented lines vanish cleanly and an end-of-line comment joins the next line on, which in prose reads as the space it would have been. Block comments (`◊;{…}`) are highlighted and parsed (SYN-2) but not produced by `M-;`. *Added 2026-10-15; built into the existing minor mode, to carry into the major mode.*
 
+**EDIT-9 (MUST) The guide.** `od-guide` (`C-c o I`) opens a read-only org buffer, `*Occurrent guide*`, walking through the three workflows: starting a new essay, publishing it, revising and republishing. Keys in it are read from the keymap; a command not yet defined shows its planned key marked *(not built yet)*, so the guide is never wrong about what works. `q` closes it. When a workflow changes, the guide's text (`od--guide`) changes with it. *Added 2026-10-15 at Ryan's request.*
+
 ---
 
 ## 7. Checking before publishing
@@ -243,7 +245,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-3 (MUST)** Dependencies: Emacs 29+, Magit (soft: the `od-publish` family is defined only when `magit` is loadable, and says so if not), `citar` (soft, as now). No `pollen-mode`, no `company`.
 
-**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. List them all in the `occurrent-mode` docstring.
+**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. List them all in the `occurrent-mode` docstring.
 
 ---
 
