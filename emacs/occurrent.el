@@ -654,7 +654,9 @@ The other keys work inside an essay.
    may hold emphasis, citations and terms; the build moves them into the
    header. Left empty, they are left out.
 
-3. Write. Paragraphs are separated by a blank line; hard-wrap freely.
+3. Write. Paragraphs are separated by a blank line. Just type: each
+   paragraph is one line in the file, shown wrapped on screen, so there is
+   nothing to refill. M-q joins an old hard-wrapped paragraph onto one line.
    - ◊ is {od-insert-lozenge}
    - a section heading: {od-insert-section} (its id is permanent: links
      depend on it)
@@ -1173,6 +1175,20 @@ KIND is `heading', `figure', `table' or `anchor'."
           "\\|" od--block-tags-re
           "\\|[ \t]*\\(-\\|[0-9]+\\.\\) "))
 
+(defcustom od-soft-wrap t
+  "Non-nil when essays are written one line per paragraph and shown wrapped
+\(with `visual-line-mode', and `olivetti-mode' for the width). Then `M-q'
+joins a paragraph onto one line instead of breaking it (EDIT-1a)."
+  :type 'boolean)
+
+(defun od-fill-paragraph (&optional justify)
+  "Fill this paragraph; with `od-soft-wrap', join it onto one line (EDIT-1a).
+JUSTIFY is passed on to `fill-paragraph'."
+  (interactive (list (and current-prefix-arg 'full)))
+  (if od-soft-wrap
+      (let ((fill-column most-positive-fixnum)) (fill-paragraph justify t))
+    (fill-paragraph justify t)))
+
 (defun od--adaptive-fill ()
   "EDIT-1: a wrapped list item keeps its level: continue under its text."
   (when (looking-at "\\([ \t]*\\(-\\|[0-9]+\\.\\) \\)")
@@ -1671,6 +1687,7 @@ Typo and Meta commits are marked so the essay's Revised date stays (REV-1)."
     (define-key m (kbd "C-c o P") #'od-publish)
     (define-key m (kbd "C-c o C") #'od-commit)
     (define-key m (kbd "C-c o d") #'od-deploy-status)
+    (define-key m [remap fill-paragraph] #'od-fill-paragraph)
     ;; outline's promote and demote would rewrite ◊section by its regexp
     (define-key m [remap outline-promote] #'od-promote)
     (define-key m [remap outline-demote] #'od-demote)

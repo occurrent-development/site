@@ -158,8 +158,15 @@
 
 ;;; TEST-1: editing
 
+(ert-deftest od-test-soft-wrap-joins ()
+  "With soft wrap, M-q joins a hard-wrapped paragraph onto one line (EDIT-1a)."
+  (od-test-with "One line\nof a hard\nwrapped paragraph.\n\n◊section[#:id \"s\"]{Next}\n"
+    (call-interactively #'od-fill-paragraph)
+    (should (equal (buffer-string) "One line of a hard wrapped paragraph.\n\n◊section[#:id \"s\"]{Next}\n"))))
+
 (ert-deftest od-test-fill-list-item ()
   (od-test-with "◊list{\n- A first item that is long enough to need wrapping at a narrow fill column.\n}\n"
+    (setq-local od-soft-wrap nil)
     (setq fill-column 30)
     (search-forward "first")
     (fill-paragraph)
