@@ -32,6 +32,12 @@
 When nil, read ZOTERO_BIB from the repository's local.mk."
   :type '(choice (const nil) file))
 
+(defcustom od-site-directory nil
+  "The site repository, used when the current buffer is not inside it.
+With it set, `C-c o N' and the other global keys work from anywhere,
+dired included."
+  :type '(choice (const nil) directory))
+
 (defcustom od-preview-port 8080
   "Port of the Pollen project server started by `make serve'."
   :type 'integer)
@@ -47,9 +53,13 @@ Then ⌥⇧V types ◊ everywhere, as it does in other applications."
 ;;; Project ------------------------------------------------------------------
 
 (defun od-root ()
-  "The repository root: the directory holding pollen.rkt."
+  "The repository root: the directory holding pollen.rkt.
+Found above the current file or directory, or else `od-site-directory'."
   (or (locate-dominating-file (or buffer-file-name default-directory) "pollen.rkt")
-      (user-error "Not inside the site repository (no pollen.rkt above here)")))
+      (and od-site-directory
+           (file-exists-p (expand-file-name "pollen.rkt" od-site-directory))
+           (file-name-as-directory (expand-file-name od-site-directory)))
+      (user-error "Not inside the site repository, and `od-site-directory' is not set")))
 
 (defun od--file (&rest parts)
   (expand-file-name (string-join parts "/") (od-root)))
@@ -620,6 +630,10 @@ scanned from its lozenge. Return (START . END) when the region changed."
   "#+title: Writing occurrentdevelopment.com: the three workflows
 Press q to close. TAB on a heading folds it. Keys marked (not built yet)
 do nothing for now; the marks go as the commands arrive.
+
+From anywhere in Emacs, dired included: C-c o N starts an essay, C-c o I
+opens this guide, C-c o k checks the whole site, C-c o d watches a deploy.
+The other keys work inside an essay.
 
 * 1. Starting a new essay
 
@@ -1662,6 +1676,19 @@ Typo and Meta commits are marked so the essay's Revised date stays (REV-1)."
     (define-key m [remap outline-demote] #'od-demote)
     m)
   "Keys for `occurrent-mode'.")
+
+;; The commands that make sense anywhere, for a global prefix (LOAD-4a):
+;;   (global-set-key (kbd "C-c o") od-global-map)
+;; Inside an essay the mode's own keys take precedence over these.
+(defvar od-global-map
+  (let ((m (make-sparse-keymap)))
+    (define-key m (kbd "N") #'od-new-essay)
+    (define-key m (kbd "I") #'od-guide)
+    (define-key m (kbd "k") #'od-check)
+    (define-key m (kbd "d") #'od-deploy-status)
+    m)
+  "Site commands for anywhere in Emacs, meant for `C-c o'.")
+(fset 'od-global-map od-global-map)
 
 (defun od--outline-level ()
   (save-excursion

@@ -250,6 +250,8 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. List them all in the `occurrent-mode` docstring.
 
+**LOAD-4a (MUST) Keys from anywhere.** `od-global-map` holds the commands that make sense outside an essay: `N` new essay, `I` guide, `k` check (the full `make` when not in an essay), `d` deploy status. The user's config binds it to `C-c o` globally; inside an essay the mode's own `C-c o` keys take precedence. `od-site-directory` names the repository, so `od-root` works from a buffer outside it, dired included. *Added 2026-10-15 at Ryan's request.*
+
 ---
 
 ## 10. Tests
