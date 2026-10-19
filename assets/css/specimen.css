@@ -5,6 +5,6 @@
 }
 .tier::after { content: "Tier S (ragged)"; }
 @container page (min-width: 39em)   { .tier::after { content: "Tier M (justified)"; } }
-@container page (min-width: 54.5em) { .tier::after { content: "Tier L (justified, margin)"; } }
+@container page (min-width: 66.5em) { .tier::after { content: "Tier L (justified, both margins)"; } }
 
-@container frame (min-width: 53.75em) { .has-toc .tier::before { content: "Contents in the left margin · "; } }
+@container frame (min-width: 79em) { .has-toc .tier::after { content: "Tier XL (contents at the window's edge)"; } }

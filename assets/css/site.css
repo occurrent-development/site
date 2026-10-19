@@ -89,10 +89,12 @@ a:hover, a:focus-visible { color: var(--accent); }
    breakpoints with it.
 
      --measure   calibrated column width (TYPE-1): mean ≤ 90 characters a line
-     S   below  M                 ragged right, column = container − gutters
-     M   ≥ measure + 2 gutters    justified, no margin
-     L   ≥ M + gap + margin       justified, right margin reserved for asides
-   Pages with contents may also have a left margin for them (TOC-2, below).
+     S   below  M                   ragged right, column = container − gutters
+     M   ≥ measure + 2 gutters      justified, no margins (39em)
+     L   ≥ the text block + 2 × 2em justified; left margin for margin notes,
+                                    right for stubs and figure words (66.5em)
+     XL  L + the contents at the window's edge (frame ≥ 79em; TOC-2, below)
+   The text block is left margin + gap + column + gap + right margin.
    Query values must be literal; keep them in step with the variables. */
 .frame {
   container: frame / inline-size;
@@ -102,9 +104,12 @@ a:hover, a:focus-visible { color: var(--accent); }
   container: page / inline-size;
   --measure: 36.5em;   /* calibrated: mean 88.6 characters over 20 full lines */
   --gutter: 1.25em;
-  --gap: 2.5em;
+  --margin-gap: 2.5em;   /* between the column and either margin (LAYOUT-6c) */
   --margin: 13em;
+  --left-margin: 8em;
+  --edge: 2em;          /* kept clear at either side of the text block (LAYOUT-6c) */
   --toc: 11em;
+  --toc-edge: 1.5em;    /* the contents' gutter from the window's edge (TOC-2) */
   line-height: 1.5;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures contextual;
@@ -139,32 +144,43 @@ a:hover, a:focus-visible { color: var(--accent); }
 
 article { --tier: S; }
 @container page (min-width: 39em)   { article { --tier: M; } }
-@container page (min-width: 54.5em) { article { --tier: L; position: relative; } }
+@container page (min-width: 66.5em) { article { --tier: L; position: relative; } }
 
-/* L: column + gap + right margin fit (39 + 2.5 + 13 = 54.5em). The column
-   moves left so the column and margin together are centred. The margin
-   widens into spare room, up to 20em, keeping 3em clear at either side.
-   --margin is registered as a length, so it is computed once, here, and
-   text set smaller inside the margin inherits the same width. */
+/* L: the text block fits with 2em clear at either side: 8 + 2.5 + 36.5 +
+   2.5 + 13 + 2 × 2 = 66.5em. Spare room widens the right margin first, up
+   to 20em (at 73.5em), then the left, up to 13em (at 78.5em) (LAYOUT-6c).
+   The block is centred as a whole, so the column sits a little left of
+   centre (LAYOUT-6a). Each child of .page keeps its box starting at the
+   column, with the right margin in its padding, and is moved to the column's
+   place by --lead; so everything placed in the right margin is placed from
+   the column's edge, as before, and the left margin lies outside the box.
+   The widths are registered as lengths, so they are computed once, here, and
+   text set smaller inside a margin inherits the same widths. */
 @property --margin { syntax: "<length>"; inherits: true; initial-value: 0px; }
-@container page (min-width: 54.5em) {
+@property --left-margin { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --lead { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@container page (min-width: 66.5em) {
   .page > * {
-    --margin: clamp(13em, 100cqi - var(--measure) - var(--gap) - 6em, 20em);
-    width: calc(var(--measure) + var(--gap) + var(--margin));
-    padding-inline: 0 calc(var(--gap) + var(--margin));
+    --margin: clamp(13em, 100cqi - var(--measure) - 2 * var(--margin-gap) - 8em - 2 * var(--edge), 20em);
+    --left-margin: clamp(8em, 100cqi - var(--measure) - 2 * var(--margin-gap) - 20em - 2 * var(--edge), 13em);
+    --lead: calc((100cqi - var(--left-margin) - var(--measure) - 2 * var(--margin-gap) - var(--margin)) / 2
+                 + var(--left-margin) + var(--margin-gap));
+    width: calc(var(--measure) + var(--margin-gap) + var(--margin));
+    padding-inline: 0 calc(var(--margin-gap) + var(--margin));
+    margin-inline: var(--lead) auto;
   }
 }
 
-/* Left margin for the contents (TOC-2). An outer container, .frame, decides
-   whether it fits: column + gutter + gap + contents = 39 + 1.25 + 2.5 + 11
-   = 53.75em. When it does, .page is narrowed by it, so the tiers above see
-   only the width that is left: as the window narrows, the right margin
-   goes first (below 68.5em) and the contents second (below 53.75em). The
-   column and both margins stay centred together. */
-@container frame (min-width: 53.75em) {
-  .has-toc > .page { padding-left: calc(var(--toc) + var(--gap)); }
-  .has-toc article { position: relative; }
-  .has-toc .bar { left: calc(var(--toc) + var(--gap)); }   /* fixed: centre it over the column */
+/* XL: the contents at the window's edge (TOC-2). An outer container, .frame,
+   decides whether they fit: their gutter and column (1.5 + 11em) plus tier L
+   (66.5em) = 79em. When they do, their width is reserved at the left edge
+   and .page is narrowed by it, so the tiers above see only the width that is
+   left and centre the text block in it. As the window narrows the contents
+   go first (below 79em), then both margins together (below 66.5em). */
+@container frame (min-width: 79em) {
+  .has-toc > .page { padding-left: calc(var(--toc-edge) + var(--toc)); }
+  .has-toc article { position: relative; --tier: XL; }
+  .has-toc .bar { left: calc(var(--toc-edge) + var(--toc)); }   /* fixed: over the text block */
 }
 
 /* ── Running text (§10.1) ──────────────────────────────────────────────── */
@@ -327,10 +343,10 @@ blockquote.epigraph footer::before { content: "— "; }
   .dates .sep { display: inline; }
 }
 /* tier L: the block goes to the margin, as a margin note does (MNOTE-2) */
-@container page (min-width: 54.5em) {
+@container page (min-width: 66.5em) {
   .header-meta {
     position: absolute;
-    left: calc((var(--measure) + var(--gap)) / 0.85);
+    left: calc((var(--measure) + var(--margin-gap)) / 0.85);
     width: var(--margin);
     margin: calc(1.5em * 0.95 / 0.85 + 0.25em) 0 0;   /* the abstract's top margin, in this size, plus the
                                                        difference in leading, so the first baselines match */
@@ -390,7 +406,8 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 
 /* ── Table of contents (TOC-1/2) ─────────────────────────────────────────
    In the text only without scripts; with them it opens from the reading bar,
-   and in tier XL it sits in the left margin, staying in view. */
+   and in tier XL it sits at the window's edge, outside the text block,
+   staying in view. */
 .js .toc { display: none; }
 .toc {
   font-size: 0.85em;
@@ -411,13 +428,13 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 .toc li { margin: 0.15em 0; }
 .toc + p, .toc + .intro { text-indent: 0; }
 
-@container frame (min-width: 53.75em) {
+@container frame (min-width: 79em) {
   .has-toc .toc, .js .has-toc .toc {
     display: block;
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(-1 * (var(--toc) + var(--gap)));
+    left: calc(-1 * (var(--lead) + var(--toc)));   /* from the column back to the edge's gutter */
     width: var(--toc);
     margin: 0;
     font-size: 1em;             /* so the widths above are in the page's em */
@@ -474,7 +491,7 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 
 /* ── Intro paragraph (LAYOUT-3): first line in small caps, narrow tiers only ── */
 .intro::first-line { font-variant-caps: small-caps; letter-spacing: 0.03em; }
-@container page (min-width: 54.5em) {
+@container page (min-width: 66.5em) {
   .intro::first-line { font-variant-caps: normal; letter-spacing: normal; }
 }
 
@@ -543,18 +560,19 @@ a.circle-link + a.circle-link .circle, .nw + a.circle-link .circle { margin-left
    or a pinned popup), whatever the pointer does; hover only pairs it with
    its stub by colour. */
 .circle.is-open { background: var(--accent); }
-a.term.hl { color: var(--accent); }
+a.term.hl, a.aside-phrase.hl, a.aside-phrase.is-open { color: var(--accent); }
 
 /* MARK-6: an invisible hit area of at least 24 × 24 px around annotated text. */
-a.link, a.term, a.circle-link, a.back { position: relative; }
-a.link::after, a.term::after, a.circle-link::after, a.back::after {
+a.link, a.term, a.aside-phrase, a.circle-link, a.back { position: relative; }
+a.link::after, a.term::after, a.aside-phrase::after, a.circle-link::after, a.back::after {
   content: "";
   position: absolute;
   left: 50%; top: 50%;
   width: max(100%, 24px); height: max(100%, 24px);
   transform: translate(-50%, -50%);
 }
-a.link:hover, a.link:focus-visible, a.term:hover, a.term:focus-visible { color: var(--accent); }
+a.link:hover, a.link:focus-visible, a.term:hover, a.term:focus-visible,
+a.aside-phrase:hover, a.aside-phrase:focus-visible { color: var(--accent); }
 
 /* ── Margin notes (MNOTE-3): run in, italic, until Phase 2 lifts them ── */
 .margin-note { font-style: italic; }
@@ -641,12 +659,12 @@ figure.figure img, figure.figure svg { display: block; width: 100%; height: auto
 figure.figure .figure-svg { color: var(--text); }
 .table-wrap .exhibit-title { padding-right: 2.4em; }   /* room for Expand above the table */
 
-@container page (min-width: 54.5em) {
+@container page (min-width: 66.5em) {
   .exhibit {
     display: grid;
-    grid-template-columns: var(--measure) var(--gap) var(--margin);
+    grid-template-columns: var(--measure) var(--margin-gap) var(--margin);
     grid-template-rows: auto 1fr;
-    margin-right: calc(-1 * (var(--gap) + var(--margin)));
+    margin-right: calc(-1 * (var(--margin-gap) + var(--margin)));
   }
   .exhibit-body { grid-column: 1; grid-row: 1 / span 2; min-width: 0; }
   .exhibit-title { grid-column: 3; grid-row: 1; margin: 0; padding-right: 0.6em; }
@@ -1087,13 +1105,14 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   .lb-close { width: 44px; height: 44px; padding: 12px; margin: -12px -12px -12px 0; }
 }
 
-/* ── The margin, tier L (POP-8, ASIDE-3/4, MNOTE-2/4) ───────────────────
+/* ── The margins, tiers L and XL (POP-8, ASIDE-3/4, MNOTE-2/4) ───────────
    Margin notes, aside stubs and opened notes stay where they are in the
-   text (A11Y-2) and are positioned into the right margin by the script. */
+   text (A11Y-2) and are positioned into a margin by the script: stubs into
+   the right, margin notes into the left. */
 .in-margin {
   position: absolute;
   /* the column and gap, in this element's own em (it is set at 0.85) */
-  left: calc((var(--measure) + var(--gap)) / 0.85);
+  left: calc((var(--measure) + var(--margin-gap)) / 0.85);
   width: var(--margin);
   font-size: 0.85em;
   line-height: 1.4;
@@ -1104,18 +1123,25 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   font-style: normal;
   white-space: normal;
 }
-.margin-note.in-margin { font-style: italic; color: var(--text-muted); }
-/* With JS on a wide page, margin notes start in the margin, so lifting them
-   moves nothing (CLS, §14). */
-@container page (min-width: 54.5em) {
-  .js article .margin-note {
+/* MNOTE-2: the left margin, right-aligned against the column and ragged
+   left, its right edge --margin-gap from the column; italic, aside size, no
+   rule. The script sets `left` from the column when a note sits in a list
+   item (a positioned box), and moves it to its anchor's line. With JS on a
+   wide page the notes start in the margin, so lifting them moves nothing in
+   the text (CLS, §14). */
+@container page (min-width: 66.5em) {
+  .js article .margin-note, .margin-note.in-margin {
     position: absolute;
-    left: calc((var(--measure) + var(--gap)) / 0.85);
-    width: var(--margin);
+    left: calc(-1 * var(--left-margin) - var(--margin-gap) / 0.85);
+    width: var(--left-margin);
     font-size: 0.85em;
     line-height: 1.4;
-    text-align: left;
+    font-style: italic;
+    text-align: right;
     text-indent: 0;
+    hyphens: manual;
+    -webkit-hyphens: manual;
+    white-space: normal;
     color: var(--text-muted);
   }
 }

@@ -344,7 +344,22 @@ Return the id."
                       "")
                     title))))
 
-(defun od-insert-aside () "Insert ◊aside{}." (interactive) (od--wrap "◊aside{" "}"))
+(defun od-insert-aside ()
+  "Insert ◊aside{}, with point in the body.
+With an active region, the region becomes the aside's phrase (ASIDE-8):
+◊aside[\"the phrase\"]{} stands in its place, quotation marks escaped."
+  (interactive)
+  (if (not (use-region-p))
+      (od--wrap "◊aside{" "}")
+    (let* ((beg (region-beginning)) (end (region-end))
+           (phrase (string-trim (replace-regexp-in-string
+                                 "[ \t\n]+" " " (buffer-substring-no-properties beg end)))))
+      (when (string-match-p "◊" phrase)
+        (user-error "A phrase with markup is written by hand: ◊aside[◊em{…} \" rest\"]{…}"))
+      (delete-region beg end)
+      (goto-char beg)
+      (insert "◊aside[" (prin1-to-string phrase) "]{")
+      (save-excursion (insert "}")))))
 (defun od-insert-margin () "Insert ◊margin{}." (interactive) (od--wrap "◊margin{" "}"))
 
 ;;; Preview ------------------------------------------------------------------
@@ -410,7 +425,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 
 ;; One entry per line, so pollen-test.rkt can read it (VOCAB-3). Each entry:
 ;;   (TAG :pos ARG :kw (KEYWORD…) :req (REQUIRED…) :body B :block B :built B [:only KIND])
-;; :pos   the positional argument in [...], or nil
+;; :pos   the positional argument in [...], or nil (:opt-pos t: it may be left out)
 ;; :body  t when the tag takes text in {...}; nil when it takes none
 ;;        (◊br{} and ◊break{} may still be written with empty braces)
 ;; :block t when the tag must start a line
@@ -428,7 +443,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t)
     (cite          :pos key    :kw (loc note)                                            :req ()                    :body nil :block nil :built t)
     (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t)
-    (aside         :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
+    (aside         :pos phrase :kw ()                                                    :req ()                    :body t   :block nil :built t :opt-pos t)
     (margin        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
     (sc            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
     (em            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
@@ -507,8 +522,8 @@ outside the repository or in an essay's support/ folder. `home' and
 
 (defun od--scan-args (open limit)
   "Mark the argument group whose `[' is at OPEN; return the position after its `]'.
-Inside the group, `\"' delimits strings (which may span lines and hold `\\\"')
-and `[' `]' nest. Return nil if the group is not closed before LIMIT."
+Inside the group, `\"' delimits strings (which may span lines and hold `\\\"'),
+`[' `]' nest, and a tag is marked as a tag. Return nil if the group is not closed before LIMIT."
   (save-excursion
     (goto-char (1+ open))
     (let ((depth 1) (in-string nil) close)
@@ -519,6 +534,9 @@ and `[' `]' nest. Return nil if the group is not closed before LIMIT."
             (cond ((eq c ?\\) (od--put-syntax (point) "\\") (forward-char 1))
                   ((eq c ?\") (od--put-syntax (point) "\"") (setq in-string nil))))
            ((eq c ?\") (od--put-syntax (point) "\"") (setq in-string t))
+           ;; a tag in the group, as in an aside's phrase: ◊aside[◊em{x} " y"]
+           ((and (eq c ?◊) (looking-at od--name-re))
+            (goto-char (1- (od--scan-tag (point) limit))))
            ((eq c ?\[) (setq depth (1+ depth)) (od--put-syntax (point) "(]"))
            ((eq c ?\])
             (setq depth (1- depth))
@@ -662,7 +680,8 @@ The other keys work inside an essay.
      depend on it)
    - a citation: {od-insert-cite}; a defined term: {od-insert-term}
      (a new one: {od-new-term})
-   - an aside: {od-insert-aside}; a margin note: {od-insert-margin}
+   - an aside: {od-insert-aside} (select a phrase first, and the aside
+     comments on it); a margin note: {od-insert-margin}
    - links: within the essay {od-insert-link-internal}, to another essay
      {od-insert-link-essay}, to the web {od-insert-link-external}
    - a figure: put the image in img/, then {od-insert-figure}; a table:
@@ -997,7 +1016,7 @@ KIND is `heading', `figure', `table' or `anchor'."
           (cond
            ((and pos (not want-pos))
             (od--error (nth 2 pos) (nth 3 pos) (format "◊%s takes no value here, only #:keywords" name)))
-           ((and want-pos (not pos))
+           ((and want-pos (not pos) (not (od--tag-get name :opt-pos)))
             (od--error at name-end (format "◊%s needs its %s first in [...]" name want-pos))))
           (when pos
             (pcase name
@@ -1008,6 +1027,8 @@ KIND is `heading', `figure', `table' or `anchor'."
           (dolist (k (cdr split))
             (let ((sym (nth 0 k)) (kw (nth 1 k)) (val (nth 2 k)))
               (cond
+               ;; an aside's phrase may be several values: ◊aside[◊em{x} " y"] (ASIDE-8)
+               ((and (null sym) (equal name "aside")))
                ((null sym) (od--error (nth 2 kw) (nth 3 kw) "a value with no #:keyword before it"))
                ((memq sym (od--tag-get name :kw))
                 (push sym seen)

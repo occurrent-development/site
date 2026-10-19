@@ -12,7 +12,7 @@
 (provide build-error warn text-of words id-pattern check-id
          tag? has-class? source-path source-dir project-file
          WJ visually-hidden essay-statuses essay-source? published?
-         output->url parse-tags)
+         output->url parse-tags site-value source-urls)
 
 (define (build-error fmt . args)
   (raise-user-error (string-append "build error: " (where) (apply format fmt args))))
@@ -89,3 +89,26 @@
         (build-error "tag ~s: tags are lowercase words, separated by commas" tag))
       tag))
   (remove-duplicates tags))
+
+;; Site-wide facts from data/site.rktd (§2.2): an association list.
+(define (site-value key)
+  (define f (project-file "data" "site.rktd"))
+  (define v (assq key (call-with-input-file f read)))
+  (unless (and v (string? (cdr v)) (not (equal? (cdr v) "")))
+    (build-error "data/site.rktd needs a ~a" key))
+  (cdr v))
+
+;; REV-2: a source file's blob and commits URLs on GitHub, from its path
+;; relative to the project root. Nothing is typed in the essay.
+(define (source-urls src)
+  (define root (simplify-path (path->complete-path (current-project-root))))
+  (define file (simplify-path (path->complete-path src root)))
+  (define rel (find-relative-path root file))
+  (define parts (map (λ (p) (if (path? p) (path->string p) "..")) (explode-path rel)))  ; 'up → ".."
+  (when (or (complete-path? rel) (member ".." parts))
+    (build-error "~a is not under the project root ~a, so it has no source link (REV-2)" file root))
+  (define path (string-join parts "/"))
+  (define repo (regexp-replace #rx"/+$" (site-value 'repo) ""))
+  (define branch (site-value 'branch))
+  (values (format "~a/blob/~a/~a" repo branch path)
+          (format "~a/commits/~a/~a" repo branch path)))

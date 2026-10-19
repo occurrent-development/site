@@ -51,7 +51,8 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `link` | target | `#:note` `#:title` `#:author` `#:date` | yes | no |
 | `cite` | key | `#:loc` `#:note` | no | no |
 | `term` | id | `#:mark` | yes | no |
-| `aside` `margin` `sc` `em` `strong` `code` | — | — | yes | no |
+| `aside` | phrase, optional: a string, `◊aside["finalised product"]{…}`, or values holding `◊em`/`◊sc`, `◊aside[◊em{x} " y"]{…}` (ASIDE-8, added 2026-10-19; `:opt-pos t` in VOCAB-1, so its absence is no error) | — | yes | no |
+| `margin` `sc` `em` `strong` `code` | — | — | yes | no |
 | `anchor` | id | — | no | no |
 | `ref` | id of a figure or table in this file | — | no | no |
 | `br` `break` | — | — | no | `break` yes |

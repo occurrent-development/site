@@ -20,6 +20,15 @@ of 1.5. The column is 36.5 em wide, 730 pixels at the default size, which
 gives a mean of 88.6 characters a line over twenty full lines of ordinary
 prose; the limit is 90.
 
+The layout has four widths, measured in em so that they follow the text size
+and the browser's zoom. Below 39 em the column narrows and is set ragged right;
+from 39 em it holds the full measure and is justified; from 66.5 em both
+margins appear, margin notes on the left (8 to 13 em) and asides, definitions
+and the words of figures on the right (13 to 20 em), 2.5 em from the column,
+the right widening first, to 20 em at 73.5 em, then the left, to 13 em at
+78.5 em; and from 79 em a page with contents shows them at the window's left
+edge. At the default size these are 780, 1330 and 1580 pixels.
+
 ◊section[#:id "citations" #:short "Citations"]{Citations}
 
 References are kept in Zotero and formatted by pandoc with the Chicago Manual

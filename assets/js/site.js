@@ -23,6 +23,8 @@ function el(tag, attrs = {}, ...kids) {
 
 // The width tier, as the stylesheet's container queries see it (LAYOUT-6).
 const tier = () => (article ? getComputedStyle(article).getPropertyValue("--tier").trim() : "S");
+// Tiers L and XL have both margins; XL adds the contents at the window's edge.
+const wide = () => ["L", "XL"].includes(tier());
 
 // ── Theme (THEME-1, THEME-6) ──────────────────────────────────────────────
 
@@ -148,7 +150,7 @@ function clean(node) {
   c.removeAttribute("id");
   for (const e of c.querySelectorAll("[id]")) e.removeAttribute("id");
   for (const e of c.querySelectorAll(".back, .self, .aside[hidden], .stub, .toc-mark, .expand, .sticky-head")) e.remove();
-  for (const e of c.querySelectorAll(".in-margin")) { e.classList.remove("in-margin"); e.style.transform = ""; }   // margin notes, run in again
+  for (const e of c.querySelectorAll(".in-margin")) { e.classList.remove("in-margin"); e.removeAttribute("style"); }   // margin notes, run in again
   return c;
 }
 
@@ -270,9 +272,9 @@ function cardContent(a) {
   return { title: d.title || linkText(a), url: a.href, body };
 }
 
-const TRIGGERS = ".circle-link, a.term[data-targets], a.link.same, a.link.xref, a.link.ext";
+const TRIGGERS = ".circle-link, a.term[data-targets], a.aside-phrase[data-targets], a.link.same, a.link.xref, a.link.ext";
 function kindOf(t) {
-  if (t.matches(".circle-link, a.term[data-targets]")) return "circle";
+  if (t.matches(".circle-link, a.term[data-targets], a.aside-phrase[data-targets]")) return "circle";
   if (t.matches("a.link.same")) return "same";
   if (t.matches("a.link.xref")) return "xref";
   return "ext";
@@ -310,7 +312,11 @@ const CROSS = "M2.5 2.5l7 7M9.5 2.5l-7 7";
 const BACK = "M7.5 2.5 4 6l3.5 3.5";
 
 // ASIDE-2: a circle is filled while what it opens is open.
-function fill(t, on) { t?.querySelector?.(".circle")?.classList.toggle("is-open", on); }
+// ASIDE-2, ASIDE-8: while open, the circle is filled and a phrase keeps the accent.
+function fill(t, on) {
+  t?.querySelector?.(".circle")?.classList.toggle("is-open", on);
+  if (t?.matches?.("a.aside-phrase")) t.classList.toggle("is-open", on);
+}
 
 function buildPopup(c, pinned) {
   const id = `popup-title-${++seq}`;
@@ -485,10 +491,10 @@ function closeLightbox() {
 
 let marginOpen = null;   // { stub, trigger }
 
-// The stub a trigger opens, in tier L, when the trigger is in the text (a
+// The stub a trigger opens, in tiers L and XL, when the trigger is in the text (a
 // circle inside an open margin item opens a popup instead, POP-6).
 function stubFor(t) {
-  if (tier() !== "L" || !t || t.closest(".in-margin")) return null;
+  if (!wide() || !t || t.closest(".in-margin")) return null;
   return t._stub?.isConnected ? t._stub : null;
 }
 
@@ -647,7 +653,8 @@ let currentTier = null;
 // The aside's circle, by its target.
 function circleFor(stub) {
   const id = "aside-" + stub.id.replace("aside-text-", "");
-  return [...article.querySelectorAll(".circle-link")].find((c) => c.dataset.targets.split(" ").includes(id)) || null;
+  // a circle, or a phrase aside with its circle (ASIDE-8)
+  return [...article.querySelectorAll(".circle-link, a.aside-phrase[data-targets]")].find((c) => c.dataset.targets.split(" ").includes(id)) || null;
 }
 
 // TERM-3: a definition's stub, built from the Terms store: the headword and
@@ -682,8 +689,8 @@ function defStub(t) {
 }
 
 function setupMargin() {
-  const L = tier() === "L";
-  if (L === (currentTier === "L") && currentTier !== null) return;
+  const L = wide();
+  if (L === ["L", "XL"].includes(currentTier) && currentTier !== null) return;
   collapseMargin();   // a popup stays open: popups exist at every tier
   if (!article) return;
   for (const a of article.querySelectorAll(".aside[id^='aside-text-']")) {
@@ -722,31 +729,92 @@ function setupMargin() {
   }
   for (const m of article.querySelectorAll(".margin-note")) {
     m.classList.toggle("in-margin", L);
-    if (!L) m.style.transform = "";
+    if (!L) m.removeAttribute("style");
   }
   if (!L) for (const x of article.querySelectorAll(".exhibit-title, .exhibit-meta, .header-meta")) x.style.transform = "";
 }
 
-// ASIDE-4, MNOTE-4, IMG-7: margin notes and the words of figures and tables
-// hold their place, and stubs fit around them, moving down just enough to
+// The bottom of the first (or last) visible character in a run of text
+// nodes: its baseline, near enough.
+function charBottom(nodes, fromEnd = false) {
+  for (const n of fromEnd ? nodes.reverse() : nodes) {
+    const m = fromEnd ? n.data.match(/\S(?=\s*$)/) : n.data.match(/\S/);
+    if (!m) continue;
+    const r = document.createRange();
+    r.setStart(n, m.index); r.setEnd(n, m.index + 1);
+    const b = r.getBoundingClientRect();
+    if (b.height) return b.bottom;
+  }
+  return null;
+}
+function textNodes(root, filter = () => true) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const out = [];
+  for (let n; (n = w.nextNode());) if (filter(n)) out.push(n);
+  return out;
+}
+
+// MNOTE-2/4/6: margin notes in the left margin, right-aligned against the
+// column, each level with the line on which its anchor begins: the first
+// visible character after the note (the paragraph, item or sentence it
+// opens). Not the note's own static place: when a line breaks just after
+// "end.", that is the end of the line above. The left margin is its own
+// column: notes collide only with each other, the later moving down just
+// enough to clear, and nothing in the right margin moves them.
+function positionNotes() {
+  const notes = [...article.querySelectorAll(".in-margin.margin-note")];
+  if (!notes.length) return;
+  const col = article.getBoundingClientRect().left;   // the column's left edge
+  const page_ = getComputedStyle(article);
+  const width = parseFloat(page_.getPropertyValue("--left-margin"));
+  const gap = parseFloat(getComputedStyle(page).getPropertyValue("--margin-gap")) * parseFloat(page_.fontSize);
+  for (const n of notes) n.style.transform = "";
+  const placed = notes.map((n) => {
+    // inside a list item the containing block is the item, not the article
+    const cb = n.offsetParent || article;
+    const left = col - gap - width - cb.getBoundingClientRect().left - cb.clientLeft;
+    Object.assign(n.style, { left: `${left}px`, width: `${width}px` });
+    const block = n.parentElement;
+    const inNote = (t) => n.contains(t);
+    const all = textNodes(block, (t) => !inNote(t) && !t.parentElement.closest(".aside, .stub, .vh, .margin-note"));
+    const after = all.filter((t) => n.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const before = all.filter((t) => n.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_PRECEDING);
+    const target = charBottom(after) ?? charBottom(before, true);
+    const own = charBottom(textNodes(n));
+    const r = n.getBoundingClientRect();
+    const dy = target != null && own != null ? target - own : 0;
+    return { n, top: r.top + dy, h: r.height, dy };
+  }).sort((a, b) => a.top - b.top);
+  const space = notes.length ? parseFloat(getComputedStyle(notes[0]).lineHeight) * 0.25 : 4;
+  let last = -Infinity;
+  for (const p of placed) {
+    const y = Math.max(p.top, last + space);
+    p.dy += y - p.top;
+    last = y + p.h;
+    if (Math.abs(p.dy) > 0.5) p.n.style.transform = `translateY(${p.dy}px)`;
+  }
+}
+
+// ASIDE-4, IMG-7: the words of figures and tables and the header's block
+// hold their place in the right margin, and stubs fit around them, moving down just enough to
 // clear; then an open item pushes whatever is below it down, as far as it
 // needs, and everything returns when it closes.
 function positionMargin() {
-  if (tier() !== "L" || !article) return;
+  if (!wide() || !article) return;
+  positionNotes();
   const rect = (x) => x.getBoundingClientRect();
   const stubs = [...article.querySelectorAll(".in-margin.stub")];
-  const notes = [...article.querySelectorAll(".in-margin.margin-note")];
   const exhibits = [...article.querySelectorAll(".exhibit")]
     .map((x) => [x.querySelector(".exhibit-title"), x.querySelector(".exhibit-meta")].filter(Boolean));
   const headers = [...article.querySelectorAll(".header-meta")];
-  for (const e of [...stubs, ...notes, ...exhibits.flat(), ...headers]) e.style.transform = "";
+  for (const e of [...stubs, ...exhibits.flat(), ...headers]) e.style.transform = "";
   // ASIDE-3: an item that fits in two margin lines is shown in full
   // Stubs can sit in smaller text (a table), where the stylesheet's em would
   // be wrong; so their place and size are set from the article's.
   const fs = parseFloat(getComputedStyle(article).fontSize);
   const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
   for (const st of stubs) {
-    Object.assign(st.style, { left: `${v("--measure") + v("--gap")}px`, width: getComputedStyle(article).getPropertyValue("--margin"), fontSize: `${0.85 * fs}px` });
+    Object.assign(st.style, { left: `${v("--measure") + v("--margin-gap")}px`, width: getComputedStyle(article).getPropertyValue("--margin"), fontSize: `${0.85 * fs}px` });
     if (st.classList.contains("is-open")) continue;
     st.classList.add("is-full");
     const lh = parseFloat(getComputedStyle(st).lineHeight);
@@ -781,7 +849,7 @@ function positionMargin() {
   });
   const items = [
     ...stubs.map((s) => ({ els: [s], top: rect(s).top, h: rect(s).height, fixed: false })),
-    ...[...notes.map((n) => [n]), ...exhibits].map((els) => { const [t, b] = extent(els); return { els, top: t, h: b - t, fixed: true }; }),
+    ...exhibits.map((els) => { const [t, b] = extent(els); return { els, top: t, h: b - t, fixed: true }; }),
     ...headerItems,
   ].sort((a, b) => a.top - b.top);
   for (const it of items) if (it.natural === undefined) it.natural = it.top;
@@ -796,7 +864,7 @@ function positionMargin() {
     return y;
   };
   // Pass 1, everything collapsed: the header's block where it belongs; other
-  // fixed items (margin notes, figure words) where they belong unless the
+  // fixed items (figure words) where they belong unless the
   // header's block is there, in which case below it; stubs after the one
   // above, clear of every fixed item.
   const headerZones = headerItems.map((i) => [i.top, i.top + i.h]);

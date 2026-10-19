@@ -18,6 +18,7 @@
          pollen/template
          pollen/pagetree
          racket/path
+         (for-syntax racket/base racket/list)
          "typography.rkt"
          "lib/util.rkt"
          "lib/marks.rkt"
@@ -60,6 +61,7 @@
   (define-runtime-path site-js "assets/js/site.js")
   (define-runtime-path specimen-css "assets/css/specimen.css")
   (define-runtime-path marks-dir "assets/icons/marks")
+  (define-runtime-path site-data "data/site.rktd")
   ;; SRC-2: an unknown tag is an unbound identifier, so the build fails.
   (define allow-unbound-ids? #f)
   (define block-tags
@@ -67,7 +69,7 @@
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
       od-summary od-more od-abstract od-epistemic))
   (define cache-watchlist
-    (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css)))
+    (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css site-data)))
 
 (require (prefix-in files: (submod "." setup)))
 
@@ -133,7 +135,35 @@
 (define (abstract . xs) (txexpr 'od-abstract null xs))
 (define (epistemic . xs) (txexpr 'od-epistemic null xs))
 
-(define (aside . xs) (txexpr 'od-aside null xs))      ; §7.1
+;; §7.1. ASIDE-8: ◊aside["finalised product"]{…} names the phrase the aside
+;; comments on. Pollen reads ◊aside["x"]{y} and ◊aside{x y} into the same
+;; call, but its reader marks each form with how many arguments were in the
+;; brackets (the 'scribble property, (form <bracket-count> <body-count>)), so
+;; `aside` is a macro that takes the bracketed ones as the phrase. Racket
+;; callers (the tests) pass #:phrase.
+(define (make-aside #:phrase [phrase #f] . xs)
+  (cond
+    [phrase
+     (define els (if (list? phrase) phrase (list phrase)))
+     (unless (andmap (λ (e) (or (string? e) (txexpr? e))) els)
+       (build-error "◊aside's phrase is a string, as in ◊aside[\"finalised product\"]{…}"))
+     (forbid els '(od-link od-cite od-term od-aside od-margin) "◊aside's phrase")
+     (when (regexp-match? #px"^\\s*$" (text-of els)) (build-error "◊aside's phrase is empty"))
+     (txexpr 'od-aside `((phrase ,(string-normalize-spaces (text-of els))))
+             (cons (txexpr 'od-phrase null els) xs))]
+    [else (txexpr 'od-aside null xs)]))
+
+(define-syntax (aside stx)
+  (syntax-case stx ()
+    [(_ arg ...)
+     (let* ([prop (syntax-property stx 'scribble)]
+            [n (and (list? prop) (= (length prop) 3) (eq? (car prop) 'form) (cadr prop))]
+            [args (syntax->list #'(arg ...))])
+       (if (and (exact-positive-integer? n) (<= n (length args)))
+           (with-syntax ([(ph ...) (take args n)] [(body ...) (drop args n)])
+             (syntax/loc stx (make-aside #:phrase (list ph ...) body ...)))
+           (syntax/loc stx (make-aside arg ...))))]
+    [_ (identifier? stx) #'make-aside]))
 (define (margin . xs) (txexpr 'od-margin null xs))    ; §7.2
 (define (more . xs) (txexpr 'od-more null (paragraphs xs))) ; glossary only
 
@@ -340,14 +370,17 @@
                    [(od-abstract) "abstract"] [(od-epistemic) "epistemic"] [else (get-tag x)]))))
 
 ;; MARK-3: a note or aside numeral follows its word directly, so the space
-;; typed before ◊cite or ◊aside is removed.
+;; typed before ◊cite or ◊aside is removed; not before a phrase aside, whose
+;; phrase is a word of the text (ASIDE-8).
+(define (closes-up? x)
+  (or ((tag? 'od-cite) x) (and ((tag? 'od-aside) x) (not (attrs-have-key? x 'phrase)))))
 (define (close-up-refs x)
   (cond
     [(txexpr? x)
      (txexpr (get-tag x) (get-attrs x)
              (let loop ([els (map close-up-refs (get-elements x))])
                (match els
-                 [(list* (? string? s) (? (tag? 'od-cite 'od-aside) r) rest)
+                 [(list* (? string? s) (? closes-up? r) rest)
                   (define trimmed (string-trim s #:left? #f))
                   (if (equal? trimmed "")
                       (loop (cons r rest))
@@ -356,15 +389,104 @@
                  ['() '()])))]
     [else x]))
 
-;; MNOTE-3: a margin note opens its paragraph and is emitted run in.
-(define (lift-margin-notes elems)
-  (for/list ([x (in-list elems)])
-    (match x
-      [(txexpr 'p attrs (list* (? (tag? 'od-margin) m) rest))
-       (forbid (get-elements m) '(od-link od-cite od-term od-aside od-margin) "◊margin")  ; MNOTE-5
-       (when (> (words m) 12) (warn "margin note over 12 words: ~s" (string-trim (text-of m))))
-       (txexpr 'p attrs (list* `(span ((class "margin-note")) ,@(get-elements m)) rest))]
-      [_ x])))
+;; MNOTE-6: a margin note stands where it was written, in one of four places:
+;; first in a paragraph (a top-level one, or one in a list item, blockquote
+;; or epigraph); first in a list item, after the marker; or where a sentence
+;; begins inside a paragraph or item. It is emitted there, run in (MNOTE-3),
+;; and never lifted to the paragraph's start; the script moves it into the
+;; left margin from its line box when wide (MNOTE-2).
+(define margin-anchor-error "◊margin must open a paragraph, a list item or a sentence")
+
+;; The text a reader sees before a point, for the sentence test: an aside's
+;; body is not in the running text (only its phrase is, ASIDE-8), and cites
+;; and margin notes print no words.
+(define (running-text x)
+  (cond [(string? x) x]
+        [((tag? 'od-aside) x) (if (attrs-have-key? x 'phrase) (attr-ref x 'phrase) "")]
+        [((tag? 'od-cite 'od-margin 'od-summary) x) ""]
+        [(txexpr? x) (string-append* (map running-text (get-elements x)))]
+        [(list? x) (string-append* (map running-text x))]
+        [else ""]))
+
+;; (d): the previous non-whitespace character ends a sentence, perhaps with
+;; closing quotes or brackets after it, or the previous element is ◊br{}.
+(define sentence-end #px"[.!?…][’”»)\\]'\"]*$")
+(define (sentence-start? before)
+  (define prev (findf (λ (e) (not (blank? e))) (reverse before)))
+  (or ((tag? 'br) prev)
+      (regexp-match? sentence-end (string-trim (running-text before) #:left? #f))))
+
+;; Where a note may not stand at all, whatever its position (MNOTE-6).
+(define (no-margin-context x)
+  (cond [((tag? 'od-aside) x) "an aside"]
+        [((tag? 'od-summary) x) "a ◊summary"]
+        [((tag? 'od-more) x) "a definition"]
+        [((tag? 'od-abstract 'od-epistemic) x) "the essay header"]
+        [(heading? x) "a heading"]
+        [((tag? 'figure 'figcaption) x) "a caption"]
+        [((tag? 'table) x) "a table"]
+        [else #f]))
+
+(define (margin-note m)
+  (forbid (get-elements m) '(od-link od-cite od-term od-aside od-margin) "◊margin")  ; MNOTE-5
+  (when (> (words m) 12) (warn "margin note over 12 words: ~s" (string-trim (text-of m))))
+  ;; the run-in is followed by one space, kept inside it so that when the
+  ;; script takes the note out of the line no double space is left behind
+  (define body (get-elements m))
+  (define trimmed
+    (match body
+      ['() '()]
+      [_ (let* ([b (if (string? (car body)) (cons (string-trim (car body) #:right? #f) (cdr body)) body)]
+                [b (if (string? (last b)) (append (drop-right b 1) (list (string-trim (last b) #:left? #f))) b)])
+           (filter (λ (e) (not (equal? e ""))) b))]))
+  `(span ((class "margin-note")) ,@trimmed " "))
+
+(define (place-margin-notes elems)
+  (define (walk x ctx)
+    (cond
+      [(txexpr? x)
+       (define ctx* (or ctx (no-margin-context x)))
+       (define kids (get-elements x))
+       (if (ormap (tag? 'od-margin) kids)
+           (txexpr (get-tag x) (get-attrs x) (anchor-notes x kids ctx*))
+           (txexpr (get-tag x) (get-attrs x) (map (λ (k) (walk k ctx*)) kids)))]
+      [else x]))
+  ;; the children of X, with each note checked and its spaces normalised
+  (define (anchor-notes x kids ctx)
+    (let loop ([before '()] [rest kids])   ; before: reversed, already placed
+      (match rest
+        ['() (reverse before)]
+        [(cons (? (tag? 'od-margin) m) more)
+         (when ctx (build-error "~a (it is inside ~a)" margin-anchor-error ctx))
+         (unless ((tag? 'p 'li) x) (build-error "~a (it is inside ◊~a)" margin-anchor-error (get-tag x)))
+         (define prev (findf (λ (e) (not (blank? e))) before))
+         (when (and prev (has-class? prev "margin-note"))
+           (build-error "two margin notes at one anchor: ~s" (string-trim (text-of m))))
+         (define block-start? (andmap blank? before))
+         (unless (or block-start? (sentence-start? (reverse before)))
+           (build-error "~a: ~s follows ~s" margin-anchor-error (string-trim (text-of m))
+                        (let ([t (string-trim (running-text (reverse before)))])
+                          (if (> (string-length t) 30) (string-append "…" (substring t (- (string-length t) 30))) t))))
+         (when (andmap blank? more)
+           (warn "margin note ~s ends its paragraph or item, so it opens no sentence; it will sit on the last line"
+                 (string-trim (text-of m))))
+         ;; none before at a block start, one at a sentence start; one after
+         (define before*
+           (cond
+             [block-start? '()]
+             [((tag? 'br) prev) (dropf before blank?)]   ; it starts a line, as at a block start
+             [else
+               (match before
+                 [(cons (? string? s) b) (let ([t (string-trim s #:left? #f)])
+                                           (if (equal? t "") (cons " " b) (cons (string-append t " ") b)))]
+                 [_ (cons " " before)])]))
+         (define more*
+           (match more
+             [(cons (? string? s) r) (let ([t (string-trim s #:right? #f)]) (if (equal? t "") r (cons t r)))]
+             [_ more]))
+         (loop (cons (margin-note m) before*) more*)]
+        [(cons e more) (loop (cons (walk e ctx) before) more)])))
+  (map (λ (e) (walk e #f)) elems))
 
 (define (strip-ids x)
   (if (txexpr? x)
@@ -434,13 +556,22 @@
       [(? (tag? 'od-aside))
        (set! aside-n (add1 aside-n))
        (define i aside-n)
+       (define-values (phrase els)
+         (match (get-elements x)
+           [(cons (? (tag? 'od-phrase) p) more) (values (get-elements p) more)]
+           [els (values #f els)]))
        ;; reference numbering continues inside the aside, at its place in the argument
-       (define body (map walk (get-elements x)))
+       (define body (map walk els))
        (set! asides (cons (list i body) asides))
        ;; ASIDE-2: unnumbered. ASIDE-1: the inline copy, which the script lifts
        ;; into the margin, travels with the circle.
-       `(od-ann ((kind "aside") (target ,(format "aside-~a" i)) (label "aside"))
-                (span ((class "aside") (id ,(format "aside-text-~a" i)) (hidden "")) ,@(map strip-ids body)))]
+       (define ann
+         `(od-ann ((kind "aside") (target ,(format "aside-~a" i)) (label "aside"))
+                  (span ((class "aside") (id ,(format "aside-text-~a" i)) (hidden "")) ,@(map strip-ids body))))
+       ;; ASIDE-8: the phrase and the circle are one link, as a term's are
+       (if phrase
+           `(a ((class "aside-phrase") (href ,(format "#aside-~a" i))) ,@phrase ,ann)
+           ann)]
       [(? (tag? 'od-term))
        (define id (attr-ref x 'ref))
        (term-ref id)
@@ -547,8 +678,10 @@
       (od-ann ((kind "term") (target ,(format "term-~a" id)) (label "definition")))))
 
 (define (ann? x) ((tag? 'od-ann) x))
+;; Text that ends in its own circle: a first-use term, or a phrase aside (ASIDE-8)
 (define (term-with-ann? x)
-  (and ((tag? 'a) x) (has-class? x "term") (pair? (get-elements x)) (ann? (last (get-elements x)))))
+  (and ((tag? 'a) x) (or (has-class? x "term") (has-class? x "aside-phrase"))
+       (pair? (get-elements x)) (ann? (last (get-elements x)))))
 (define (annotation? x) (or (ann? x) (term-with-ann? x)))
 (define (blank? x) (and (string? x) (regexp-match? #px"^\\s*$" x)))
 
@@ -596,22 +729,35 @@
     (define extras (append-map (λ (a) (map (λ (e) (walk e #t)) (get-elements a))) anns)) ; hidden aside copies
     (define cid (register! anns hidden?))
     (cond
-      ;; a lone term: text and circle are one link (MARK-6)
-      [(and (= (length members) 1) (term-with-ann? (car members)))
+      ;; a lone term or phrase aside: text and circle are one link (MARK-6,
+      ;; ASIDE-8), named by its text and what it opens; an aside's hidden
+      ;; inline copy follows the link. A phrase aside followed by citations
+      ;; at the same point is one link too, its circle shared (MARK-1c), so
+      ;; only the phrase's last word is bound to the circle (MARK-3b).
+      [(and (term-with-ann? (car members))
+            (or (= (length members) 1)
+                (and (has-class? (car members) "aside-phrase")
+                     (andmap (λ (m) (or (blank? m) (ann? m))) (cdr members)))))
        (define t (car members))
        (define kids (map (λ (e) (walk e hidden?)) (drop-right (get-elements t) 1)))
        (define-values (init word) (split-last-word kids))
-       (list (txexpr 'a (append (get-attrs t) `((data-targets ,targets) (data-kinds ,kinds))
+       (cons (txexpr 'a (append (get-attrs t) `((data-targets ,targets) (data-kinds ,kinds))
                                 (if cid `((id ,cid)) null))
                      (append init
                              (list `(span ((class "nw")) ,@word ,WJ ,(circle-span)
-                                          ,(visually-hidden " (definition)"))))))]
+                                          ,(visually-hidden (format " (~a)" label))))))
+             extras)]
       [else
-       ;; terms keep their text links; one circle follows the group
+       ;; terms and phrases keep their text links; one circle follows the
+       ;; group (MARK-1c). A phrase still opens its own aside (ASIDE-8).
        (define shown
          (for/list ([m (in-list members)])
            (if (term-with-ann? m)
-               (txexpr 'a (get-attrs m) (map (λ (e) (walk e hidden?)) (drop-right (get-elements m) 1)))
+               (txexpr 'a (append (get-attrs m)
+                                  (if (has-class? m "aside-phrase")
+                                      `((data-targets ,(attr-ref (ann-of m) 'target)) (data-kinds "aside"))
+                                      null))
+                       (map (λ (e) (walk e hidden?)) (drop-right (get-elements m) 1)))
                m)))
        (define visible (filter (λ (m) (not (ann? m))) shown))
        (define circle
@@ -757,18 +903,22 @@
      (txexpr (get-tag x) (get-attrs x) (append word* (list `(span ((class "punct")) ,p)) wj marks))]
     [else (txexpr (get-tag x) (get-attrs x) (append (drop-right els 1) (list (push-punct (last els) p))))]))
 
+(define (hidden-copy? x) (and (txexpr? x) (attrs-have-key? x 'hidden)))
+
 (define (bind-punctuation doc)
   (let walk ([x doc])
     (if (txexpr? x)
         (txexpr (get-tag x) (get-attrs x)
                 (let loop ([els (map walk (get-elements x))])
                   (match els
-                    [(list* (? ends-with-mark? m) (? string? s) rest)
+                    ;; an aside's hidden inline copy may sit between the
+                    ;; circle and the punctuation; it stays after both
+                    [(list (? ends-with-mark? m) (? hidden-copy? hs) ... (? string? s) rest ...)
                      #:when (regexp-match? trailing-punct s)
                      (define p (car (regexp-match trailing-punct s)))
                      (define after (substring s (string-length p)))
                      (cons (push-punct m p)
-                           (loop (if (equal? after "") rest (cons after rest))))]
+                           (append hs (loop (if (equal? after "") rest (cons after rest)))))]
                     [(cons e rest) (cons e (loop rest))]
                     ['() '()])))
         x)))
@@ -800,13 +950,15 @@
   (check-essay-metas)
   (let ([t (and (current-metas) (select-from-metas 'tags (current-metas)))]) (when t (parse-tags t)))
   (define-values (abstract-el epistemic-el flat) (take-header-text (prepare elems)))
+  (for ([el (in-list (list abstract-el epistemic-el))] #:when (and el (pair? (find-all el (tag? 'od-margin)))))
+    (build-error "~a (it is inside the essay header)" margin-anchor-error))
   (check-headings-top-level flat)
   (forbid flat '(od-more) "an essay")
   (for ([a (in-list (find-all flat (tag? 'od-aside)))])
     (forbid (get-elements a) '(od-aside od-margin) "◊aside"))
-  (define lifted (lift-margin-notes flat))
-  (when (pair? (find-all lifted (tag? 'od-margin)))
-    (build-error "◊margin must open its paragraph"))
+  (define lifted (place-margin-notes flat))
+  (when (pair? (find-all lifted (tag? 'od-margin)))   ; outside any paragraph or item
+    (build-error margin-anchor-error))
   ;; LAYOUT-1: the header is part of the document, so a citation or term in
   ;; the abstract is numbered and resolved like any other
   (define header (essay-header (current-metas) abstract-el epistemic-el))
@@ -1021,7 +1173,10 @@
 ;; status), abstract. On tier L CSS lifts the block into the margin, where it
 ;; sits level with the abstract because it comes just before it (LAYOUT-1).
 ;; EPISTEMIC is a list of inline elements; ABSTRACT a list of paragraphs.
-(define (header-parts title-el subtitle published revised tags epistemic abstract)
+;; SOURCE, when given, is the page's source file: the block then ends with
+;; its Source · History links (REV-2), so a page has a block even without
+;; dates or tags.
+(define (header-parts title-el subtitle published revised tags epistemic abstract #:source [source #f])
   (define (date label iso) `(span ((class "date")) ,(string-append label " " (format-date iso))))
   (define dates
     (filter values (list (and published (date "Published" published))
@@ -1035,12 +1190,17 @@
   (when (and epistemic (> (string-length (text-of epistemic)) 220))
     (warn "the epistemic status runs to ~a characters; it should be one sentence, four or five margin lines (LAYOUT-1)"
           (string-length (text-of epistemic))))
+  (define source-line
+    (and source
+         (let-values ([(blob commits) (source-urls source)])
+           `(p ((class "source")) ,(link blob "Source") ,(sep) ,(link commits "History")))))
   (define meta-block
-    (and (or (pair? dates) (pair? tags) epistemic)
+    (and (or (pair? dates) (pair? tags) epistemic source-line)
          `(div ((class "header-meta"))
                ,@(if (pair? dates) `((p ((class "dates")) ,@(add-between dates (sep)))) null)
                ,@(if (pair? tags) `((p ((class "tags")) ,@(add-between tag-links (sep)))) null)
-               ,@(if epistemic `((p ((class "epistemic")) ,@epistemic)) null))))
+               ,@(if epistemic `((p ((class "epistemic")) ,@epistemic)) null)
+               ,@(if source-line (list source-line) null))))
   (filter values
           (append (list title-el
                         (and subtitle (typeset `(p ((class "subtitle")) ,subtitle)))
@@ -1067,7 +1227,8 @@
                              (revised-date (select-from-metas 'here-path metas))
                              (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
                              (and epi (get-elements (txexpr 'span null (newlines->spaces-list (get-elements epi)))))
-                             (and abs (abstract-paragraphs (paragraphs (get-elements abs))))))))
+                             (and abs (abstract-paragraphs (paragraphs (get-elements abs))))
+                             #:source (select-from-metas 'here-path metas)))))
 
 ;; LAYOUT-1a: "Abstract", a small heading run into its first paragraph.
 (define (abstract-paragraphs ps)

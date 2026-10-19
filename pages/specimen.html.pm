@@ -57,6 +57,18 @@ rule, which is why they are written as container queries rather than media
 queries: a container query measured in ◊code{em} asks whether the text fits,
 not whether the window is a certain number of pixels wide.
 
+There are four widths. Below 39◊code{em} the column narrows and its right
+edge is ragged (tier S). From 39◊code{em} it holds the full measure and is
+justified (tier M). From 66.5◊code{em} both margins appear (tier L): margin
+notes on the left, at least 8◊code{em} wide, and asides, definitions and the
+words of figures on the right, at least 13◊code{em}, with 2.5◊code{em}
+between each margin and the column and 2◊code{em} clear at either side. The
+right margin widens first, reaching 20◊code{em} at 73.5◊code{em}; then the
+left, reaching 13◊code{em} at 78.5◊code{em}. From 79◊code{em}, a page with
+contents also shows them at the window's left edge (tier XL). At the default
+size, where an ◊code{em} is 20 pixels, that is 780, 1330 and 1580 pixels; one
+size smaller, 718, 1224 and 1454; one larger, 858, 1463 and 1738.
+
 ◊subsection[#:id "justification" #:short "Justification"]{Justification and hyphenation}
 
 At full measure the text is justified, and hyphenation is switched on so that
@@ -193,7 +205,7 @@ own at the right, as an epigraph's is. Darwin's closing sentence to the first
 edition of the ◊em{Origin} is the standard example of a long sentence that
 still holds together:
 
-◊blockquote[#:source "Charles Darwin, On the Origin of Species, 1859"]{There is grandeur in this view of life, with its several powers,
+◊blockquote[#:source "Charles Darwin, On the Origin of Species, 1859"]{◊margin{A note on a quoted paragraph}There is grandeur in this view of life, with its several powers,
 having been originally breathed into a few forms or into one; and that, whilst
 this planet has gone cycling on according to the fixed law of gravity, from so
 simple a beginning endless forms most beautiful and most wonderful have been,
@@ -209,7 +221,7 @@ paragraphs visibly part of one argument.
 A change of direction within a section is marked by a section break: a single
 small glyph, centred, with equal space above and below. It is placed by
 hand, never automatically, and there is only one design. An explicit line
-break, rarely needed in prose,◊br{}looks like this.
+break, rarely needed in prose,◊br{}◊margin{After a line break}looks like this.
 
 ◊subsubsection[#:id "intro"]{The first paragraph.} The first paragraph of an
 essay is marked as its introduction. On a phone or a narrow window, its first
@@ -235,7 +247,8 @@ A circle opens something where the reader is, without moving the page: a
 definition, a note or an aside. The first time a defined word appears, such
 as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects},
 it carries a circle; later uses, like this second
-◊term["occurrent"]{occurrent}, are plain text. On a wide screen a definition
+◊term["occurrent"]{occurrent}, are plain text. ◊margin{A note at a sentence
+inside a paragraph} On a wide screen a definition
 also waits in the right margin as a single line beside its circle, and
 clicking either lets it grow there, in place, while the rest of the margin
 moves down to make room; More, inside it, opens the longer discussion, and a
@@ -261,8 +274,9 @@ circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructio
 #:loc "pp. 31-34"], which opens both. A reference opens over the page at
 every width, and its circle stays filled for as long as it is pinned open.
 
-◊margin{Asides can be skipped.} An aside is a digression the argument does
-not need◊aside{An aside may cite, too: Hacking's essay on
+◊margin{Asides can be skipped, and this note runs to a second line.} An aside
+is a digression. ◊margin{Two notes close together} The argument does not
+need it◊aside{An aside may cite, too: Hacking's essay on
 ◊term["looping-effect"]{looping} is the fuller version of the
 argument ◊cite["hackingLoopingEffectsHuman1996"]. Its reference is numbered at
 its place in the argument.} and is unnumbered. On a wide screen it sits in the
@@ -271,6 +285,18 @@ downward in place; a short one is shown whole. Open the first aside and then
 the circle inside it: the reference opens over the page, and the aside stays where
 it is. On a narrower screen both open over the text. Without scripts each
 aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
+
+An aside that qualifies a particular phrase names it, and then the phrase and
+its circle are one link: hover over ◊aside["the phrase form"]{The phrase is
+printed in the text, followed by its circle, and the two are one link with
+one hit area and one name. On a wide screen the aside waits in the right
+margin as a stub, like any other; while it is open the circle is filled and
+the phrase keeps the accent, so the reader can see which words it is about.},
+and both take the accent. Punctuation after the phrase sits
+between its last word and the circle. A phrase may carry
+◊aside[◊em{emphasis} " or small caps"]{As in ◊sc{ASIDE-8}.}, and when a
+citation follows ◊aside["at the same point"]{The aside opens first, then the
+reference.} ◊cite["hackingLoopingEffectsHuman1996"] the two share one circle.
 
 ◊section[#:id "lists" #:short "Lists"]{Lists}
 ◊summary{Bullets by level, and numbers that follow the nesting.}
@@ -283,7 +309,7 @@ numbers follow the nesting:
   - A second-level item, marked by an angle quote
     - A third-level item, marked by an en dash
 - Numbers and bullets mix:
-  1. a numbered item under a bullet starts at one
+  1. ◊margin{A note in a numbered item}a numbered item under a bullet starts at one
   2. and its children carry the chain
      1. so this is 2.1
         1. and this is 2.1.1

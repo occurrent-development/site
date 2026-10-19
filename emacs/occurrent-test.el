@@ -193,6 +193,25 @@
     (comment-dwim nil)
     (should (equal (buffer-string) "◊; One.\n◊; Two.\n"))))
 
+(ert-deftest od-test-insert-aside-phrase ()
+  "ASIDE-8: an active region becomes the aside's phrase."
+  (od-test-with "The prospect of a finalised \"product\" helps."
+    (transient-mark-mode 1)
+    (search-forward "finalised") (goto-char (match-beginning 0))
+    (set-mark (point)) (search-forward "\"product\"") (activate-mark)
+    (od-insert-aside)
+    (insert "Body.")
+    (should (equal (buffer-string)
+                   "The prospect of a ◊aside[\"finalised \\\"product\\\"\"]{Body.} helps.")))
+  (od-test-with "Text "
+    (goto-char (point-max))
+    (od-insert-aside)
+    (should (equal (buffer-string) "Text ◊aside{}"))))
+
+(ert-deftest od-test-aside-phrase-not-an-error ()
+  (od-test-errors-are "A ◊aside[\"phrase\"]{body} and ◊aside{plain}." nil)
+  (od-test-errors-are "A ◊aside[◊em{em} \" phrase\"]{body}." nil))
+
 ;;; TEST-3: publishing, against a throwaway repository
 
 (defun od-test-git (dir &rest args)

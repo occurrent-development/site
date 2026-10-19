@@ -8,7 +8,8 @@
          racket/file
          txexpr
          (except-in "pollen.rkt" list)
-         (only-in "lib/util.rkt" parse-tags output->url text-of))
+         (only-in "pollen.rkt" [list od-list])
+         (only-in "lib/util.rkt" parse-tags output->url text-of source-urls))
 
 (define (fails? thunk) (with-handlers ([exn:fail? (λ (e) #t)]) (thunk) #f))
 
@@ -199,10 +200,50 @@
   (check-not-false (by-id doc "term-continuant"))   ; reached through the definition (TERM-7)
   (check-true (fails? (λ () (root (term "no-such-term" "x"))))))
 
-(test-case "MNOTE-3/5: margin notes open a paragraph and hold no annotations"
-  (define doc (root (margin "Gloss.") " Text."))
-  (check-equal? (car (get-elements (car (get-elements doc)))) '(span ((class "margin-note")) "Gloss."))
-  (check-true (fails? (λ () (root "Text " (margin "late")))))
+(define (notes-in doc) (find-all doc (λ (x) (has-class* x "margin-note"))))
+(define (parent-of doc x) (car (find-all doc (λ (p) (memq x (get-elements p))))))
+
+(test-case "MNOTE-6: the four anchors pass, and the note stays where it was written"
+  ;; (a) first in a paragraph: no space before, one after
+  (define a (root (margin " Gloss. ") "  Text."))
+  (check-equal? (get-elements (car (get-elements a)))
+                '((span ((class "margin-note")) "Gloss." " ") "Text."))
+  ;; (b) first in a list item, after the marker, at any depth (the about page)
+  (define b (root (od-list "\n"
+                           "1. " (margin "Inexhaustive list of why I write") "Getting a thought properly expressed outside my head allows my mind to move on." "\n"
+                           "2. Seeing the thought in text helps me to step into a different frame." "\n"
+                           "   - " (margin "Nested") "A sub-item." "\n")))
+  (define lis (find-all b (tag? 'li)))
+  (check-equal? (length (notes-in b)) 2)
+  (check-equal? (car (get-elements (first lis))) '(span ((class "margin-note")) "Inexhaustive list of why I write" " "))
+  (check-equal? (get-tag (parent-of b (second (notes-in b)))) 'li)
+  ;; (c) first in a paragraph of a blockquote or epigraph
+  (for ([q (list (blockquote (margin "Q") " Quoted.") (epigraph (margin "E") " Motto."))])
+    (define d (root q))
+    (check-equal? (get-tag (parent-of d (car (notes-in d)))) 'p))
+  ;; (d) at a sentence start: after . ! ? …, a closing quote after one, or ◊br{}
+  (for ([before (list "One." "Really?" "So it goes…" "He said “stop.”" "(As above.)")])
+    (define d (root before (margin "Two") " Second."))
+    (define els (get-elements (car (get-elements d))))
+    (check-equal? (length (notes-in d)) 1 before)
+    (check-regexp-match #px"\\S $" (car els))                    ; one space before
+    (check-not-false (has-class* (cadr els) "margin-note") before))
+  (check-equal? (length (notes-in (root "A line" (br) (margin "After a break") "next."))) 1)
+  ;; a sentence ending in an aside's body is not a sentence end in the text
+  (check-equal? (length (notes-in (root "Fine." (aside "Body") " " (margin "M") "Next."))) 1))
+
+(test-case "MNOTE-6: anywhere else fails"
+  (check-true (fails? (λ () (root "Some text " (margin "mid-sentence") "more."))))
+  (check-true (fails? (λ () (root "Some " (em "text") " " (margin "late") "more."))))
+  (check-true (fails? (λ () (root "Ends in an aside" (aside "Which ends.") " " (margin "M") "on."))))
+  (check-true (fails? (λ () (root (margin "One") (margin "Two") "Text."))))
+  (check-true (fails? (λ () (root (margin "One") " " (margin "Two") "Text."))))
+  (check-true (fails? (λ () (root "x" (aside "Inside. " (margin "no") "An aside.")))))
+  (check-true (fails? (λ () (root (figure "pages/img/landscape.jpg" #:id "f" #:title "T" #:alt "a" #:licence "own"
+                                          (margin "no") "A caption.")))))
+  (check-true (fails? (λ () (root (section #:id "h" (margin "no") "A heading")))))
+  (check-true (fails? (λ () (root (em (margin "no") "Inside emphasis.")))))
+  ;; MNOTE-5: no annotations inside a note
   (check-true (fails? (λ () (root (margin (link "https://example.org" "x")) " Text."))))
   (check-true (fails? (λ () (root "x" (aside "nested " (aside "no")))))))
 
@@ -355,3 +396,77 @@
 (test-case "SRC-4a: an empty ◊abstract{} counts as absent"
   (define doc (with-title (λ () (root (abstract "") "\n\n" "Text."))))
   (check-equal? (attr-ref (car (get-elements doc)) 'class) "essay-header no-abstract"))
+
+;; REV-2: Source · History, derived from the file's path under the root.
+(test-case "REV-2: the specimen's source links point at pages/specimen.html.pm"
+  (define doc (get-doc (build-path "pages" "specimen.html.pm")))
+  (define line (car (find-all doc (λ (x) (has-class* x "source")))))
+  (define links (find-all line (λ (x) (and (eq? (get-tag x) 'a) (has-class* x "ext")))))
+  (check-equal? (map (λ (a) (attr-ref a 'href)) links)
+                '("https://github.com/occurrent-development/site/blob/main/pages/specimen.html.pm"
+                  "https://github.com/occurrent-development/site/commits/main/pages/specimen.html.pm"))
+  (check-equal? (map (λ (a) (string-replace (string-trim (text a)) "\u2060" "")) links) '("Source (external link)" "History (external link)"))
+  ;; the last line of the header's block
+  (define block (car (find-all doc (λ (x) (has-class* x "header-meta")))))
+  (check-eq? (last (get-elements block)) line)
+  (current-metas #f))
+
+(test-case "REV-2: an essay's path is nested; a file outside the root fails"
+  (define-values (blob commits) (source-urls (build-path (current-directory) "essays" "some-slug" "some-slug.html.pm")))
+  (check-equal? blob "https://github.com/occurrent-development/site/blob/main/essays/some-slug/some-slug.html.pm")
+  (check-equal? commits "https://github.com/occurrent-development/site/commits/main/essays/some-slug/some-slug.html.pm")
+  (check-exn #rx"^build error: .*not under the project root" (λ () (source-urls (build-path (current-directory) 'up "elsewhere.html.pm"))))
+  (check-exn #rx"^build error: .*not under the project root" (λ () (source-urls "/tmp/stray.html.pm"))))
+
+;; ASIDE-8: the phrase form, read by Pollen itself from tests/asides.html.pm,
+;; since only its reader tells ◊aside["phrase"]{body} from ◊aside{body}.
+(test-case "ASIDE-8: both forms render; phrase and circle are one link"
+  (define doc (fixture "asides.html.pm"))
+  (define ps (filter (tag? 'p) (get-elements doc)))
+  ;; the about page's sentence: the phrase stays in the text, with its space
+  (define p1 (first ps))
+  (check-equal? (car (get-elements p1)) "The prospect of a ")
+  (define a (car (find-all p1 (λ (x) (has-class* x "aside-phrase")))))
+  (check-regexp-match #rx"^finalised product" (text a))
+  (check-equal? (attr-ref a 'data-targets) "aside-1")
+  (check-equal? (attr-ref a 'href) "#aside-1")
+  ;; MARK-3b: only the last word is bound to the circle, inside the one link
+  (define nw (car (find-all a (λ (x) (has-class* x "nw")))))
+  (check-equal? (car (get-elements nw)) "product")
+  (check-not-false (findf (λ (x) (has-class* x "circle")) (get-elements nw)))
+  (check-equal? (text (car (find-all nw (λ (x) (has-class* x "vh"))))) " (aside)")
+  ;; the body is not in the text, only in the hidden copy and the Asides list
+  (check-false (regexp-match? #rx"immutable" (text (txexpr 'p null (filter (λ (e) (not (and (txexpr? e) (attrs-have-key? e 'hidden)))) (get-elements p1))))))
+  (check-not-false (by-id doc "aside-1"))
+  ;; without a phrase: the circle alone, as before
+  (define p2 (second ps))
+  (check-equal? (find-all p2 (λ (x) (has-class* x "aside-phrase"))) '())
+  (check-equal? (attr-ref (car (find-all p2 (λ (x) (has-class* x "circle-link")))) 'data-targets) "aside-2")
+  ;; a phrase may carry ◊em
+  (check-not-false (findf (tag? 'em) (find-all (third ps) txexpr?))))
+
+(test-case "ASIDE-8/MARK-3a: punctuation after a phrase aside goes before its circle"
+  (define doc (fixture "asides.html.pm"))
+  (define nw (car (find-all (third (filter (tag? 'p) (get-elements doc))) (λ (x) (has-class* x "nw")))))
+  (define els (get-elements nw))
+  (define i (index-where els (λ (e) (has-class* e "punct"))))
+  (check-equal? (get-elements (list-ref els i)) '(","))
+  (check-not-false (findf (λ (e) (has-class* e "circle")) (drop els i))))
+
+(test-case "ASIDE-8/MARK-1c: a phrase followed by ◊cite shares one circle"
+  (define doc (fixture "asides.html.pm"))
+  (define p4 (fourth (filter (tag? 'p) (get-elements doc))))
+  (check-equal? (length (find-all p4 (λ (x) (has-class* x "circle")))) 1)
+  (define a (car (find-all p4 (λ (x) (has-class* x "aside-phrase")))))
+  (check-equal? (attr-ref a 'data-targets) "aside-4 reference-1")
+  (check-equal? (car (get-elements (car (find-all a (λ (x) (has-class* x "nw")))))) "point")
+  ;; the reference's ↩ goes back to that link
+  (check-equal? (attr-ref (car (find-all (by-id doc "reference-1") (λ (x) (has-class* x "back")))) 'href)
+                (string-append "#" (attr-ref a 'id))))
+
+(test-case "ASIDE-8: a phrase holds no annotations"
+  (check-true (fails? (λ () (root "A " (aside #:phrase (list "cited " (cite "hackingMakingPeople2006")) "Body.")))))
+  (check-true (fails? (λ () (root "A " (aside #:phrase (list (link "https://example.org" "x")) "Body.")))))
+  (check-true (fails? (λ () (root "A " (aside #:phrase (list (term "occurrent" "occurrent")) "Body.")))))
+  (check-true (fails? (λ () (root "A " (aside #:phrase (list (aside "nested")) "Body.")))))
+  (check-true (fails? (λ () (root "A " (aside #:phrase "" "Body."))))))
