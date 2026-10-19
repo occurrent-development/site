@@ -399,7 +399,11 @@
 
 ;; REV-2: Source · History, derived from the file's path under the root.
 (test-case "REV-2: the specimen's source links point at pages/specimen.html.pm"
-  (define doc (get-doc (build-path "pages" "specimen.html.pm")))
+  ;; the header as the specimen gets it, from its path; rendering the page
+  ;; itself would need the image variants `make` builds after the tests
+  (define here (path->string (build-path (current-directory) "pages" "specimen.html.pm")))
+  (define doc (parameterize ([current-metas (hasheq 'title "Specimen" 'here-path here)])
+                (root (epistemic "A test page.") "\n\n" "Text.")))
   (define line (car (find-all doc (λ (x) (has-class* x "source")))))
   (define links (find-all line (λ (x) (and (eq? (get-tag x) 'a) (has-class* x "ext")))))
   (check-equal? (map (λ (a) (attr-ref a 'href)) links)
@@ -408,8 +412,7 @@
   (check-equal? (map (λ (a) (string-replace (string-trim (text a)) "\u2060" "")) links) '("Source (external link)" "History (external link)"))
   ;; the last line of the header's block
   (define block (car (find-all doc (λ (x) (has-class* x "header-meta")))))
-  (check-eq? (last (get-elements block)) line)
-  (current-metas #f))
+  (check-eq? (last (get-elements block)) line))
 
 (test-case "REV-2: an essay's path is nested; a file outside the root fails"
   (define-values (blob commits) (source-urls (build-path (current-directory) "essays" "some-slug" "some-slug.html.pm")))
