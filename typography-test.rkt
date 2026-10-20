@@ -94,3 +94,44 @@
   (check-equal? (typeset '(p "10 kg " (code "\"10 kg\" x...")))
                 `(p ,(string-append "10" NNBSP "kg ") (code "\"10 kg\" x...")))
   (check-equal? (typeset '(pre "a---b \"c\"")) '(pre "a---b \"c\"")))
+
+;; TYPE-16: quotes are curled from their context in the paragraph's text,
+;; read across inline tags; an aside's body is not part of that text.
+(test-case "TYPE-16: a quote before an aside closes"
+  (check-equal? (typeset '(p "finalised \"product\"" (od-aside (od-phrase) "Body.") " provides"))
+                '(p "finalised “product”" (od-aside (od-phrase) "Body.") " provides")))
+
+(test-case "TYPE-16: quotes inside an inline tag"
+  (check-equal? (typeset '(p "a " (em "\"word\"") " and")) '(p "a " (em "“word”") " and")))
+
+(test-case "TYPE-16: the phrase of a phrase-form aside"
+  (check-equal? (typeset '(p "a " (od-aside (od-phrase "finalised \"product\"") "Body \"too\".") ", then"))
+                '(p "a " (od-aside (od-phrase "finalised “product”") "Body “too”.") ", then")))
+
+(test-case "TYPE-16: apostrophes"
+  (check-equal? (typeset '(p "don't")) '(p "don’t"))
+  (check-equal? (typeset '(p "'tis so")) '(p "’tis so"))
+  (check-equal? (typeset '(p "the '90s")) '(p "the ’90s"))
+  (check-equal? (typeset '(p "the Smiths' house")) '(p "the Smiths’ house"))
+  ;; must not fire as an apostrophe on an ordinary opening quote
+  (check-equal? (typeset '(p "'tissue' is a word")) '(p "‘tissue’ is a word")))
+
+(test-case "TYPE-16: a quotation inside a quotation"
+  (check-equal? (typeset '(p "\"She said 'no' twice.\"")) '(p "“She said ‘no’ twice.”"))
+  (check-equal? (typeset '(p "\"'Loops,' he wrote.\"")) '(p "“‘Loops,’ he wrote.”")))
+
+(test-case "TYPE-16: at the start and at the end of a paragraph"
+  (check-equal? (typeset '(p "\"Start here")) '(p "“Start here"))
+  (check-equal? (typeset '(p "ends here.\"")) '(p "ends here.”"))
+  (check-equal? (typeset '(div (p "one.\"") (p "\"two"))) '(div (p "one.”") (p "“two"))))
+
+(test-case "TYPE-16: code is left alone and counts as a word"
+  (check-equal? (typeset '(p "the \"" (code "x") "\" tag")) '(p "the “" (code "x") "” tag")))
+
+(test-case "TYPE-16: typographic quotes typed directly are kept"
+  (check-equal? (typeset '(p "“already” ‘so’")) '(p "“already” ‘so’")))
+
+(test-case "TYPE-16: a straight quote left in prose is found; code is not prose"
+  (check-equal? (straight-quote-in '(p "fine " (em "still \"not"))) "still \"not")
+  (check-false (straight-quote-in '(p "fine " (code "\"x\""))))
+  (check-false (straight-quote-in (typeset '(p "\"all\" curled, isn't it")))))

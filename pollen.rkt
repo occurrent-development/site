@@ -32,7 +32,7 @@
          ;; headings (§8)
          section subsection subsubsection summary
          ;; standard elements (§3.3)
-         em strong sc code blockquote epigraph br anchor
+         em strong sc code blockquote epigraph br anchor latex
          (rename-out [section-break break])
          ;; annotations (§4–7)
          link cite term aside margin more
@@ -81,19 +81,36 @@
 (define (code . xs) (txexpr 'code null xs))
 (define (sc . xs) (txexpr 'span '((class "sc")) xs)) ; TYPE-11: manual small caps
 (define (br) '(br))
+;; TYPE-17: the LaTeX logo in the text face's own letters, kerned by CSS;
+;; read as the word. Empty-bodied, like ◊br{}.
+(define (latex . xs)
+  (unless (null? xs) (build-error "◊latex{} takes no text: write ◊latex{}"))
+  '(span ((class "latex") (role "img") (aria-label "LaTeX"))
+         "L" (span ((class "latex-a")) "a") "T" (span ((class "latex-e")) "E") "X"))
 (define (anchor id) (txexpr 'span `((id ,(check-id id 'anchor))) null))
 
+;; LAYOUT-4c: #:italic flips a quotation's default style. The tag emits only
+;; a class; CSS sets the style.
+(define (check-italic italic tag)
+  (unless (memq italic '(default #t #f))
+    (build-error "◊~a #:italic is #t or #f (got ~s)" tag italic))
+  italic)
+
 ;; `◊quote` cannot be a tag: Racket's `quote` would silently swallow it.
-(define (blockquote #:source [source #f] . xs)
-  ;; LAYOUT-4b: italic, with an optional source set as an epigraph's is
-  (txexpr 'blockquote '((class "quote"))
+;; LAYOUT-4b: roman by default, set off by its indent; #:italic #t sets it
+;; italic. An optional source is set as an epigraph's is.
+(define (blockquote #:source [source #f] #:italic [italic 'default] . xs)
+  (check-italic italic 'blockquote)
+  (txexpr 'blockquote `((class ,(if (eq? italic #t) "quote italic" "quote")))
           (append (paragraphs xs)
                   (if source `((footer ,(norm source))) null))))
 
-(define (epigraph #:source [source #f] . xs)
-  (txexpr 'blockquote '((class "epigraph"))
+;; LAYOUT-4a: italic by default; #:italic #f sets it roman.
+(define (epigraph #:source [source #f] #:italic [italic 'default] . xs)
+  (check-italic italic 'epigraph)
+  (txexpr 'blockquote `((class ,(if (eq? italic #f) "epigraph roman" "epigraph")))
           (append (paragraphs xs)
-                  (if source `((footer ,source)) null))))
+                  (if source `((footer ,(norm source))) null))))
 
 ;; LAYOUT-4: one glyph, drawn by CSS from assets/icons/asterism.svg.
 (define (section-break) '(hr ((class "break"))))
@@ -110,9 +127,9 @@
   (when (null? text) (build-error "◊link ~s has no text" target))
   (txexpr 'od-link
           (filter values (list (list 'href target)
-                               (and note (list 'data-note (norm note)))
-                               (and title (list 'data-title (norm title)))
-                               (and author (list 'data-author (norm author)))
+                               (and note (list 'data-note (typeset-string (norm note))))
+                               (and title (list 'data-title (typeset-string (norm title))))
+                               (and author (list 'data-author (typeset-string (norm author))))
                                (and date (list 'data-date (norm date)))))
           text))
 
@@ -331,6 +348,15 @@
           (build-error "heading ~s is inside another element" (attr-ref x 'id)))
         (for ([c (in-list (get-elements x))]) (walk c #f))))))
 
+;; TYPE-16: a straight quote that survives into the page is a build error,
+;; so a quote the curling pass could not reach cannot slip through.
+(define (check-quotes tx)
+  (define s (straight-quote-in tx))
+  (when s
+    (build-error "a straight quote survived into the page (TYPE-16): ~s"
+                 (let ([t (string-normalize-spaces s)]) (if (> (string-length t) 60) (string-append (substring t 0 60) "…") t))))
+  tx)
+
 (define (check-unique-ids tx)
   (define seen (make-hash))
   (let walk ([x tx])
@@ -396,6 +422,7 @@
 ;; and never lifted to the paragraph's start; the script moves it into the
 ;; left margin from its line box when wide (MNOTE-2).
 (define margin-anchor-error "◊margin must open a paragraph, a list item or a sentence")
+(define margin-glosses-nothing "◊margin glosses nothing: move it to the start of the item or sentence")
 
 ;; The text a reader sees before a point, for the sentence test: an aside's
 ;; body is not in the running text (only its phrase is, ASIDE-8), and cites
@@ -467,9 +494,11 @@
            (build-error "~a: ~s follows ~s" margin-anchor-error (string-trim (text-of m))
                         (let ([t (string-trim (running-text (reverse before)))])
                           (if (> (string-length t) 30) (string-append "…" (substring t (- (string-length t) 30))) t))))
-         (when (andmap blank? more)
-           (warn "margin note ~s ends its paragraph or item, so it opens no sentence; it will sit on the last line"
-                 (string-trim (text-of m))))
+         ;; a note must gloss something: nothing but whitespace after it in its
+         ;; paragraph, item or quoted paragraph (an item's own text ends where
+         ;; a nested list begins) is an error, though rule (d) admits it
+         (when (andmap (λ (e) (or (blank? e) ((tag? 'ol 'ul) e))) more)
+           (build-error "~a: ~s" margin-glosses-nothing (string-trim (text-of m))))
          ;; none before at a block start, one at a sentence start; one after
          (define before*
            (cond
@@ -551,8 +580,8 @@
                                          (if commentary (list " " commentary) null))
                                key first?)
                          notes))
-       ;; CITE-1: the number belongs to the reference; the text gets a circle.
-       `(od-ann ((kind "reference") (target ,(format "reference-~a" n)) (label ,(format "reference ~a" n))))]
+       ;; CITE-1: the number belongs to the note; the text gets a circle.
+       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
       [(? (tag? 'od-aside))
        (set! aside-n (add1 aside-n))
        (define i aside-n)
@@ -654,22 +683,24 @@
                                            ,@elems " "
                                            (od-back ((target ,(format "aside-~a" i)) (label "Back to the aside in the text"))))))))
              (and (pair? notes)
-                  (endmatter "references" "References"
-                             `(ol ((class "references"))
+                  (endmatter "notes" "Notes"
+                             `(ol ((class "notes"))
                                   ,@(for/list ([nt (in-list (reverse notes))])
                                       (match-define (list n elems key first?) nt)
-                                      `(li ((id ,(format "reference-~a" n)) (value ,(number->string n))
+                                      `(li ((id ,(format "note-~a" n)) (value ,(number->string n))
                                             (data-bib ,(string-append "bib-" key))
                                             (data-form ,(if first? "full" "short")))
                                            ,@elems " "
-                                           (od-back ((target ,(format "reference-~a" n)) (label ,(format "Back to reference ~a in the text" n)))))))))
-             ;; CITE-10: no bibliography section. Each work's full entry is
-             ;; kept, hidden, for the popups: under a short-form reference
-             ;; (POP-7), and for the unnumbered citations in definitions (CITE-7).
+                                           (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
+             ;; CITE-10: every work the page cites, in the bibliography's
+             ;; order, including works cited only inside definitions (CITE-7).
+             ;; The popups read it too: under a short-form note (POP-7), and
+             ;; for the unnumbered citations in definitions.
              (and (positive? (hash-count bib-keys))
-                  `(div ((class "reference-store") (hidden ""))
-                        (ul ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
-                                `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k)))))))))
+                  (endmatter "bibliography" "Bibliography"
+                             `(ul ((class "bibliography"))
+                                  ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
+                                      `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k)))))))))
   (append body end))
 
 ;; A first-use term: its text links to its definition, with a circle.
@@ -944,7 +975,7 @@
   (check-headings-top-level flat)
   (forbid flat '(od-aside od-margin od-abstract od-epistemic) "a glossary definition")
   (when (pair? (find-all flat heading?)) (build-error "a glossary definition cannot contain headings"))
-  (txexpr 'root null flat))
+  (check-quotes (txexpr 'root null flat)))
 
 (define (page-root elems)
   (check-essay-metas)
@@ -966,6 +997,10 @@
   (define-values (nested toc-entries)
     (nest-sections (mark-intro (if header (cdr numbered) numbered))))
   (define toc (make-toc toc-entries))
+  ;; LAYOUT-1c, §17: the header closes itself, so a break straight after it
+  ;; is a style error
+  (when (and header (pair? nested) (has-class? (car nested) "break"))
+    (warn "◊break{} directly after the header: the header closes itself with a rule (LAYOUT-1c)"))
   ;; TOC-1: after the abstract (in the header) and any epigraph, before the text.
   (define-values (epigraphs body)
     (splitf-at nested (λ (x) (has-class? x "epigraph"))))
@@ -973,6 +1008,7 @@
                                       epigraphs (if toc (list toc) null) body)))
   (define doc (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated)))))))
   (check-unique-ids doc)
+  (check-quotes doc)
   doc)
 
 ;; ---------------------------------------------------------------------------
@@ -1005,30 +1041,34 @@
   (define parts (string-split (format-date iso)))
   (format "~a\u00A0~a ~a" (car parts) (substring (cadr parts) 0 3) (caddr parts)))
 
+;; A date cell's contents: the short date, sorting by the ISO date (◊sort-key).
 (define (date-cell iso)
-  `(td ((class "date") (data-sort ,iso)) (time ((datetime ,iso)) ,(format-date-short iso))))
+  (list (sort-key iso `(time ((datetime ,iso)) ,(format-date-short iso)))))
 
-;; #:pagetree is for the tests.
+;; INDEX-1a: the index is an ordinary table, built by the same code as
+;; ◊table (TABLE-1…6): one cell per column in every row, or the build fails.
+;; It sorts at any number of rows (INDEX-3); Tags does not sort, and its
+;; heading opens the tag filter. #:pagetree is for the tests.
 (define (essay-index #:pagetree [ptree "index.ptree"])
   (define entries (sort (index-entries ptree) string>? #:key (λ (e) (hash-ref e 'published))))
   `(div ((class "essay-index"))
-        (div ((class "table-wrap w-column size-normal"))
+        (div ((class "table-wrap size-normal"))
              (div ((class "table-scroll") (tabindex "0") (role "region") (aria-label "Essays"))
-                  (table ((class "index-table") (data-sortable ""))
-                         (thead (tr (th ((scope "col")) "Title")
-                                    (th ((scope "col")) "Date published")
-                                    (th ((scope "col")) "Last review")
-                                    (th ((scope "col") (data-nosort "") (data-tag-filter "")) "Tags")))
-                         (tbody
-                          ,@(for/list ([e (in-list entries)])
-                              `(tr ((data-tags ,(string-join (hash-ref e 'tags) "|")))
-                                   (td ((class "title")) (a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
-                                   ,(date-cell (hash-ref e 'published))
-                                   ,(date-cell (hash-ref e 'reviewed))
-                                   (td ((class "tags"))
-                                       ,@(add-between (for/list ([t (in-list (hash-ref e 'tags))])
-                                                        `(span ((class "tag")) ,t))
-                                                      ", "))))))))))
+                  ,(table-element
+                    '(("Title") ("Date published") ("Last review") ("Tags"))
+                    '(#f #f #f #f)
+                    (for/list ([e (in-list entries)])
+                      (list (list `(a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
+                            (date-cell (hash-ref e 'published))
+                            (date-cell (hash-ref e 'reviewed))
+                            (add-between (for/list ([t (in-list (hash-ref e 'tags))])
+                                           `(span ((class "tag")) ,t))
+                                         ", ")))
+                    #:class "index-table" #:sortable #t
+                    #:row-attrs (for/list ([e (in-list entries)])
+                                  `((data-tags ,(string-join (hash-ref e 'tags) "|"))))
+                    #:head-attrs '(#f #f #f ((data-nosort "") (data-tag-filter "")))
+                    #:col-classes '("title" "date-col" "date-col" "tags"))))))
 
 ;; NAV-1: the menu at the top left. Items live here, once.
 (define menu-items '(("Home" "/") ("About" "/about")))
@@ -1168,16 +1208,19 @@
 (define (non-empty el)
   (and el (regexp-match? #px"\\S" (text-of el)) el))
 
-;; The header's parts, shared by the essay header and the specimen's sample.
-;; Inline order: title, subtitle, the metadata block (dates, tags, epistemic
-;; status), abstract. On tier L CSS lifts the block into the margin, where it
-;; sits level with the abstract because it comes just before it (LAYOUT-1).
+;; The header's parts, shared by the essay header and the specimen's sample
+;; (LAYOUT-1). Inline order: title, subtitle, the metadata block, abstract,
+;; then the short rule that closes the header (LAYOUT-1c). The block holds
+;; the dates, one per line; the tags, labelled (LAYOUT-1b); the source links
+;; (REV-2); and last, after a gap, the epistemic status when there is one. On
+;; tiers L and XL CSS lifts the block into the right margin, and the script
+;; puts its first baseline on the title's (LAYOUT-1a).
 ;; EPISTEMIC is a list of inline elements; ABSTRACT a list of paragraphs.
-;; SOURCE, when given, is the page's source file: the block then ends with
-;; its Source · History links (REV-2), so a page has a block even without
-;; dates or tags.
+;; SOURCE, when given, is the page's source file, for the source links; so a
+;; page has a block even without dates or tags.
 (define (header-parts title-el subtitle published revised tags epistemic abstract #:source [source #f])
-  (define (date label iso) `(span ((class "date")) ,(string-append label " " (format-date iso))))
+  (define (label s) `(span ((class "meta-label")) ,s))
+  (define (date name iso) `(span ((class "date")) ,(label name) " " ,(format-date iso)))
   (define dates
     (filter values (list (and published (date "Published" published))
                          ;; pages have no dates (LAYOUT-1): a revision shows only beside a publication
@@ -1198,14 +1241,16 @@
     (and (or (pair? dates) (pair? tags) epistemic source-line)
          `(div ((class "header-meta"))
                ,@(if (pair? dates) `((p ((class "dates")) ,@(add-between dates (sep)))) null)
-               ,@(if (pair? tags) `((p ((class "tags")) ,@(add-between tag-links (sep)))) null)
-               ,@(if epistemic `((p ((class "epistemic")) ,@epistemic)) null)
-               ,@(if source-line (list source-line) null))))
+               ,@(if (pair? tags) `((p ((class "tags")) ,(label "Tagged") " " (span ((class "tag-list")) ,@(add-between tag-links (sep))))) null)
+               ,@(if source-line (list source-line) null)
+               ,@(if epistemic `((p ((class "epistemic")) ,@epistemic)) null))))
   (filter values
           (append (list title-el
                         (and subtitle (typeset `(p ((class "subtitle")) ,subtitle)))
                         meta-block)
-                  (or abstract null))))
+                  (or abstract null)
+                  ;; LAYOUT-1c: never authored
+                  (list '(div ((class "header-rule") (aria-hidden "true")))))))
 
 ;; LAYOUT-1: the essay header, left-aligned and ragged right, from the metas
 ;; and the ◊abstract and ◊epistemic taken from the body. #f for a page with no

@@ -8,6 +8,12 @@ const root = document.documentElement;
 const page = document.querySelector(".page");
 const article = document.querySelector("article");
 
+// Firefox lays out tier XL first with the page's container units read from
+// its width before the contents' column is reserved, putting the text block
+// 8em too far right, and corrects it only on a later restyle, ~300 ms on.
+// One restyle now corrects it at once (LAYOUT-6a, CLS §14).
+if (page) { void page.offsetWidth; page.style.setProperty("--restyle", "1"); }
+
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} },
@@ -180,13 +186,13 @@ function termItem(target) {
 function item(target) {
   const src = byId(target);
   if (!src && !target.startsWith("aside-")) return null;
-  if (target.startsWith("reference-")) {
-    const n = target.slice(10);
+  if (target.startsWith("note-")) {
+    const n = target.slice(5);
     const body = el("div", {}, el("p", {}, ...clean(src).childNodes));
-    // A full reference is already complete; a short one gets the full entry (POP-7).
+    // A full note is already the reference; a short one gets the full entry (POP-7).
     const bib = src.dataset.form === "short" && src.dataset.bib && byId(src.dataset.bib);
     if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
-    return { title: `Reference ${n}`, head: `Reference ${n}`, body };
+    return { title: `Note ${n}`, head: `Note ${n}`, body };
   }
   if (target.startsWith("bib-")) {
     // CITE-7: unnumbered, so no heading
@@ -732,6 +738,7 @@ function setupMargin() {
     if (!L) m.removeAttribute("style");
   }
   if (!L) for (const x of article.querySelectorAll(".exhibit-title, .exhibit-meta, .header-meta")) x.style.transform = "";
+  if (!L) alignContents();
 }
 
 // The bottom of the first (or last) visible character in a run of text
@@ -752,6 +759,36 @@ function textNodes(root, filter = () => true) {
   const out = [];
   for (let n; (n = w.nextNode());) if (filter(n)) out.push(n);
   return out;
+}
+
+// The first baseline of an element, exactly: an empty inline-block's bottom
+// sits on the baseline of its line, so one is put before the first text
+// and measured. Character boxes would not do: their bottoms are the
+// descent below the baseline, which differs between sizes and faces.
+function firstBaseline(e) {
+  const n = textNodes(e, (t) => t.data.trim() && !t.parentElement.closest(".vh"))[0];
+  if (!n) return e.getBoundingClientRect().top;
+  const probe = el("span", { "aria-hidden": "true" });
+  probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline;margin:0;padding:0";
+  const lead = n.data.match(/^\s*/)[0].length;
+  const at = lead ? n.splitText(lead) : n;
+  at.before(probe);
+  const y = probe.getBoundingClientRect().top;
+  probe.remove();
+  if (lead) n.parentNode.normalize();
+  return y;
+}
+
+// LAYOUT-1a, TOC-2: in tier XL the "Contents" label sits on the title's
+// first baseline.
+function alignContents() {
+  const toc = article?.querySelector("nav.toc");
+  if (!toc) return;
+  toc.style.top = "";
+  const title = article.querySelector(".essay-header:not(.sample) h1");
+  const label = toc.querySelector(".toc-title");
+  if (tier() !== "XL" || !title || !label || getComputedStyle(toc).position !== "absolute") return;
+  toc.style.top = `${firstBaseline(title) - firstBaseline(label)}px`;
 }
 
 // MNOTE-2/4/6: margin notes in the left margin, right-aligned against the
@@ -827,26 +864,16 @@ function positionMargin() {
     const rs = els.flatMap((e) => [rect(e), ...[...e.children].map(rect)]).filter((r) => r.height);
     return rs.length ? [Math.min(...rs.map((r) => r.top)), Math.max(...rs.map((r) => r.bottom))] : [rect(els[0]).top, rect(els[0]).top];
   };
-  // the bottom of a block's first character: its baseline, near enough
-  const baseline = (el) => {
-    const n = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (t) => (t.data.trim() ? 1 : 3) }).nextNode();
-    if (!n) return rect(el).top;
-    const r = document.createRange();
-    r.setStart(n, 0); r.setEnd(n, 1);
-    return r.getBoundingClientRect().bottom;
-  };
-  // LAYOUT-1: the header's block sits level with the abstract (CSS does
-  // that); with no abstract, level with the first paragraph of the essay.
+  // LAYOUT-1a: the header's block has its first baseline on the title's
+  // first baseline, whatever their sizes; so, in tier XL, does the label of
+  // the contents at the window's edge.
   const headerItems = headers.map((m) => {
     const r = rect(m);
-    let top = r.top;
-    const head = m.closest(".essay-header");
-    if (head.classList.contains("no-abstract") && !head.classList.contains("sample")) {
-      const first = article.querySelector("p.intro");
-      if (first) top += baseline(first) - baseline(m);   // first baselines level
-    }
-    return { els: [m], top, h: r.height, fixed: true, header: true, natural: r.top };
+    const title = m.closest(".essay-header")?.querySelector("h1, .essay-title");
+    const dy = title ? firstBaseline(title) - firstBaseline(m) : 0;
+    return { els: [m], top: r.top + dy, h: r.height, fixed: true, header: true, natural: r.top };
   });
+  alignContents();
   const items = [
     ...stubs.map((s) => ({ els: [s], top: rect(s).top, h: rect(s).height, fixed: false })),
     ...exhibits.map((els) => { const [t, b] = extent(els); return { els, top: t, h: b - t, fixed: true }; }),
@@ -900,6 +927,7 @@ function scheduleLayout() {
     const t = tier();
     if (t !== currentTier) { setupMargin(); currentTier = t; }
     positionMargin();
+    placeBar();
     refreshToc();
     repin?.();
     // an open popup follows its circle (after a size step or a resize)
@@ -917,6 +945,33 @@ const barTitle = bar?.querySelector(".bar-title");
 let headerVisible = true, lastY = scrollY, idle = 0;
 
 function showBar() { bar.classList.add("is-shown"); restartIdle(); }
+
+// BAR-1d: as wide as the text block (both margins and the column in tiers
+// L and XL, the column alone in M and S), so it never covers the contents
+// in XL; its contents start at the column's left edge and end at its right.
+// The bar is fixed to the viewport, so this is measured: CSS cannot know
+// where the text block landed.
+function placeBar() {
+  if (!bar || !article) return;
+  const a = article.getBoundingClientRect();
+  const cs = getComputedStyle(article);
+  let colL, colR, blockL, blockR;
+  if (wide()) {
+    const fs = parseFloat(cs.fontSize);
+    const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
+    colL = a.left;
+    colR = colL + v("--measure");
+    blockL = colL - v("--margin-gap") - parseFloat(cs.getPropertyValue("--left-margin"));
+    blockR = colR + v("--margin-gap") + parseFloat(cs.getPropertyValue("--margin"));
+  } else {
+    blockL = colL = a.left + parseFloat(cs.paddingLeft);
+    blockR = colR = a.right - parseFloat(cs.paddingRight);
+  }
+  Object.assign(bar.style, {
+    left: `${blockL}px`, right: "auto", width: `${blockR - blockL}px`,
+    paddingLeft: `${colL - blockL}px`, paddingRight: `${blockR - colR}px`,
+  });
+}
 function hideBar() { if (!keepBar()) bar.classList.remove("is-shown"); }
 function keepBar() {
   return bar.matches(":hover") || bar.contains(document.activeElement) || (open && open.mode === "toc");
@@ -1107,6 +1162,12 @@ setupExhibits();
 scheduleLayout();
 document.fonts?.ready.then(scheduleLayout);
 new ResizeObserver(scheduleLayout).observe(page);
+// The text block can move while the page keeps its width: Firefox first
+// lays out tier XL as if the contents' column were not reserved, then
+// corrects it, so the article is watched too, and the page's load ends a
+// last pass (BAR-1d, LAYOUT-1a).
+if (article) new ResizeObserver(scheduleLayout).observe(article, { box: "border-box" });   // the column keeps its width; the margins change
+addEventListener("load", scheduleLayout);
 
 // TABLE-4/5: the table script loads only on pages that need it.
 if (document.querySelector("table[data-sortable], .table-wrap table tbody tr:nth-child(15)")) {

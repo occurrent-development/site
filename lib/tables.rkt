@@ -15,7 +15,7 @@
          "util.rkt"
          "exhibits.rkt")
 
-(provide make-table read-csv-table parse-pipe-table)
+(provide make-table table-element read-csv-table parse-pipe-table)
 
 (define sizes '("normal" "small" "tiny"))
 
@@ -150,6 +150,27 @@
                     #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f])
   (unless (member size sizes) (build-error "table: #:size must be one of ~a" (string-join sizes ", ")))
   (when width (build-error "table ~s: #:width is gone; every table is column width, and Expand shows it larger (IMG-2)" id))
+  (make-exhibit "table" id title
+                (list
+                 `(div ((class "table-scroll") (tabindex "0") (role "region")
+                        (aria-labelledby ,(string-append (or id "") "-title")))
+                       ,(table-element header aligns body
+                                       #:sortable sortable #:align align #:row-headers row-headers)))
+                (or caption null)
+                (or source null)
+                #:class (format "table-wrap size-~a" size)))
+
+;; The <table> itself, for every table on the site: pipe and CSV tables, and
+;; the home page's index (INDEX-1a), so none can drift from the others.
+;; HEADER is a list of cells and BODY a list of rows of cells, each cell a
+;; list of elements. A row with the wrong number of cells fails the build
+;; (TABLE-1). ROW-ATTRS gives each body row its attributes; HEAD-ATTRS and
+;; COL-CLASSES give each column's heading extra attributes and each
+;; column's cells a class (#f for none).
+(define (table-element header aligns body
+                       #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f]
+                       #:class [cls #f] #:row-attrs [row-attrs #f]
+                       #:head-attrs [head-attrs #f] #:col-classes [col-classes #f])
   (define ncols (length header))
   (for ([r (in-list body)] [i (in-naturals 1)])
     (unless (= (length r) ncols)
@@ -168,20 +189,19 @@
               (ormap (λ (r) (pair? (list-ref r i))) body))
          "right"]
         [else #f])))
-  (define (cell-attrs i) (let ([a (list-ref col-aligns i)]) (if a `((class ,(string-append "a-" a))) null)))
+  (define (cell-attrs i)
+    (define classes (filter values (list (let ([a (list-ref col-aligns i)]) (and a (string-append "a-" a)))
+                                         (and col-classes (list-ref col-classes i)))))
+    (if (null? classes) null `((class ,(string-join classes)))))
   (define sortable? (if (eq? sortable 'auto) (>= (length body) 5) sortable))
-  (make-exhibit "table" id title
-                (list
-                 `(div ((class "table-scroll") (tabindex "0") (role "region")
-                        (aria-labelledby ,(string-append (or id "") "-title")))
-                       (table ,(if sortable? '((data-sortable "")) null)
-                              (thead (tr ,@(for/list ([c (in-list header)] [i (in-naturals)])
-                                             `(th ,(append '((scope "col")) (cell-attrs i)) ,@c))))
-                              (tbody ,@(for/list ([r (in-list body)])
-                                         `(tr ,@(for/list ([c (in-list r)] [i (in-naturals)])
-                                                  (if (and row-headers (= i 0))
-                                                      `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
-                                                      `(td ,(cell-attrs i) ,@c)))))))))
-                (or caption null)
-                (or source null)
-                #:class (format "table-wrap size-~a" size)))
+  `(table ,(append (if cls `((class ,cls)) null) (if sortable? '((data-sortable "")) null))
+          (thead (tr ,@(for/list ([c (in-list header)] [i (in-naturals)])
+                         `(th ,(append '((scope "col")) (cell-attrs i)
+                                       (if head-attrs (or (list-ref head-attrs i) null) null))
+                              ,@c))))
+          (tbody ,@(for/list ([r (in-list body)] [j (in-naturals)])
+                     `(tr ,(if row-attrs (list-ref row-attrs j) null)
+                          ,@(for/list ([c (in-list r)] [i (in-naturals)])
+                              (if (and row-headers (= i 0))
+                                  `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
+                                  `(td ,(cell-attrs i) ,@c))))))))

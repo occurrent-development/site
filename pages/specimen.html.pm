@@ -16,7 +16,7 @@ the essays will use, so that a change to any of them can be checked in one
 place. Elements that arrive in later phases are listed at the end.}
 
 ◊epigraph[#:source "Heraclitus, as reported by Plato, Cratylus 402a"]{You could
-not step twice into the same river.}
+not step twice into the ◊em{same} river.}
 
 A page of prose is a machine for being forgotten. When it works, the reader
 sees the argument and not the letters; the column is the right width for the
@@ -115,7 +115,10 @@ small capitals, marked by hand rather than detected, so that ◊sc{WHO},
 ordinary capital at the start of a sentence keeps its full height. ◊strong{Bold
 type is used rarely}, and when it is, it is the semibold weight; emphasis is
 ◊em{italic}, and ◊em{an italic passage keeps its own figures, 1859 and 2026,
-and its own ◊strong{semibold}} where it needs them.
+and its own ◊strong{semibold}} where it needs them. The ◊latex{} logo is set from
+the same letters, kerned as TeX sets it, and follows whatever is around it:
+◊em{in italic, ◊latex{}}◊aside{In an aside, too: ◊latex{} at the aside's
+size.}, and in an aside.
 
 ◊subsection[#:id "spacing"]{Spacing rules}
 
@@ -155,7 +158,7 @@ rules and quieter text.
 
 The text size, set from the bar, steps everything in this face together: the
 column, the margin, the contents and anything open over the page. Open a
-reference, step the size, and it steps with the text, while the line at the top of
+note, step the size, and it steps with the text, while the line at the top of
 the window stays where it was.
 
 ◊break{}
@@ -181,35 +184,53 @@ an essay.
 ◊subsection[#:id "header"]{The header}
 
 Nothing on a page is centred but the section break. The header at the top of
-this page shows the full form: title, subtitle and abstract in the column, and,
-on a wide screen, the dates, the tags and the epistemic status in the margin,
-level with the first line of the abstract, so that the title has the width of
-the page to itself. On a narrower screen the same lines fall back between the
-subtitle and the abstract. An essay without an abstract looks like this, its
-margin block level with the first line of what follows:
+this page shows the full form: title, subtitle and abstract in the column,
+closed by a short rule, and, on a wide screen, the facts about the page in the
+right margin beside the title, their first line on the title's first
+baseline. The dates come first, one to a line; then the tags, labelled; then
+links to the page's source and to its history; and last, after a gap, the
+epistemic status, the one line of prose among them, when there is one. Where
+the window is wide enough for the contents at its left edge, they start on
+the same baseline. On a narrower screen the same lines fall back between the
+subtitle and the abstract. An essay without an abstract looks like this,
+closed by its rule after the subtitle:
 
 ◊header-sample[#:title "A sample header, with a title long enough to need two
 lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
-#:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. The
-block beside it would be level with the essay's first paragraph."]
+#:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. Its
+block starts on the line of the title's first baseline."]
 
 The epigraph at the top of the page is set a little in from the left edge, in
-italic, with its source on a line of its own at the right. The abstract is
+italic, with its source on a line of its own at the right; the ◊em{same} in
+it is emphasis, set roman because the epigraph is italic. The abstract is
 introduced by a small heading of its own, run into its first line.
 
 ◊subsection[#:id "quotations"]{Quotations}
 
 A long quotation is set as a block, indented from the left, at the size of
-the text and in italic, with its source, when it has one, on a line of its
-own at the right, as an epigraph's is. Darwin's closing sentence to the first
-edition of the ◊em{Origin} is the standard example of a long sentence that
-still holds together:
+the text and in roman: it is set off from the body by its indent, not by its
+style, so emphasis and titles inside it keep their italic. Its source, when it
+has one, is on a line of its own at the right, as an epigraph's is. Darwin's
+closing sentence to the first edition of the ◊em{Origin} is the standard
+example of a long sentence that still holds together:
 
-◊blockquote[#:source "Charles Darwin, On the Origin of Species, 1859"]{◊margin{A note on a quoted paragraph}There is grandeur in this view of life, with its several powers,
+◊blockquote[#:source "Charles Darwin, On the Origin of Species, 1859; emphasis added"]{◊margin{A note on a quoted paragraph}There is grandeur in this view of life, with its several powers,
 having been originally breathed into a few forms or into one; and that, whilst
 this planet has gone cycling on according to the fixed law of gravity, from so
-simple a beginning endless forms most beautiful and most wonderful have been,
-and are being, evolved.}
+simple a beginning ◊em{endless forms most beautiful} and most wonderful have
+been, and are being, evolved.}
+
+A quotation whose own typography depends on italic can be set italic, and
+emphasis inside it then turns roman, so the stress survives:
+
+◊blockquote[#:italic #t]{An italic block quotation, in which a word is
+◊em{emphasised} and so set upright.}
+
+An epigraph does the reverse. It is italic by default, as the one at the top
+of this page is, and can be set roman, when emphasis is italic again:
+
+◊epigraph[#:italic #f #:source "A roman epigraph"]{An epigraph set roman, for
+a long one of running prose, with ◊em{emphasis} in italic.}
 
 The paragraph after a quotation is not indented, because it continues the
 paragraph the quotation interrupted. Elsewhere, a new paragraph is marked by
@@ -256,33 +277,34 @@ defined word inside it opens over the page. On a narrower screen a definition
 opens over the text. Without scripts, a circle is a link to the end of the
 page, where definitions are collected under Terms.
 
-◊section[#:id "notes-asides" #:short "References and asides"]{References and asides}
-◊summary{Circles for sources and digressions; the numbers stay with the references.}
+◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
+◊summary{Circles for sources and digressions; the numbers stay with the notes.}
 
-Citations become numbered references, collected at the end under References,
-but the number belongs to the reference and is never printed in the text.
-There is no separate bibliography. The first reference to a work gives it in
-full: Hacking's account of how classifications change the people
+Citations become numbered notes, collected at the end under Notes, but the
+number belongs to the note and is never printed in the text. Every work the
+page cites is listed again after the notes, in a Bibliography, so that an
+essay is complete without the rest of the site. The first note for a work
+gives it in full: Hacking's account of how classifications change the people
 classified first appeared in the ◊em{London Review of
 Books} ◊cite["hackingMakingPeople2006" #:loc "p. 23"] and is developed at
 length elsewhere ◊cite["hackingSocialConstructionWhat2000" #:loc "pp. 31-34"].
-Later references to the same work use the short form, with their own
+Later notes for the same work use the short form, with their own
 page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and its popup adds the
-work in full; a reference may also carry a remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
+work in full; a note may also carry a remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
 is shorter and sharper."]. Two citations at the same point share one
 circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructionWhat2000"
-#:loc "pp. 31-34"], which opens both. A reference opens over the page at
+#:loc "pp. 31-34"], which opens both. A note opens over the page at
 every width, and its circle stays filled for as long as it is pinned open.
 
 ◊margin{Asides can be skipped, and this note runs to a second line.} An aside
 is a digression. ◊margin{Two notes close together} The argument does not
 need it◊aside{An aside may cite, too: Hacking's essay on
 ◊term["looping-effect"]{looping} is the fuller version of the
-argument ◊cite["hackingLoopingEffectsHuman1996"]. Its reference is numbered at
+argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered at
 its place in the argument.} and is unnumbered. On a wide screen it sits in the
 right margin as a single line, cut short, and opening it lets it grow
 downward in place; a short one is shown whole. Open the first aside and then
-the circle inside it: the reference opens over the page, and the aside stays where
+the circle inside it: the note opens over the page, and the aside stays where
 it is. On a narrower screen both open over the text. Without scripts each
 aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
 
@@ -296,7 +318,7 @@ and both take the accent. Punctuation after the phrase sits
 between its last word and the circle. A phrase may carry
 ◊aside[◊em{emphasis} " or small caps"]{As in ◊sc{ASIDE-8}.}, and when a
 citation follows ◊aside["at the same point"]{The aside opens first, then the
-reference.} ◊cite["hackingLoopingEffectsHuman1996"] the two share one circle.
+note.} ◊cite["hackingLoopingEffectsHuman1996"] the two share one circle.
 
 ◊section[#:id "lists" #:short "Lists"]{Lists}
 ◊summary{Bullets by level, and numbers that follow the nesting.}

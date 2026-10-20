@@ -9,7 +9,8 @@
          txexpr
          (except-in "pollen.rkt" list)
          (only-in "pollen.rkt" [list od-list])
-         (only-in "lib/util.rkt" parse-tags output->url text-of source-urls))
+         (only-in "lib/util.rkt" parse-tags output->url text-of source-urls)
+         (only-in "lib/tables.rkt" table-element))
 
 (define (fails? thunk) (with-handlers ([exn:fail? (λ (e) #t)]) (thunk) #f))
 
@@ -120,12 +121,12 @@
   (define (targets x) (string-split (attr-ref x 'data-targets "")))
   (define openers (find-all doc (λ (x) (attrs-have-key? x 'data-targets))))
   ;; CITE-1: no numerals in the text; circles open notes 1–5 in reading order
-  (check-equal? (filter (λ (t) (regexp-match? #rx"^reference-" t)) (remove-duplicates (append-map targets openers)))
-                '("reference-1" "reference-2" "reference-3" "reference-4" "reference-5"))
+  (check-equal? (filter (λ (t) (regexp-match? #rx"^note-" t)) (remove-duplicates (append-map targets openers)))
+                '("note-1" "note-2" "note-3" "note-4" "note-5"))
   (check-equal? (find-all doc (tag? 'sup)) '())
-  (define notes (find-all (by-id doc "references") (tag? 'li)))
+  (define notes (find-all (by-id doc "notes") (tag? 'li)))
   (check-equal? (length notes) 5)                       ; not double-counted (CITE-2)
-  (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "reference-~a" n))) " "))
+  (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "note-~a" n))) " "))
   ;; CITE-3: full form first, short form after, each with its own locator
   (check-regexp-match #rx"^Ian Hacking, “Making Up People,” London Review of Books 28, no. 16 \\(2006\\): 23\\." (note 1))
   (check-regexp-match #rx"^Ian Hacking, The Social Construction of What\\? \\(Harvard" (note 2))  ; inside the first aside
@@ -134,10 +135,10 @@
   (check-regexp-match #rx"^Hacking, “Making Up People\\.” With a remark\\." (note 5))
   ;; CITE-4: each note's ↩ goes to the circle that opens it; for a note inside
   ;; an aside that circle is in the aside's end copy (the inline copy has no ids)
-  (define backs (find-all (by-id doc "references") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
+  (define backs (find-all (by-id doc "notes") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
   (for ([b (in-list backs)] [n (in-naturals 1)])
     (define circle (by-id doc (substring (attr-ref b 'href) 1)))
-    (check-not-false (member (format "reference-~a" n) (targets circle))))
+    (check-not-false (member (format "note-~a" n) (targets circle))))
   (define opener-2 (by-id doc (substring (attr-ref (list-ref backs 1) 'href) 1)))
   (check-not-false (memq opener-2 (find-all (by-id doc "asides") txexpr?)))
   ;; ASIDE-2: asides are unnumbered and named "aside"
@@ -147,16 +148,17 @@
   (define terms (by-id doc "terms"))
   (check-not-false (findf (λ (x) (member "bib-hackingLoopingEffectsHuman1996" (targets x)))
                           (find-all terms (λ (x) (attrs-have-key? x 'data-targets)))))
-  ;; the full entries are kept, hidden, for the popups (CITE-10, POP-7)
-  (define store (car (find-all doc (λ (x) (has-class* x "reference-store")))))
-  (check-true (attrs-have-key? store 'hidden))
+  ;; CITE-10: the Bibliography lists every work the page cites, the one in a
+  ;; definition included; the popups read it too (POP-7)
+  (define store (by-id doc "bibliography"))
+  (check-false (attrs-have-key? store 'hidden))
   (check-equal? (map (λ (li) (attr-ref li 'id)) (find-all store (tag? 'li)))
                 '("bib-hackingMakingPeople2006" "bib-hackingLoopingEffectsHuman1996" "bib-hackingSocialConstructionWhat2000"))
   ;; without scripts, the definition shows the work it cites
   (check-not-false (findf (λ (x) (has-class* x "term-refs")) (find-all terms txexpr?)))
-  ;; CITE-10: end matter order, and no bibliography
+  ;; CITE-10: end matter order
   (check-equal? (map (λ (s) (attr-ref s 'id)) (find-all doc (λ (x) (equal? (attr-ref x 'class #f) "endmatter"))))
-                '("terms" "asides" "references")))
+                '("terms" "asides" "notes" "bibliography")))
 
 (test-case "MARK-1c: annotations at the same point share one circle"
   (define doc (root "Claim" (cite "hackingMakingPeople2006" #:loc "p. 23")
@@ -168,11 +170,11 @@
   (check-equal? (length circles) 3)
   (define openers (find-all body (λ (x) (attrs-have-key? x 'data-targets))))
   (check-equal? (map (λ (o) (attr-ref o 'data-targets)) openers)
-                '("reference-1 reference-2" "term-occurrent reference-3" "reference-4"))
-  (check-equal? (attr-ref (car openers) 'aria-label) "reference 1, reference 2")
-  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, reference 3")
+                '("note-1 note-2" "term-occurrent note-3" "note-4"))
+  (check-equal? (attr-ref (car openers) 'aria-label) "note 1, note 2")
+  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, note 3")
   ;; D8: without JS a shared circle links to its first item
-  (check-equal? (attr-ref (car openers) 'href) "#reference-1")
+  (check-equal? (attr-ref (car openers) 'href) "#note-1")
   (check-equal? (attr-ref (cadr openers) 'href) "#term-occurrent"))
 
 (define (marks-in doc) (map classes (find-all doc (λ (x) (regexp-match? #rx"^mark " (classes x))))))
@@ -289,7 +291,7 @@
 
 (test-case "POP-7: notes say whether they are the full or the short form"
   (define doc (fixture "citations.html.pm"))
-  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "reference-~a" n)) 'data-form)) '(1 2 3 4 5))
+  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "note-~a" n)) 'data-form)) '(1 2 3 4 5))
                 '("full" "full" "short" "short" "short")))
 
 (test-case "INDEX-3: tags are comma-separated lowercase words"
@@ -369,8 +371,12 @@
     (for/list ([m (in-list (regexp-match* #px"(?m:^\\s*\\(([a-z][a-z0-9-]*)\\s+:pos [^\n]*:built t)" el #:match-select cadr))])
       (string->symbol m)))
   (check-not-false (pair? built) "no vocabulary entries found in emacs/occurrent.el")
+  ;; built in pollen.rkt by HANDOVER-PHASE2 Job A, which may not touch
+  ;; emacs/; Job B adds them to od-vocabulary and empties this list
+  (define pending-in-emacs '(latex))
   ;; define-meta is Pollen's own, not a pollen.rkt export
-  (check-equal? (sort (remq 'define-meta built) symbol<?) (sort provided symbol<?)))
+  (check-equal? (sort (remq 'define-meta built) symbol<?)
+                (sort (filter (λ (t) (not (memq t pending-in-emacs))) provided) symbol<?)))
 
 ;; SRC-4a: ◊abstract and ◊epistemic are written in the body and set in the header.
 (define (with-title thunk) (parameterize ([current-metas (hasheq 'title "T")]) (thunk)))
@@ -384,8 +390,8 @@
   (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all header txexpr?)))
   (check-not-false (findf (λ (x) (has-class* x "epistemic")) (find-all header txexpr?)))
   (check-equal? (length (find-all header (tag? 'em))) 1)
-  ;; the abstract's citation is reference 1, the body's reference 2
-  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#reference-1")
+  ;; the abstract's citation is note 1, the body's note 2
+  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#note-1")
   (check-equal? (map (λ (p) (classes p)) (filter (tag? 'p) (cdr (get-elements doc)))) '("intro")))
 
 (test-case "SRC-4a: once each, at the top level; the old meta lines fail"
@@ -410,9 +416,9 @@
                 '("https://github.com/occurrent-development/site/blob/main/pages/specimen.html.pm"
                   "https://github.com/occurrent-development/site/commits/main/pages/specimen.html.pm"))
   (check-equal? (map (λ (a) (string-replace (string-trim (text a)) "\u2060" "")) links) '("Source (external link)" "History (external link)"))
-  ;; the last line of the header's block
+  ;; LAYOUT-1: after the tags, before the epistemic status, which is last
   (define block (car (find-all doc (λ (x) (has-class* x "header-meta")))))
-  (check-eq? (last (get-elements block)) line))
+  (check-equal? (map classes (get-elements block)) '("source" "epistemic")))
 
 (test-case "REV-2: an essay's path is nested; a file outside the root fails"
   (define-values (blob commits) (source-urls (build-path (current-directory) "essays" "some-slug" "some-slug.html.pm")))
@@ -461,10 +467,10 @@
   (define p4 (fourth (filter (tag? 'p) (get-elements doc))))
   (check-equal? (length (find-all p4 (λ (x) (has-class* x "circle")))) 1)
   (define a (car (find-all p4 (λ (x) (has-class* x "aside-phrase")))))
-  (check-equal? (attr-ref a 'data-targets) "aside-4 reference-1")
+  (check-equal? (attr-ref a 'data-targets) "aside-4 note-1")
   (check-equal? (car (get-elements (car (find-all a (λ (x) (has-class* x "nw")))))) "point")
-  ;; the reference's ↩ goes back to that link
-  (check-equal? (attr-ref (car (find-all (by-id doc "reference-1") (λ (x) (has-class* x "back")))) 'href)
+  ;; the note's ↩ goes back to that link
+  (check-equal? (attr-ref (car (find-all (by-id doc "note-1") (λ (x) (has-class* x "back")))) 'href)
                 (string-append "#" (attr-ref a 'id))))
 
 (test-case "ASIDE-8: a phrase holds no annotations"
@@ -473,3 +479,101 @@
   (check-true (fails? (λ () (root "A " (aside #:phrase (list (term "occurrent" "occurrent")) "Body.")))))
   (check-true (fails? (λ () (root "A " (aside #:phrase (list (aside "nested")) "Body.")))))
   (check-true (fails? (λ () (root "A " (aside #:phrase "" "Body."))))))
+
+(test-case "LAYOUT-4a…4c: epigraphs italic, block quotations roman; #:italic flips either"
+  (define (class-of x) (attr-ref x 'class))
+  (check-equal? (class-of (epigraph "Motto.")) "epigraph")
+  (check-equal? (class-of (epigraph #:italic #f "Motto.")) "epigraph roman")
+  (check-equal? (class-of (epigraph #:italic #t "Motto.")) "epigraph")
+  (check-equal? (class-of (blockquote "Quoted.")) "quote")
+  (check-equal? (class-of (blockquote #:italic #t "Quoted.")) "quote italic")
+  (check-equal? (class-of (blockquote #:italic #f "Quoted.")) "quote")
+  (check-true (fails? (λ () (blockquote #:italic "yes" "Quoted."))))
+  ;; the TOC still follows an epigraph set roman
+  (check-equal? (get-tag (car (get-elements (root (epigraph #:italic #f "Motto."))))) 'blockquote))
+
+(test-case "INDEX-1a: the index is a table with four cells in every row"
+  ;; two fixture pages are listed (tests/essays/listed)
+  (define idx (essay-index #:pagetree "tests/index.ptree"))
+  (define head (car (find-all idx (tag? 'thead))))
+  (check-equal? (map (λ (th) (string-trim (text th))) (find-all head (tag? 'th)))
+                '("Title" "Date published" "Last review" "Tags"))
+  (define body-rows (find-all (car (find-all idx (tag? 'tbody))) (tag? 'tr)))
+  (check-equal? (length body-rows) 2)
+  (for ([r (in-list body-rows)])
+    (define cells (filter txexpr? (get-elements r)))
+    (check-equal? (length cells) 4)
+    (check-equal? (map get-tag cells) '(td td td td))
+    (check-equal? (map classes cells) '("title" "date-col" "date-col" "tags")))
+  ;; Title · Date published · Last review · Tags, in that order
+  (define newer (filter txexpr? (get-elements (car body-rows))))
+  (check-equal? (string-trim (text (first newer))) "Newer")
+  (check-equal? (attr-ref (car (find-all (second newer) (tag? 'time))) 'datetime) "2026-10-05")
+  (check-equal? (attr-ref (car (find-all (second newer) (λ (x) (attrs-have-key? x 'data-sort)))) 'data-sort) "2026-10-05")
+  (check-not-false (findf (λ (x) (attrs-have-key? x 'datetime)) (find-all (third newer) txexpr?)))
+  (check-equal? (string-trim (text (fourth (filter txexpr? (get-elements (cadr body-rows)))))) "site, philosophy")
+  ;; sortable at any number of rows (INDEX-3), as ◊table is at five
+  (check-not-false (attrs-have-key? (car (find-all idx (tag? 'table))) 'data-sortable))
+  ;; the TABLE-1 cell-count check is the same code
+  (check-exn #rx"row 1 has 3 cells, the header has 4"
+             (λ () (table-element '(("a") ("b") ("c") ("d")) '(#f #f #f #f) '((("1") ("2") ("3")))))))
+
+(test-case "MNOTE-6: a note that glosses nothing fails"
+  (define (msg thunk) (with-handlers ([exn:fail? exn-message]) (thunk) #f))
+  ;; the end of a paragraph, of a list item (the about page, 2026-10-20) and of a quoted paragraph
+  (check-regexp-match #rx"◊margin glosses nothing: move it to the start of the item or sentence"
+                      (msg (λ () (root "Text." (margin "Late")))))
+  (check-regexp-match #rx"glosses nothing"
+                      (msg (λ () (root (od-list "\n" "1. Getting a thought expressed."
+                                                (margin "Inexhaustive list of why I write") "\n"
+                                                "2. Seeing the thought." "\n")))))
+  (check-regexp-match #rx"glosses nothing" (msg (λ () (root (blockquote "Quoted. " (margin "M") "  ")))))
+  ;; at the end of an item's own text, before its nested list
+  (check-regexp-match #rx"glosses nothing"
+                      (msg (λ () (root (od-list "\n" "- Parent." (margin "M") "\n" "  - Child." "\n")))))
+  ;; the remedy passes: the note at the start of the item
+  (check-equal? (length (notes-in (root (od-list "\n" "1. " (margin "Why I write") "Getting a thought." "\n")))) 1))
+
+(test-case "TYPE-16: quotes in the page are curled, across tags and annotations"
+  (define doc (root "The prospect of a finalised \"product\"" (aside "That isn't so.")
+                    " is what gets an essay \"finished\"" (cite "hackingMakingPeople2006") ". Next, "
+                    (em "\"word\"") "."))
+  (define p (car (get-elements doc)))
+  (check-regexp-match #rx"finalised “product”" (text p))
+  (check-regexp-match #rx"“word”" (text p))
+  ;; the quote before the ◊cite closes; MARK-3a moves the stop after the
+  ;; cite in between the closing quote and the circle
+  (define nw (car (find-all p (λ (x) (and (has-class* x "nw") (pair? (find-all x (λ (y) (has-class* y "punct")))))))))
+  (check-regexp-match #rx"^“finished”\\.⁠" (text nw))
+  ;; an epigraph's source is curled too
+  (check-regexp-match #rx"Plato’s “Cratylus”"
+                      (text (car (find-all (root (epigraph #:source "Plato's \"Cratylus\"" "Motto.")) (tag? 'footer))))))
+
+(test-case "LAYOUT-1, 1b, 1c: the header's block, its labelled tags, and the closing rule"
+  (define h (header-sample #:title "T" #:published "2026-10-01" #:revised "2026-10-15"
+                           #:tags "site, typography" #:epistemic "A sample."))
+  (define block (car (find-all h (λ (x) (has-class* x "header-meta")))))
+  ;; dates, tags, then the epistemic status last (no source links in a sample)
+  (check-equal? (map classes (get-elements block)) '("dates" "tags" "epistemic"))
+  (define tags (cadr (get-elements block)))
+  (check-equal? (string-trim (text (car (get-elements tags)))) "Tagged")
+  (check-equal? (length (find-all tags (λ (x) (has-class* x "tag-link")))) 2)
+  (check-equal? (map (λ (d) (text (car (find-all d (λ (x) (has-class* x "meta-label"))))))
+                     (find-all block (λ (x) (has-class* x "date"))))
+                '("Published" "Revised"))
+  ;; no tags, no line; no epistemic status, no line
+  (define bare (header-sample #:title "T" #:published "2026-10-01"))
+  (check-equal? (map classes (get-elements (car (find-all bare (λ (x) (has-class* x "header-meta")))))) '("dates"))
+  ;; LAYOUT-1c: the header ends with its rule, with or without an abstract
+  (check-not-false (has-class* (last (get-elements h)) "header-rule"))
+  (check-not-false (has-class* (last (get-elements (header-sample #:title "T" "An abstract."))) "header-rule")))
+
+(test-case "TYPE-17: ◊latex{} is the logo in letters, named LaTeX; a body fails"
+  (define l (latex))
+  (check-equal? (attr-ref l 'class) "latex")
+  (check-equal? (attr-ref l 'aria-label) "LaTeX")
+  (check-equal? (text l) "LaTEX")                       ; letters of the text face, no image
+  (check-true (fails? (λ () (latex "LaTeX"))))
+  ;; it sits in running text, in italic and in an aside alike
+  (define doc (root "Set in " (latex) ", " (em "and " (latex)) "." (aside "Even " (latex) ".")))
+  (check-equal? (length (find-all doc (λ (x) (has-class* x "latex")))) 4))   ; the aside's two copies
