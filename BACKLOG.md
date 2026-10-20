@@ -96,6 +96,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 - Per-essay reading time, word counts, or "similar essays" — all easy, all clutter until the site is bigger.
 - Full-text search across essays: worth revisiting past ~15 essays; a build-time index plus a small client script.
 - A tag or topic index: *partly built 2026-10-14*, as the tag filter on the home page (INDEX-3). Separate pages per tag, with descriptions, wait for the same threshold.
+- Mathematics: **decided 2026-10-20, not parked.** The LaTeX logo is a Phase 2 tag (SPEC TYPE-17); inline maths is Phase 3, pre-rendered in Libertinus Math by LuaLaTeX at `make refresh` (SPEC MATH-1). KaTeX and MathJax were considered and rejected because they set maths in their own faces beside the text face. Recorded here so the choice is not reopened.
 
 ## 17. Interactive figures: beyond the v1 frame
 

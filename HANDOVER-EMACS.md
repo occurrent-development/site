@@ -1,6 +1,6 @@
 # Handover to Claude Code — Emacs
 
-Status: draft 1.2 · Owner: Ryan · 2026-10-15 (revised the same day for IMG-7: figure and table ids, titles and `◊ref`; and again for the per-essay `support/` folder)
+Status: draft 1.3 · Owner: Ryan · 2026-10-15 (revised the same day for IMG-7: figure and table ids, titles and `◊ref`; and again for the per-essay `support/` folder; revised 2026-10-20: `#:italic` on `epigraph` and `blockquote`, a command for every tag (SPEC EMACS-6), the end-of-block `◊margin` check)
 
 Read `SPEC.md` §3 (authoring format), §6 (glossary), §13 (revisions), §16 (Emacs) and `emacs/occurrent.el` first. This file specifies two things on top of what exists: a **major mode** for the site's Pollen dialect, with syntax highlighting that catches build errors before `make` does, and **publishing from Emacs with Magit**. Requirements carry IDs so commits and tests can reference them. **MUST** = required; **SHOULD** = expected, may slip; **MAY** = optional.
 
@@ -18,7 +18,7 @@ When this is built, fold the new IDs into `SPEC.md` §16 and point it here for d
 | Deploy | Push to `main` on `github.com/occurrent-development/site` → GitHub Actions builds and deploys to the Cloudflare Worker. Other branches build but do not deploy. Nothing generated is committed. |
 | Drafts | SPEC DRAFT-1 says: private repo or a never-pushed branch. A private `drafts` repo exists on GitHub but has **no local clone**; the current draft material lives outside git in `../Essays/` as Markdown, LaTeX and Word files. DRAFT-2 (the build publishes only `status` ≠ `draft`) is built and tested. |
 | Commit identity | Per-repo `Ryan Lucas <ryan@occurrentdevelopment.com>`. Never commit another address (HANDOVER §7). |
-| Tags actually provided by `pollen.rkt` | `section subsection subsubsection summary em strong sc code blockquote epigraph br anchor break link cite term aside margin more list table table-csv sort-key figure ref essay-index header-sample` plus `define-meta` (Pollen's own). `essay-index` belongs only on the home page and `header-sample` only on the specimen (both added to VOCAB-1 with an `:only` file kind; MODE-3 gained the kinds `home` and `specimen`). **`embed` and `changelog` are in SPEC §3.3 but not yet built**; using them is a build error today. |
+| Tags actually provided by `pollen.rkt` | `section subsection subsubsection summary em strong sc code blockquote epigraph br anchor break link cite term aside margin more list table table-csv sort-key figure ref` plus `define-meta` (Pollen's own), and `latex` once HANDOVER-PHASE2 Job A lands (SPEC TYPE-17). **`embed`, `changelog` and `m` are in SPEC §3.3 but not yet built**; using them is a build error today. |
 | Figures and tables (IMG-7, IMG-2, 2026-10-15) | `◊figure`, `◊table` and `◊table-csv` **require `#:id` and `#:title`**; the build numbers them (Figure 1, Table 1) and `◊ref[id]` prints the label as a same-page link. **`#:width` is a build error** (every figure and table is column width; the reader has an Expand button). The exhibit frame lives in `lib/exhibits.rkt`. |
 | Error format | `build error: <path relative to root>: <message>` on stderr (`lib/util.rkt`); no line numbers. `tools/validate.rkt` prints the same prefix for site-wide checks. |
 
@@ -30,7 +30,7 @@ When this is built, fold the new IDs into `SPEC.md` §16 and point it here for d
 
 **MODE-2 (MUST)** `pollen-mode` is **not** a dependency and is not derived from. Reasons, so the choice isn't revisited: it derives from `fundamental-mode` (so no `text-mode` filling, sentence commands or `text-mode-hook`); its font-lock is three rules and knows nothing of our vocabulary; its syntax table marks `◊;` comments only, so `forward-sexp` cannot cross a tag body; it binds `@` to insert `◊`, which fights prose (an email address needs `@@`); and its `pollen-minor-mode` re-enables itself in every buffer via `after-change-major-mode-hook`. If `pollen-mode` happens to be installed, our `auto-mode-alist` entry must win (prepend it).
 
-**MODE-3 (MUST)** Glossary files (`glossary/<id>.pm`) use the same mode. The mode knows which kind of file it is in (`od-file-kind`: `essay`, `page`, `glossary`, `fixture`) from the path relative to `od-root`; a few rules below depend on it.
+**MODE-3 (MUST)** Glossary files (`glossary/<id>.pm`) use the same mode. The mode knows which kind of file it is in (`od-file-kind`: `essay`, `page`, `glossary`, `fixture`; `reference` from Phase 3, SPEC BIB-3) from the path relative to `od-root`; a few rules below depend on it.
 
 **MODE-4 (SHOULD)** The mode works outside the repository too (a stray `.pm` file): everything that needs `od-root` degrades to a `user-error` when invoked, never at mode activation.
 
@@ -46,18 +46,16 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 |---|---|---|---|---|
 | `define-meta` | key | — | value | yes |
 | `section` `subsection` `subsubsection` | — | `#:id` (required), `#:short` | title | yes |
-| `abstract` `epistemic` | — | — | yes | yes (SRC-4a, added 2026-10-15) |
 | `summary` | — | — | yes | yes |
 | `link` | target | `#:note` `#:title` `#:author` `#:date` | yes | no |
 | `cite` | key | `#:loc` `#:note` | no | no |
 | `term` | id | `#:mark` | yes | no |
-| `aside` | phrase, optional: a string, `◊aside["finalised product"]{…}`, or values holding `◊em`/`◊sc`, `◊aside[◊em{x} " y"]{…}` (ASIDE-8, added 2026-10-19; `:opt-pos t` in VOCAB-1, so its absence is no error) | — | yes | no |
-| `margin` `sc` `em` `strong` `code` | — | — | yes | no |
+| `aside` `margin` `sc` `em` `strong` `code` | — | — | yes | no |
 | `anchor` | id | — | no | no |
 | `ref` | id of a figure or table in this file | — | no | no |
-| `br` `break` | — | — | no | `break` yes |
-| `blockquote` | — | — | yes | yes |
-| `epigraph` | — | `#:source` | yes | yes |
+| `br` `break` `latex` | — | — | no | `break` yes |
+| `blockquote` | — | `#:italic` (LAYOUT-4b) | yes | yes |
+| `epigraph` | — | `#:source` `#:italic` (LAYOUT-4a) | yes | yes |
 | `list` | — | `#:start` `#:columns` | yes | yes |
 | `table` | — | `#:id` (required) `#:title` (required) `#:caption` `#:source` `#:size` `#:sortable` `#:align` `#:row-headers` | yes | yes |
 | `table-csv` | path | as `table` | no | yes |
@@ -66,14 +64,17 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `more` | — | — | yes | yes (glossary only) |
 | `embed` | name | `#:alt` `#:fallback` `#:sticky` | caption | yes (**not built**) |
 | `changelog` | — | — | yes | yes (**not built**) |
+| `m` | — | `#:display` | TeX source | no (**not built**; Phase 3, SPEC MATH-1) |
 
-`#:width` is deliberately absent from `figure`, `table`, `table-csv` and `embed`: the build rejects it (IMG-2, 2026-10-15), so the highlighter must too (FL-6).
+`#:width` is deliberately absent from `figure`, `table`, `table-csv` and `embed`: the build rejects it (IMG-2, 2026-10-15), so the highlighter must too (FL-6). `#:italic` takes `#t` or `#f` only; any other value is an error (FL-6). *2026-10-20.*
 
-**VOCAB-2 (MUST)** Each entry carries a `:built` flag. Tags that `pollen.rkt` does not yet provide (`embed`, `changelog`) are in the table for completion and documentation but are highlighted as **errors** (FL-6) until the flag is flipped. The table, not the highlighter, is what changes when a phase lands.
+**VOCAB-2 (MUST)** Each entry carries a `:built` flag. Tags that `pollen.rkt` does not yet provide (`embed`, `changelog`, `m`) are in the table for completion and documentation but are highlighted as **errors** (FL-6) until the flag is flipped. The table, not the highlighter, is what changes when a phase lands.
 
 **VOCAB-3 (MUST) Sync test.** `pollen-test.rkt` gains a test that reads `emacs/occurrent.el`, extracts the tag names with `:built t` from `od-vocabulary`, and asserts the set equals the tag functions `pollen.rkt` provides (the `provide` form minus the template helpers and `root`). `make test` therefore fails when the two drift. Keep `od-vocabulary` a plain quoted list with one entry per line so the Racket side can parse it with a regexp.
 
-**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published tags specimen unlisted` (`abstract` and `epistemic` became tags on 2026-10-15, SRC-4a, so as meta keys they are errors); glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
+**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published epistemic abstract tags specimen unlisted`; glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
+
+**VOCAB-5 (MUST) A command for every tag.** Each entry also names its insert command (`:command`), so the vocabulary is the one place that says what `C-c o` can do (SPEC EMACS-6). Every `:built t` entry must name a command that exists; TEST-1 checks it. The unbuilt tags name theirs too, and those commands `user-error` with "not built yet" until the flag flips. *Added 2026-10-20.*
 
 ---
 
@@ -81,7 +82,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 
 The aim is that Emacs's own structural commands (`forward-sexp`, `up-list`, `mark-sexp`, `show-paren-mode`, `electric-pair-mode`) understand a tag body, while prose stays prose.
 
-**SYN-1 (MUST)** *As built 2026-10-15: brackets, braces and `"` default to punctuation and the propertize step promotes those a tag owns (the same result as demoting stray ones, but robust while a tag is half-typed); `'` is a word constituent without the prefix flag, so contractions stay one word.* Syntax table: `{` `}` are paired parens; `[` `]` are paired parens; `"` is **punctuation** by default (prose is full of straight quotes); `◊` is punctuation; `'` is punctuation (apostrophes), not an expression prefix; `_` and `-` are word constituents inside tag names only via the propertize step, otherwise punctuation.
+**SYN-1 (MUST)** Syntax table: `{` `}` are paired parens; `[` `]` are paired parens; `"` is **punctuation** by default (prose is full of straight quotes); `◊` is punctuation; `'` is punctuation (apostrophes), not an expression prefix; `_` and `-` are word constituents inside tag names only via the propertize step, otherwise punctuation.
 
 **SYN-2 (MUST)** `syntax-propertize-function` refines this per occurrence:
 - `"` gets string syntax **only inside a `[...]` argument group** that follows `◊name`. So `◊cite["key" #:loc "p. 42"]` has two strings; a quotation mark in a paragraph has none. Strings may span lines (SPEC §3.2 shows a `#:note` wrapped across a line).
@@ -120,20 +121,21 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 
 **FL-4 (MUST) Meta lines.** Key in `od-meta-key-face`, value plain. The value of `status` is highlighted by state: `draft` in `od-aside-face` (quiet), anything not in `essay-statuses` in `od-error-face`. A meta value that does not close `}` on the same line is an error (SRC-4).
 
-**FL-5 (MUST) Lists and tables.** Inside `◊list{…}`: `- ` and `N. ` markers in `od-list-marker-face`; an item not indented to its parent's text column (two spaces under `- `, three under `1. `, as `lib/lists.rkt` requires; *corrected 2026-10-15: was "a multiple of two spaces"*), or a line that is neither a marker, a continuation (indented) nor blank, takes `od-error-face` (LIST-7). Inside `◊table{…}`: `|` in `od-list-marker-face`.
+**FL-5 (MUST) Lists and tables.** Inside `◊list{…}`: `- ` and `N. ` markers in `od-list-marker-face`; an item whose indentation is not a multiple of two spaces, or a line that is neither a marker, a continuation (indented) nor blank, takes `od-error-face` (LIST-7). Inside `◊table{…}`: `|` in `od-list-marker-face`.
 
 **FL-6 (MUST) Errors.** `od-error-face` on:
 - a `◊name` not in `od-vocabulary`, or in it with `:built nil` (SRC-2: an unknown tag fails the build);
 - `◊quote` specifically, with a tooltip saying "use ◊blockquote" (`make test` rejects it), and any Racket syntactic form after `◊` (`define`, `if`, `let`, `lambda`, `require`, `quote`, `unquote`, `set!`)—these do not fail the build, they corrupt the page silently;
 - `◊` followed by whitespace, a newline, or `{` with no name (a bare `◊{…}` is legal Scribble but never wanted here);
-- a keyword argument not allowed for that tag (`◊cite["k" #:page "3"]`), including `#:width` on a figure, table or embed (IMG-2);
+- a keyword argument not allowed for that tag (`◊cite["k" #:page "3"]`), including `#:width` on a figure, table or embed (IMG-2), and `#:italic` with a value other than `#t` or `#f`;
 - a required keyword missing: `#:id` or `#:title` on `◊figure`, `◊table`, `◊table-csv`; `#:alt` or `#:licence` on `◊figure` (IMG-3, IMG-6, IMG-7). Highlight the tag name, since there is no argument to point at;
 - `◊more` outside a glossary file; `◊define-meta[term]` outside one; a glossary meta key in an essay (VOCAB-4);
 - a heading without `#:id`; two elements in the same file with the same id, counting headings, figures, tables and anchors together (SECT-5, IMG-7), highlighting the second;
 - `◊p` (SPEC §3.1: paragraphs are never written as tags; it is also unbound, so it already fails the build);
+- a `◊margin` whose anchor MNOTE-6 does not allow, including one followed by nothing but whitespace before the end of its paragraph, list item or quoted paragraph (the "glosses nothing" case, MNOTE-6, 2026-10-20); the check is the same one `od-insert-margin` uses to warn (EDIT-8);
 - a `◊link` whose target is `#id` where no heading, figure, table or `◊anchor` in the file has that id, and a `◊ref` whose id is not a figure or table in the file (LINK-2, IMG-7; cross-essay targets are checked by `od-check`, not the highlighter). One function collects the file's ids by kind and serves the highlighter, `od-insert-link-internal` and `od-insert-ref` (replacing `od--exhibit-ids`).
 
-**FL-7 (SHOULD)** `◊break{}` and `#lang pollen` in `od-markup-face`; the `◊epigraph` and `◊blockquote` bodies in `od-aside-face`'s italic without the dimming.
+**FL-7 (SHOULD)** `◊break{}` and `#lang pollen` in `od-markup-face`; the `◊epigraph` and `◊blockquote` bodies in `od-aside-face`'s italic without the dimming. The buffer face does not follow `#:italic`: the page's default for each block is what the buffer shows, and the keyword is read in the markup. *Clarified 2026-10-20.*
 
 **FL-8 (MAY)** `prettify-symbols-mode` support is **not** wanted: the lozenge stays a lozenge, nothing is hidden. Record this so it isn't added.
 
@@ -143,21 +145,19 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 
 **EDIT-1 (MUST) Filling.** `fill-paragraph` and `auto-fill` treat as paragraph boundaries: a line starting with any block tag (VOCAB-1), a line that is only `}`, and the `#lang` line. Meta lines are never filled (existing SRC-4 behaviour). Inside `◊list{…}`, `adaptive-fill-mode` recognises `- ` and `N. ` with their indentation so a wrapped item keeps its level (two spaces per level, LIST-1). Filling never breaks inside `[...]` argument groups except inside a string (SPEC §3.2 wraps a `#:note`), and never separates a `◊name` from its `[` or `{`.
 
-**EDIT-1a (MUST) Soft wrap.** *Decided 2026-10-15:* essays are written one line per paragraph and shown wrapped (`visual-line-mode`, with `olivetti-mode` for the width, both from Ryan's config), so nothing needs refilling while typing or revising. `od-soft-wrap` (default `t`) makes `M-q` join a paragraph onto one line rather than break it, which also converts older hard-wrapped paragraphs. `auto-fill-mode` is not used. The cost in diffs, a whole paragraph marked as changed for one word, is met by Magit's word highlighting (`magit-diff-refine-hunk` set to `all` in Ryan's config). The rest of EDIT-1 applies when `od-soft-wrap` is nil.
-
 **EDIT-2 (MUST) Wrapping commands** keep EMACS-2: every insert command wraps the active region. Add `od-unwrap` (`C-c o u`): with point inside a tag body, remove the `◊name[...]{` and its `}` and leave the body. Add `od-up` (`C-c o U`): move point just after the enclosing tag.
 
 **EDIT-3 (MUST) Completion at point.** A `completion-at-point-functions` entry that completes: a tag name after `◊` (from `od-vocabulary`, `:built` tags first); a keyword after `#:` inside an argument group (those allowed for the enclosing tag); a cite key inside `◊cite["` (the Zotero export, via the existing cache); a term id inside `◊term["` (EMACS-3 cache); a section, figure, table or anchor id after `◊link["#`; a figure or table id inside `◊ref["`; a page then section after `◊link["/` (`data/anchors.json`). Plain `completing-read` pickers remain the primary route; CAPF is for when the hands are already typing.
 
 **EDIT-4 (SHOULD) Spelling.** `flyspell-mode` skips tag names, keywords, and strings in argument groups (`flyspell-generic-check-word-predicate`), so keys, ids and URLs are not flagged. Body text, including aside bodies, is checked.
 
-**EDIT-5 (SHOULD) Outline.** Keep `outline-minor-mode` with the three heading levels; add `od-promote` / `od-demote` (BACKLOG §15, cheap once the mode exists), which also rename the tag and leave `#:id` untouched (ids are permanent).
+**EDIT-5 (SHOULD) Outline.** Keep `outline-minor-mode` with the three heading levels; add `od-promote` / `od-demote` (BACKLOG §15, cheap once the mode exists), which also rename the tag and leave `#:id` untouched (ids are permanent). Bound to `C-c o <` and `C-c o >` (they were missing from the `C-c o` menu on 2026-10-20).
 
 **EDIT-6 (MUST) Templates.** `od-new-essay` (`C-c o N`): prompts for a title, proposes a slug (checked: lowercase-hyphenated, not already an essay), and creates
 
 ```
 essays/<slug>/
-├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, tags; then ◊epistemic{} and ◊abstract{} (SRC-4a); point at the end
+├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, epistemic, abstract, tags; then a blank line, point there
 ├── img/                # figures; published with the essay
 └── support/            # everything else: notes, sources, drafts in other formats, sketches; never published (BUILD-3a)
     └── notes.md        # created empty, with the title as its first line
@@ -167,11 +167,18 @@ then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored f
 
 **EDIT-7 (MUST) Figures and tables.** `od-insert-figure` (`C-c o F`): picks an image from the essay's `img/` folder (or any path), asks for a title, proposes an id from it (checked against the file's ids), asks for alt text and a licence (`own`, `public-domain`, a CC licence, `permission`, completing), and inserts a complete `◊figure` with all four required keywords so the build cannot reject it for a missing one. `od-insert-table` (`C-c o B`): asks for title and id and inserts `◊table[#:id "…" #:title "…"]{` with an empty pipe-table skeleton (header row, rule row, one body row) and point in the first cell. `od-insert-ref` stays as built.
 
-**EDIT-8 (MUST) Comments.** `M-;` (`comment-dwim`) works as elsewhere, using Pollen's line comment: with a region it puts `◊; ` at the start of each line, and again removes it; with none it adds an end-of-line comment one space after the text (not at a comment column, and never with tabs). `◊;` hides the rest of the line and its line break, so commented lines vanish cleanly and an end-of-line comment joins the next line on, which in prose reads as the space it would have been. Block comments (`◊;{…}`) are highlighted and parsed (SYN-2) but not produced by `M-;`. *Added 2026-10-15; built into the existing minor mode, to carry into the major mode.*
-
-**EDIT-10 (MUST) Org's table editor.** `orgtbl-mode` is on in the mode (`od-use-orgtbl`), so inside `◊table{…}` TAB aligns, RET adds rows, `M-arrows` move rows and columns, `M-S-arrows` insert and delete them, and `|-` TAB draws the separator; outside a table the keys do what they always do. The build accepts Org's separator `|---+---|` and ignores separator lines after the first (they group rows in the source only); alignment colons are not available in Org's separator, so use `#:align` (numbers align right anyway). `od-insert-table` writes the skeleton in Org's form and aligns it. *Added 2026-10-15.*
-
-**EDIT-9 (MUST) The guide.** `od-guide` (`C-c o I`) opens a read-only org buffer, `*Occurrent guide*`, walking through the three workflows: starting a new essay, publishing it, revising and republishing. Keys in it are read from the keymap; a command not yet defined shows its planned key marked *(not built yet)*, so the guide is never wrong about what works. `q` closes it. When a workflow changes, the guide's text (`od--guide`) changes with it. *Added 2026-10-15 at Ryan's request.*
+**EDIT-8 (MUST) The rest of the vocabulary.** On 2026-10-20 the `C-c o` menu had no command for `epigraph`, `blockquote`, `break`, `list`, `summary`, `anchor`, `more`, the inline tags, or the two unbuilt tags. SPEC §16 now lists one for each, with its key; SPEC EMACS-6 makes the rule, and VOCAB-5 wires it into the table. Details that the SPEC table leaves to this file:
+- `od-insert-epigraph` (`C-c o Q`) prompts for the attribution with `completing-read` over the `#:source` strings already in the file (free entry allowed); an empty answer omits `#:source`. `C-u` adds `#:italic #f`. `od-insert-blockquote` (`C-c o q`) takes `C-u` for `#:italic #t`. Both are block tags: inserted on their own lines, blank line before and after, the region (if any) as the body, point inside.
+- `od-toggle-italic` (`C-c o o`) finds the enclosing `◊epigraph` or `◊blockquote` (`user-error` otherwise), reads any `#:italic`, and sets the opposite of the current effective style; when the result equals the tag's default (italic for an epigraph, roman for a block quotation) it removes the keyword rather than writing it. Reports the new state in the echo area.
+- `od-wrap` (`C-c o w`) reads one of `em strong sc code` with `completing-read`, defaulting to the last choice, and wraps the region or the word at point. There is no separate key per inline tag; four keys for four two-letter tags would crowd the menu.
+- `od-insert-break` (`C-c o b`) inserts `◊break{}` on its own line with a blank line either side, and refuses with a `user-error` when the next non-blank line is a heading that already follows one (§17 "Section breaks").
+- `od-insert-list` (`C-c o l`) inserts `◊list{` `- ` `}` with point after the marker; `C-u` makes it `1. `. With a region, each line of the region becomes an item.
+- `od-insert-summary` (`C-c o S`) inserts `◊summary{}` on the line after the nearest heading above point, `user-error` if there is none or it already has one.
+- `od-insert-anchor` (`C-c o A`) proposes an id from the word at point, checks it against the file's ids (the FL-6 collector), and inserts `◊anchor["id"]`.
+- `od-insert-more` (`C-c o M`) works only when `od-file-kind` is `glossary`; it inserts `◊more{` `}` after the short definition, point inside.
+- `od-insert-latex` (`C-c o L`) inserts `◊latex{}` and leaves point after it; it is an empty-body tag, so a region is not wrapped (SPEC TYPE-17).
+- `od-insert-changelog` (`C-c o H`) and `od-insert-embed` (`C-c o W`) exist now and `user-error` with "not built yet (VOCAB-2)" until their flags flip; when built, the first appends a dated line (`YYYY-MM-DD: `) to the essay's `◊changelog{…}`, creating the block at the end of the file if absent, and the second offers the folders in `widgets/` and inserts `◊embed["name" #:alt "" #:fallback ""]{}` with point in `#:alt`.
+- `od-insert-margin` (`C-c o m`) gains a check: when point is at the end of a paragraph, list item or quoted paragraph (only whitespace before the block ends), it asks "A margin note here glosses nothing; insert at the start of this item/paragraph instead?" and, on yes, moves point there first (MNOTE-6, 2026-10-20).
 
 ---
 
@@ -226,8 +233,6 @@ Build DRAFT-E1 unless Ryan says otherwise.
 
 **PUB-3 (MUST)** `od-commit` (`C-c o C`), for a change to an already-published essay: asks **Typo / Meta / Revision**; prefixes the message `[typo]` or `[meta]` for the first two (REV-1 ignores them for "last revised"); for a Revision, checks that the essay's `◊changelog{…}` (once built; until then, warns and continues) has a new line, then stages the essay folder and the caches as in PUB-1 step 6 and opens `magit-status`. Pages (`pages/*.pm`) and glossary files use the same command with the Revision choice.
 
-*2026-10-16: the caches PUB-3 stages hold only what published pages cite (SPEC CITE-5a), so staging them never carries a draft's references.*
-
 **PUB-4 (MUST)** Refuse to run `od-publish` or `od-commit` when the current branch is not `main`, or when `main` is behind `origin/main` (fetch first, `magit-git-string "rev-list" "--count" "main..origin/main"`); say which.
 
 **PUB-5 (SHOULD)** `od-deploy-status` (`C-c o d`): opens `https://github.com/occurrent-development/site/actions` in the browser, or, if `gh` is installed, runs `gh run watch` for the latest run in a compilation buffer and then opens the essay's URL on success. `od-publish` with the prefix argument calls it after pushing.
@@ -253,9 +258,34 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-3 (MUST)** Dependencies: Emacs 29+, Magit (soft: the `od-publish` family is defined only when `magit` is loadable, and says so if not), `citar` (soft, as now). No `pollen-mode`, no `company`.
 
-**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. List them all in the `occurrent-mode` docstring.
+**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. The full map, as of 2026-10-20:
 
-**LOAD-4a (MUST) Keys from anywhere.** `od-global-map` holds the commands that make sense outside an essay: `N` new essay, `I` guide, `k` check (the full `make` when not in an essay), `d` deploy status. The user's config binds it to `C-c o` globally; inside an essay the mode's own `C-c o` keys take precedence. `od-site-directory` names the repository, so `od-root` works from a buffer outside it, dired included. *Added 2026-10-15 at Ryan's request.*
+| Key | Command | Key | Command |
+|---|---|---|---|
+| `a` | `od-insert-aside` | `A` | `od-insert-anchor` |
+| `b` | `od-insert-break` | `B` | `od-insert-table` |
+| `c` | `od-insert-cite` | `C` | `od-commit` |
+| `d` | `od-deploy-status` | `F` | `od-insert-figure` |
+| `e` | `od-insert-link-essay` | `H` | `od-insert-changelog` |
+| `f` | `od-find-term` | `I` | `od-guide` |
+| `g` | `od-goto-section` | `M` | `od-insert-more` |
+| `i` | `od-insert-link-internal` | `N` | `od-new-essay` |
+| `k` | `od-check` | `P` | `od-publish` |
+| `l` | `od-insert-list` | `L` | `od-insert-latex` |
+| | | `Q` | `od-insert-epigraph` |
+| `m` | `od-insert-margin` | `S` | `od-insert-summary` |
+| `n` | `od-new-term` | `T` | `od-set-tags` |
+| `o` | `od-toggle-italic` | `U` | `od-up` |
+| `p` | `od-preview` | `W` | `od-insert-embed` |
+| `q` | `od-insert-blockquote` | `<` | `od-promote` |
+| `r` | `od-insert-ref` | `>` | `od-demote` |
+| `s` | `od-insert-section` | | |
+| `t` | `od-insert-term` | | |
+| `u` | `od-unwrap` | | |
+| `w` | `od-wrap` | | |
+| `x` | `od-insert-link-external` | | |
+
+List them all in the `occurrent-mode` docstring. Reserved for Phase 3: `R` for `od-new-reference` (SPEC BIB-3), `$` for `od-insert-math` (SPEC MATH-1), and `od-insert-cite` gains the pinned-key check of SPEC BIB-2 (ask Better BibTeX at `localhost:23119`; refuse an unpinned key; warn and continue when Zotero is not running). Neither is built in this handover. Free for later: `h j v y z` and `D E G J K O V X Y Z`.
 
 ---
 
@@ -263,11 +293,15 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **TEST-1 (MUST)** `emacs/occurrent-test.el`, ERT, run by a new target `make test-emacs` (`emacs -Q --batch -L emacs -l occurrent-test.el -f ert-run-tests-batch-and-exit`). Not part of `make`, so CI does not need Emacs; CI **MAY** add it later. Cases, each a small string fontified with `font-lock-ensure` in a temp buffer:
 - every tag in the vocabulary fontifies its name as markup and its body (where it has one) in the right face, including a body spanning three lines;
-- `◊quote{…}`, `◊embed[…]{…}`, `◊nonsense{…}`, `◊ {`, `◊cite["k" #:page "3"]`, `◊figure["a.png" #:width "wide" …]`, a `◊figure` without `#:id` or `#:title`, a heading without `#:id`, a duplicate id shared by a heading and a figure, a meta value broken across lines, a `◊link["#missing"]`, a `◊ref["missing"]` and a `◊ref` pointing at a heading rather than a figure each take `od-error-face` on the right span and nowhere else;
+- `◊quote{…}`, `◊embed[…]{…}`, `◊nonsense{…}`, `◊ {`, `◊cite["k" #:page "3"]`, `◊figure["a.png" #:width "wide" …]`, `◊blockquote[#:italic "yes"]{…}`, a `◊figure` without `#:id` or `#:title`, a heading without `#:id`, a duplicate id shared by a heading and a figure, a meta value broken across lines, a `◊link["#missing"]`, a `◊ref["missing"]`, a `◊ref` pointing at a heading rather than a figure, and a `◊margin` at the end of a list item each take `od-error-face` on the right span and nowhere else;
+- `◊epigraph[#:source "X" #:italic #f]{…}` and `◊blockquote[#:italic #t]{…}` take no error face;
 - a paragraph containing `"quoted words"`, `[sic]`, an email address and an apostrophe has **no** string, paren or error syntax;
 - `forward-sexp` and `up-list` behave as SYN-3 says, including across a nested `◊term` inside an `◊aside`;
 - `fill-paragraph` on a `◊list{}` item keeps its indentation, and on a paragraph holding a wrapped `#:note` string does not join the heading below it;
-- `od-unwrap` removes exactly the markup of the enclosing tag.
+- `od-unwrap` removes exactly the markup of the enclosing tag;
+- every `:built t` entry in `od-vocabulary` names a `:command` that is `fboundp` and bound under `C-c o` (VOCAB-5, SPEC EMACS-6);
+- `od-toggle-italic` on a plain `◊epigraph` adds `#:italic #f`, on `◊epigraph[#:italic #f]` removes it, on a plain `◊blockquote` adds `#:italic #t`, and signals outside either tag;
+- `od-insert-margin` with point at the end of an item offers to move to its start and inserts after the marker when accepted.
 
 **TEST-2 (MUST)** The VOCAB-3 sync test in `pollen-test.rkt`, run by `make test`.
 
@@ -288,7 +322,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 ## 12. Where to stop
 
-Stop when: `make test` passes with the VOCAB-3 sync test; `make test-emacs` passes; the specimen page (which now uses `◊figure`, `◊table`, `◊table-csv` and `◊ref` with ids and titles), the placeholder essay, the test fixtures under `tests/` and the three glossary files open in `occurrent-mode` with nothing in `od-error-face`; inserting `◊embed[…]{…}` or `#:width` lights up; and `od-publish` on a copy of the placeholder essay in a scratch clone stages the right files and stops at `magit-status`. Then report:
+Stop when: `make test` passes with the VOCAB-3 sync test; `make test-emacs` passes; the specimen page (which now uses `◊figure`, `◊table`, `◊table-csv` and `◊ref` with ids and titles), the placeholder essay, the test fixtures under `tests/` and the three glossary files open in `occurrent-mode` with nothing in `od-error-face`; inserting `◊embed[…]{…}` or `#:width` lights up; every `:built` tag has a working key under `C-c o`; and `od-publish` on a copy of the placeholder essay in a scratch clone stages the right files and stops at `magit-status`. Then report:
 
 1. anything in §4–5 that Emacs's font-lock could not do cleanly (multi-line bodies are the likely place), and what you did instead;
 2. the keystroke sequence, start to finish, for publishing a new essay;
