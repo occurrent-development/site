@@ -197,19 +197,21 @@ strong, b { font-weight: 600; }
 }
 /* TYPE-17: the LaTeX logo, as TeX's \LaTeX sets it: a small-cap A raised and
    tucked under the L's arm, an E lowered under the T's. It inherits size,
-   weight and style; the shifted letters take no line height (MARK-2). */
+   weight and style. The two letters are moved with relative positioning,
+   not as inline blocks: an inline block takes the paragraph's text-indent
+   on its own first line, and justification can open space around it (both
+   seen 2026-10-21 on the About page); a relative shift also leaves the line
+   height alone (MARK-2). */
 .latex { white-space: nowrap; font-variant-caps: normal; letter-spacing: 0; }
 .latex-a {
   font-variant-caps: small-caps;
-  display: inline-block;
-  line-height: 0;
-  vertical-align: 0.24em;
+  position: relative;
+  top: -0.24em;
   margin: 0 -0.12em 0 -0.26em;   /* TeX's -0.36em crashes into Libertinus's italic L; tuned on the specimen */
 }
 .latex-e {
-  display: inline-block;
-  line-height: 0;
-  vertical-align: -0.5ex;
+  position: relative;
+  top: 0.5ex;
   margin: 0 -0.125em 0 -0.1667em;
 }
 
