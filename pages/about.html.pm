@@ -22,7 +22,7 @@ The essays collected here are not for you; they are for me. I find writing immen
 So why publish the essays here? A few reasons:
 
 ◊list{
-1. The prospect of a ◊aside["finalised product"]{Finalised in the sense of being publication ready. That does not imply that the essay is now an immutable artefact---quite the opposite: essays can be revised as my thinking evolves. While the essay rendered on the website will always be the most recent version, every essay's full revision history is available as readable source code in a public repository on GitHub, the link to which can be found at the top of each essay.} provides the motivation to actually finish the essay.◊margin{Why I publish} Often the weaknesses only become apparent when I'm trying to pull the final threads together.
+1. ◊margin{Why I publish}The prospect of a ◊aside["finalised product"]{Finalised in the sense of being publication ready. That does not imply that the essay is now an immutable artefact---quite the opposite: essays can be revised as my thinking evolves. While the essay rendered on the website will always be the most recent version, every essay's full revision history is available as readable source code in a public repository on GitHub, the link to which can be found at the top of each essay.} provides the motivation to actually finish the essay. Often the weaknesses only become apparent when I'm trying to pull the final threads together.
 2. The next reason (imposing constraints).
 3. for feedback.
 4. I enjoy the process.
@@ -33,10 +33,7 @@ I have a rather obsessive nature. Little things bother me; I often need things t
 
 The only way that I could have a website and retain such granular control over visual design was to build it from scratch to my precise specifications. While I was able to teach myself enough ◊latex{} for my clinic letter project, I'm no web designer. Luckily I designed this website in 2026: it was built by Claude Code.
 
-◊; The site is written in Pollen markup, built with Racket on GitHub Actions,
-◊; and served as static files by Cloudflare. It uses no framework, no
-◊; third-party requests and, apart from a few lines that remember your choice of
-◊; theme, no JavaScript.
+The site is written in ◊link["https://docs.racket-lang.org/pollen/" #:note "Pollen"]{Pollen} markup, built with Racket on GitHub Actions, and served as static files by Cloudflare. It uses no framework and no third-party requests.
 
 ◊; ◊section[#:id "type" #:short "Type"]{Type}
 
