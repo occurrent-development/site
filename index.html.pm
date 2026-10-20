@@ -1,9 +1,8 @@
 #lang pollen
 
-These are essays, listed with the newest first. Sort the table by title or
-by date with the column headings, or choose subjects from the Tags heading to
-show only the essays on them. Each essay gives the date it was first published
-and the date it was last reviewed. This paragraph is a placeholder.
+This website hosts an ever-expanding collection of my essays, broadly dealing with the philosophy and practice of developmental paediatrics. You can read more about me, the essays, and this website ◊link["/about"]{here}.
+
+Essays are listed in the table below, which can be sorted by title, publication date, or review date, or filtered by tags.
 
 ◊break{}
 
