@@ -36,6 +36,8 @@ def sources():
     for pm in sorted(ROOT.glob("**/*.pm")):
         if SKIP_DIRS & set(pm.relative_to(ROOT).parts):
             continue
+        if pm.name.startswith(".#") or not pm.is_file():   # Emacs lock files
+            continue
         for src in FIGURE.findall(pm.read_text(encoding="utf-8")):
             path = (pm.parent / src).resolve()
             if not path.exists():

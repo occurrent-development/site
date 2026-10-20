@@ -59,6 +59,8 @@ def source_chars():
         for path in ROOT.glob(pattern):
             if SKIP_DIRS & set(path.relative_to(ROOT).parts):
                 continue
+            if path.name.startswith(".#") or not path.is_file():   # Emacs lock files
+                continue
             chars |= {ord(c) for c in path.read_text(encoding="utf-8")}
     return {c for c in chars if c >= 0x20}
 
