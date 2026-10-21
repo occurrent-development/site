@@ -375,14 +375,8 @@
     (for/list ([m (in-list (regexp-match* #px"(?m:^\\s*\\(([a-z][a-z0-9-]*)\\s+:pos [^\n]*:built t)" el #:match-select cadr))])
       (string->symbol m)))
   (check-not-false (pair? built) "no vocabulary entries found in emacs/occurrent.el")
-  ;; built in pollen.rkt by HANDOVER-PHASE2 Job A, which may not touch
-  ;; emacs/; Job B adds them to od-vocabulary and empties this list
-  (define pending-in-emacs '(latex index latest))
-  ;; retired in pollen.rkt by Job A; Job B takes them out of od-vocabulary
-  (define retired-in-emacs '(essay-index))
   ;; define-meta is Pollen's own, not a pollen.rkt export
-  (check-equal? (sort (filter (λ (t) (not (memq t retired-in-emacs))) (remq 'define-meta built)) symbol<?)
-                (sort (filter (λ (t) (not (memq t pending-in-emacs))) provided) symbol<?)))
+  (check-equal? (sort (remq 'define-meta built) symbol<?) (sort provided symbol<?)))
 
 ;; SRC-4a: ◊abstract and ◊epistemic are written in the body and set in the header.
 (define (with-title thunk) (parameterize ([current-metas (hasheq 'title "T")]) (thunk)))

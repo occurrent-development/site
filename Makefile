@@ -40,8 +40,9 @@ test:
 	  { echo "◊quote is not a tag (Racket's quote swallows it); use ◊blockquote"; exit 1; }
 
 # The Emacs mode's tests (TEST-1, TEST-3); not part of `make', so CI needs no Emacs.
+# No input: a command that prompts in a test fails instead of waiting.
 test-emacs:
-	emacs -Q --batch -L emacs -l occurrent-test.el -f ert-run-tests-batch-and-exit
+	emacs -Q --batch -L emacs -l occurrent-test.el -f ert-run-tests-batch-and-exit < /dev/null
 
 # Subset each face to the characters the site uses (TYPE-8). Writes hashed
 # WOFF2 files beside the sources and a manifest the template reads.

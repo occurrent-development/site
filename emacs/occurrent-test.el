@@ -50,7 +50,7 @@
     (concat (when (eq name 'ref)
               "◊figure[\"a.png\" #:id \"x\" #:title \"T\" #:alt \"a\" #:licence \"own\"]{c}\n\n")
             "◊" (symbol-name name)
-            (let ((parts (delq nil (cons pos (mapcar (lambda (k) (format "#:%s \"v\"" k))
+            (let ((parts (delq nil (cons pos (mapcar (lambda (k) (if (eq k 'kind) "#:kind \"essay\"" (format "#:%s \"v\"" k)))
                                                     (plist-get (cdr e) :req))))))
               (if parts (concat "[" (string-join parts " ") "]") ""))
             (cond ((not (plist-get (cdr e) :body)) "")
@@ -58,6 +58,8 @@
                   ((eq name 'table) "{\n| a | b |\n|---+---|\n| 1 | 2 |\n}")
                   ((eq name 'define-meta) "{a value on one line}")
                   (t "{some\ntext over\nthree lines}"))
+            ;; a margin note must gloss something (MNOTE-6)
+            (if (eq name 'margin) "Text it glosses." "")
             "\n")))
 
 (ert-deftest od-test-every-tag ()
@@ -221,8 +223,11 @@
         (error "git %s: %s" args (buffer-string)))
       (string-trim (buffer-string)))))
 
+(defvar od-test-kind "essay" "What the \"Essay or entry?\" prompt answers in a test repository.")
+
 (defmacro od-test-with-repo (&rest body)
-  "Run BODY in a fresh clone holding a draft essay, essays/demo/."
+  "Run BODY in a fresh clone holding a draft post, essays/demo/ (or
+notebook/demo/ when `od-test-kind' is \"entry\")."
   (declare (indent 0))
   `(let* ((top (make-temp-file "od-test" t))
           (origin (expand-file-name "origin.git" top))
@@ -243,7 +248,9 @@
                         (lambda (prompt &optional initial &rest _)
                           (cond ((string-prefix-p "Title" prompt) "A demo essay")
                                 ((string-prefix-p "Slug" prompt) "demo")
-                                (t (or initial ""))))))
+                                (t (or initial "")))))
+                       ((symbol-function 'completing-read)
+                        (lambda (prompt &rest _) (if (string-prefix-p "Essay or entry" prompt) od-test-kind ""))))
                (find-file (expand-file-name "x.pm" site))   ; od-root from here
                (od-new-essay)))
            ,@body)
@@ -292,6 +299,146 @@
     (od-test-git (od-root) "checkout" "-q" "-b" "other")
     (od-test-publishing
      (should-error (od-publish) :type 'user-error))))
+
+
+;;; 2026-10-20 and 2026-10-21: a command for every tag, #:italic, margin
+;;; anchors, the notebook (VOCAB-5, LAYOUT-4c, MNOTE-6, KIND-6)
+
+(ert-deftest od-test-every-tag-has-a-key ()
+  "Every built tag names a command that exists and is bound under C-c o (VOCAB-5)."
+  (dolist (entry od-vocabulary)
+    (let ((cmd (plist-get (cdr entry) :command)))
+      (should cmd)
+      (when (plist-get (cdr entry) :built)
+        (should (fboundp cmd))
+        (should (where-is-internal cmd occurrent-mode-map))
+        (should (string-prefix-p "C-c o" (key-description (where-is-internal cmd occurrent-mode-map t))))))))
+
+(ert-deftest od-test-italic-values ()
+  (od-test-errors-are "◊blockquote[#:italic \"yes\"]{Quoted.}\n" '("\"yes\""))
+  (od-test-errors-are "◊epigraph[#:source \"X\" #:italic #f]{Motto.}\n\n◊blockquote[#:italic #t]{Quoted.}\n" nil)
+  (od-test-errors-are "Text ◊latex{} and more.\n" nil))
+
+(ert-deftest od-test-margin-anchors ()
+  "MNOTE-6: the four anchors pass; anywhere else, and a note that glosses nothing, fail."
+  (od-test-errors-are "◊margin{Para}Opens a paragraph. A sentence. ◊margin{Sent}Opens a sentence.\n" nil)
+  (od-test-errors-are "◊list{\n1. ◊margin{Item}Opens an item.\n}\n\n◊blockquote{◊margin{Q}Opens a quotation.}\n" nil)
+  (od-test-errors-are "A line◊br{}◊margin{Br}after a break.\n" nil)
+  (od-test-errors-are "Some text ◊margin{mid}more.\n" '("◊margin"))
+  (od-test-errors-are "◊list{\n1. Getting a thought expressed.◊margin{Why I write}\n2. Next.\n}\n" '("◊margin"))
+  (od-test-errors-are "Ends here.◊margin{late}\n" '("◊margin"))
+  (od-test-errors-are "x ◊aside{Inside. ◊margin{no}An aside.}\n" '("◊margin")))
+
+(ert-deftest od-test-toggle-italic ()
+  (od-test-with "◊epigraph{Motto.}\n"
+    (search-forward "Motto") (od-toggle-italic)
+    (should (equal (buffer-string) "◊epigraph[#:italic #f]{Motto.}\n"))
+    (od-toggle-italic)
+    (should (equal (buffer-string) "◊epigraph{Motto.}\n")))
+  (od-test-with "◊epigraph[#:source \"X\" #:italic #f]{Motto.}\n"
+    (search-forward "Motto") (od-toggle-italic)
+    (should (equal (buffer-string) "◊epigraph[#:source \"X\"]{Motto.}\n")))
+  (od-test-with "◊blockquote{Quoted.}\n"
+    (search-forward "Quoted") (od-toggle-italic)
+    (should (equal (buffer-string) "◊blockquote[#:italic #t]{Quoted.}\n")))
+  (od-test-with "Plain prose.\n"
+    (should-error (od-toggle-italic) :type 'user-error)))
+
+(ert-deftest od-test-insert-margin-at-end-of-item ()
+  "EDIT-8: at the end of an item, the note moves to the item's start, after the marker."
+  (od-test-with "◊list{\n1. Getting a thought expressed.\n2. Next.\n}\n"
+    (search-forward "expressed.")
+    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+      (od-insert-margin))
+    (insert "Why I write")
+    (should (equal (buffer-string) "◊list{\n1. ◊margin{Why I write}Getting a thought expressed.\n2. Next.\n}\n"))))
+
+(ert-deftest od-test-insert-commands ()
+  (od-test-with "Text\n"
+    (goto-char (point-max)) (od-insert-latex)
+    (should (equal (buffer-string) "Text\n◊latex{}")))
+  (od-test-with "One word here."
+    (search-forward "word") (od-wrap "em")
+    (should (equal (buffer-string) "One ◊em{word} here.")))
+  (od-test-with "Before.\n"
+    (goto-char (point-max)) (od-insert-list t) (insert "first")
+    (should (equal (buffer-string) "Before.\n\n◊list{\n1. first\n}\n")))
+  (od-test-with "Before.\n\n◊section[#:id \"s\"]{Next}\n"
+    (goto-char (point-min)) (end-of-line)
+    (should-error (od-insert-break) :type 'user-error))
+  (od-test-with "◊section[#:id \"s\"]{A heading}\n\nText here.\n"
+    (search-forward "Text") (od-insert-summary) (insert "In brief.")
+    (should (string-match-p "{A heading}\n◊summary{In brief.}\n" (buffer-string))))
+  (od-test-with "Text.\n"
+    (setq od-file-kind-override 'entry)
+    (should-error (od-insert-changelog) :type 'user-error)))
+
+(ert-deftest od-test-entry-refusals ()
+  "KIND-2: no epistemic status or changelog in an entry; index and latest have their pages."
+  (od-test-with "◊epistemic{Sure.}\n"
+    (setq od-file-kind-override 'entry) (font-lock-flush) (font-lock-ensure)
+    (should (equal (od-test-errors) '("◊epistemic")))
+    (setq od-file-kind-override 'essay) (font-lock-flush) (font-lock-ensure)
+    (should (equal (od-test-errors) nil)))
+  (od-test-with "◊index[#:kind \"essay\"]\n\n◊latest[3]\n"
+    (setq od-file-kind-override 'essay) (font-lock-flush) (font-lock-ensure)
+    (should (equal (od-test-errors) '("◊index" "◊latest"))))
+  (od-test-with "◊index[#:kind \"blog\"]\n"
+    (setq od-file-kind-override 'index) (font-lock-flush) (font-lock-ensure)
+    (should (equal (od-test-errors) '("\"blog\"")))))
+
+(ert-deftest od-test-file-kinds ()
+  (let ((root (expand-file-name ".." (file-name-directory (locate-library "occurrent")))))
+    (dolist (c '(("essays/a/a.html.pm" . essay) ("notebook/a/a.html.pm" . entry)
+                 ("notebook/a/support/x.pm" . nil) ("pages/index.html.pm" . home)
+                 ("pages/essays.html.pm" . index) ("pages/notebook.html.pm" . index)
+                 ("pages/colophon.html.pm" . page) ("glossary/x.pm" . glossary)))
+      (should (eq (od-file-kind (expand-file-name (car c) root)) (cdr c))))))
+
+(ert-deftest od-test-new-entry-is-hidden ()
+  (let ((od-test-kind "entry"))
+    (od-test-with-repo
+      (should (string-match-p "/notebook/demo/demo\\.html\\.pm\\'" buffer-file-name))
+      (should-not (string-match-p "epistemic" (buffer-string)))
+      (should (equal (od-test-git default-directory "status" "--porcelain") ""))
+      (should (eq (od-file-kind) 'entry)))))
+
+(ert-deftest od-test-publish-entry ()
+  (let ((od-test-kind "entry"))
+    (od-test-with-repo
+      (od-test-publishing
+       (od-publish)
+       (let ((staged (split-string (od-test-git (od-root) "diff" "--cached" "--name-only") "\n" t)))
+         (should (member "notebook/demo/demo.html.pm" staged))
+         (should (member "index.ptree" staged)))
+       (with-temp-buffer
+         (insert-file-contents (expand-file-name "index.ptree" (od-root)))
+         (should (= 1 (how-many "^notebook/demo/demo\\.html$" (point-min) (point-max)))))))))
+
+(ert-deftest od-test-link-groups ()
+  (should (equal (mapcar #'od--url-group '("/placeholder" "/notebook/a-day" "/" "/essays" "/specimen"))
+                 '("Essays" "Notebook" "Pages" "Pages" "Pages"))))
+
+;;; §12: the site's own files open with nothing in the error face
+
+(ert-deftest od-test-site-files-are-clean ()
+  (let* ((root (expand-file-name ".." (file-name-directory (locate-library "occurrent"))))
+         (files (append (mapcar (lambda (f) (expand-file-name f root))
+                                '("pages/index.html.pm" "pages/essays.html.pm" "pages/notebook.html.pm"
+                                  "pages/specimen.html.pm" "pages/colophon.html.pm"
+                                  "essays/placeholder/placeholder.html.pm"
+                                  "tests/lists.html.pm" "tests/citations.html.pm" "tests/asides.html.pm"
+                                  "tests/notebook/sectioned-entry/sectioned-entry.html.pm"))
+                        (directory-files (expand-file-name "glossary" root) t "\\.pm\\'"))))
+    (dolist (f files)
+      (with-temp-buffer
+        (insert-file-contents f)
+        (setq buffer-file-name f)
+        (let ((od-use-orgtbl nil)) (occurrent-mode))
+        (font-lock-ensure)
+        (should (equal (cons f (od-test-errors)) (list f)))
+        (set-buffer-modified-p nil)
+        (setq buffer-file-name nil)))))
 
 (provide 'occurrent-test)
 ;;; occurrent-test.el ends here

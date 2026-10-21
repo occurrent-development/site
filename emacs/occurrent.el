@@ -277,14 +277,37 @@ Return the id."
          (choice (completing-read "Link to: " cands nil t)))
     (od--wrap (format "◊link[\"#%s\"]{" (cdr (assoc choice cands))) "}")))
 
+(defun od--url-group (url)
+  "Which group a page's URL belongs to in the picker: essays, then pages, then
+the notebook (KIND-6)."
+  (cond ((string-prefix-p "/notebook/" url) "Notebook")
+        ((member url '("/" "/essays" "/notebook" "/specimen" "/colophon")) "Pages")
+        (t "Essays")))
+
+(defun od--grouped-table (cands group)
+  "A completion table over CANDS, in their order, grouped by GROUP."
+  (lambda (string pred action)
+    (if (eq action 'metadata)
+        `(metadata (group-function . ,(lambda (c transform) (if transform c (funcall group c))))
+                   (display-sort-function . identity))
+      (complete-with-action action cands string pred))))
+
 (defun od-insert-link-essay ()
-  "Insert ◊link[\"/slug#id\"]{…}, choosing from data/anchors.json (built by `make')."
+  "Insert ◊link[\"/slug#id\"]{…}, choosing from data/anchors.json (built by `make').
+Essays come first, then the site's pages, then notebook entries under their
+own heading (KIND-6)."
   (interactive)
   (let* ((file (od--file "data" "anchors.json"))
          (_ (unless (file-exists-p file) (user-error "No data/anchors.json yet; run make")))
          (json-object-type 'alist) (json-array-type 'list) (json-key-type 'string)
          (pages (json-read-file file))
-         (page (completing-read "Page: " (mapcar (lambda (p) (format "%s  %s" (car p) (alist-get "title" (cdr p) nil nil #'equal))) pages) nil t))
+         (order '("Essays" "Pages" "Notebook"))
+         (sorted (cl-sort (copy-sequence pages) #'<
+                          :key (lambda (p) (cl-position (od--url-group (car p)) order :test #'equal))))
+         (cands (mapcar (lambda (p) (format "%s  %s" (car p) (alist-get "title" (cdr p) nil nil #'equal))) sorted))
+         (page (completing-read "Page: " (od--grouped-table
+                                          cands (lambda (c) (od--url-group (car (split-string c "  ")))))
+                                nil t))
          (url (car (split-string page "  ")))
          (sections (alist-get "sections" (cdr (assoc url pages)) nil nil #'equal))
          (whole "(whole page)")
@@ -360,7 +383,244 @@ With an active region, the region becomes the aside's phrase (ASIDE-8):
       (goto-char beg)
       (insert "◊aside[" (prin1-to-string phrase) "]{")
       (save-excursion (insert "}")))))
-(defun od-insert-margin () "Insert ◊margin{}." (interactive) (od--wrap "◊margin{" "}"))
+(defun od-insert-margin ()
+  "Insert ◊margin{}, with point in the body (or around the region).
+At the end of a paragraph, list item or quoted paragraph a note would
+gloss nothing (MNOTE-6), so it offers to put the note at the block's
+start instead, after a list marker (EDIT-8)."
+  (interactive)
+  (unless (use-region-p)
+    (let ((block (ignore-errors (od--margin-block (point)))))
+      (when (and (consp block)
+                 (> (point) (car block))
+                 (string-blank-p (buffer-substring-no-properties (point) (nth 1 block)))
+                 (y-or-n-p "A margin note here glosses nothing; insert it at the start of this item or paragraph instead? "))
+        (goto-char (car block)))))
+  (od--wrap "◊margin{" "}"))
+
+;;; The rest of the vocabulary (EDIT-8, SPEC EMACS-6) ---------------------------------
+
+(defvar od-vocabulary)                  ; below, with the highlighter that reads it
+
+(defun od--open-line-for-block ()
+  "Make point the start of an empty line with a blank line before it."
+  (unless (bolp) (insert "\n"))
+  (unless (or (bobp) (save-excursion (forward-line -1) (looking-at-p "[ \t]*$")))
+    (insert "\n")))
+
+(defun od--insert-block (open close &optional body)
+  "Insert a block tag on its own lines: OPEN, BODY (or the region), CLOSE,
+with a blank line before and after; leave point where the writing goes."
+  (let ((text (or (od--region-text) body "")))
+    (when (use-region-p) (delete-region (region-beginning) (region-end)))
+    (od--open-line-for-block)
+    (insert open text)
+    (let ((here (point)))
+      (insert close "\n")
+      (unless (or (eobp) (looking-at-p "[ \t]*$")) (insert "\n"))
+      (goto-char here))))
+
+(defun od--source-strings ()
+  "The #:source strings already in this file, for completion."
+  (let (out)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "#:source \"\\(\\(?:[^\"\\]\\|\\\\.\\)*\\)\"" nil t)
+        (cl-pushnew (match-string-no-properties 1) out :test #'equal)))
+    (nreverse out)))
+
+(defun od-insert-epigraph (&optional roman)
+  "Insert ◊epigraph[#:source \"…\"]{…} on its own lines (LAYOUT-4a).
+The attribution completes from those already in the file; empty for none.
+With a prefix argument ROMAN, add #:italic #f."
+  (interactive "P")
+  (let* ((source (string-trim (completing-read "Attribution (empty for none): " (od--source-strings))))
+         (kws (string-join (delq nil (list (unless (string-empty-p source) (format "#:source \"%s\"" (od--quote source)))
+                                           (when roman "#:italic #f")))
+                           " ")))
+    (od--insert-block (if (string-empty-p kws) "◊epigraph{" (format "◊epigraph[%s]{" kws)) "}")))
+
+(defun od-insert-blockquote (&optional italic)
+  "Insert ◊blockquote{…} on its own lines (LAYOUT-4b).
+With a prefix argument ITALIC, add #:italic #t."
+  (interactive "P")
+  (od--insert-block (if italic "◊blockquote[#:italic #t]{" "◊blockquote{") "}"))
+
+(defun od--enclosing-quotation ()
+  "The parse of the ◊epigraph or ◊blockquote around point, or nil."
+  (syntax-propertize (point-max))
+  (let (found)
+    (dolist (open (reverse (nth 9 (syntax-ppss))))
+      (unless found
+        (let ((start (od--paren-tag-start open)))
+          (when start
+            (let ((tag (od--tag-parse start)))
+              (when (member (plist-get tag :name) '("epigraph" "blockquote")) (setq found tag)))))))
+    (or found
+        ;; on the tag's own name
+        (save-excursion
+          (skip-chars-backward "a-z◊-")
+          (and (looking-at "◊\\(epigraph\\|blockquote\\)\\_>") (od--tag-parse (point)))))))
+
+(defun od-toggle-italic ()
+  "Flip the ◊epigraph or ◊blockquote around point: italic or roman.
+Writes #:italic only where it differs from the tag's default: an epigraph
+is italic, a block quotation roman (LAYOUT-4c)."
+  (interactive)
+  (let* ((tag (or (od--enclosing-quotation) (user-error "Not in an ◊epigraph or a ◊blockquote")))
+         (name (plist-get tag :name))
+         (default (equal name "epigraph"))
+         (args (plist-get tag :args))
+         (items (and args (cdr args) (od--args (car args) (cdr args))))
+         (kw (cl-position-if (lambda (it) (and (eq (car it) 'keyword) (equal (nth 1 it) "italic"))) items))
+         (val (and kw (nth (1+ kw) items)))
+         (current (if val (equal (nth 1 val) "#t") default))
+         (new (not current)))
+    (save-excursion
+      (cond
+       ;; back to the default: remove the keyword, and [] if nothing is left
+       ((eq new default)
+        (let ((from (nth 2 (nth kw items))) (to (if val (nth 3 val) (nth 3 (nth kw items)))))
+          (goto-char from)
+          (skip-chars-backward " \t\n" (1+ (car args)))
+          (delete-region (point) to)
+          (when (string-blank-p (buffer-substring-no-properties (1+ (car args)) (1- (+ (cdr args) (- (point) to)))))
+            (delete-region (car args) (+ (cdr args) (- (point) to))))))
+       (val (goto-char (nth 2 val)) (delete-region (nth 2 val) (nth 3 val)) (insert (if new "#t" "#f")))
+       (kw (goto-char (nth 3 (nth kw items))) (insert (if new " #t" " #f")))
+       (args (goto-char (1- (cdr args))) (insert (format " #:italic %s" (if new "#t" "#f"))))
+       (t (goto-char (plist-get tag :name-end)) (insert (format "[#:italic %s]" (if new "#t" "#f"))))))
+    (message "◊%s is now %s" name (if new "italic" "roman"))))
+
+(defvar od--last-wrap "em" "The last tag `od-wrap' used.")
+
+(defun od-wrap (tag)
+  "Wrap the region, or the word at point, in ◊TAG{…}: em, strong, sc or code."
+  (interactive (list (completing-read (format "Wrap in (default %s): " od--last-wrap)
+                                      '("em" "strong" "sc" "code") nil t nil nil od--last-wrap)))
+  (setq od--last-wrap tag)
+  (if (use-region-p)
+      (od--wrap (format "◊%s{" tag) "}")
+    (let ((b (bounds-of-thing-at-point 'word)))
+      (if (not b)
+          (od--wrap (format "◊%s{" tag) "}")
+        (goto-char (cdr b)) (insert "}")
+        (goto-char (car b)) (insert (format "◊%s{" tag))
+        (goto-char (+ (cdr b) (length tag) 3))))))
+
+(defun od-insert-break ()
+  "Insert ◊break{} on its own line, a blank line either side (LAYOUT-4).
+Refuses before a heading: a heading already marks the turn (§17)."
+  (interactive)
+  (when (save-excursion
+          (skip-chars-forward " \t\n")
+          (looking-at-p "◊\\(sub\\)*section\\["))
+    (user-error "A heading follows: no break before a heading (style guide, §17)"))
+  (od--open-line-for-block)
+  (insert "◊break{}\n")
+  (unless (or (eobp) (looking-at-p "[ \t]*$")) (insert "\n")))
+
+(defun od-insert-list (&optional numbered)
+  "Insert ◊list{…} with one item and point after its marker (§3.4).
+With a region, each line becomes an item and point ends the last one.
+With a prefix argument NUMBERED, the markers are numbers."
+  (interactive "P")
+  (let* ((marker (if numbered "1. " "- "))
+         (lines (let ((r (od--region-text))) (and r (split-string r "\n" t "[ \t]*"))))
+         (items (if lines (mapconcat (lambda (l) (concat marker l)) lines "\n") marker))
+         goal)
+    (when (use-region-p) (delete-region (region-beginning) (region-end)))
+    (od--open-line-for-block)
+    (insert "◊list{\n")
+    (when (null lines) (setq goal (+ (point) (length marker))))
+    (insert items)
+    (unless goal (setq goal (point)))
+    (insert "\n}\n")
+    (unless (or (eobp) (looking-at-p "[ \t]*$")) (insert "\n"))
+    (goto-char goal)))
+
+(defun od-insert-summary ()
+  "Insert ◊summary{} on the line after the nearest heading above point (SECT-6)."
+  (interactive)
+  (let ((h (car (last (cl-remove-if (lambda (s) (> (nth 3 s) (point))) (od--sections))))))
+    (unless h (user-error "No heading above point"))
+    (goto-char (nth 3 h))
+    (end-of-line)
+    (when (save-excursion (forward-line 1) (looking-at-p "◊summary{"))
+      (user-error "This heading already has a ◊summary"))
+    (insert "\n◊summary{}")
+    (backward-char 1)))
+
+(defun od-insert-anchor ()
+  "Insert ◊anchor[\"id\"], the id proposed from the word at point and checked."
+  (interactive)
+  (let* ((word (or (thing-at-point 'word t) ""))
+         (id (read-string "Anchor id (permanent): " (od-slugify word))))
+    (unless (od--valid-id-p id) (user-error "Ids are lowercase and hyphenated"))
+    (when (assoc id (od--ids)) (user-error "#%s is already used in this file" id))
+    (insert (format "◊anchor[\"%s\"]" id))))
+
+(defun od-insert-more ()
+  "Insert ◊more{…} after a glossary term's short definition (§6)."
+  (interactive)
+  (unless (eq (od--kind) 'glossary) (user-error "◊more belongs only in a glossary file"))
+  (when (save-excursion (goto-char (point-min)) (search-forward "◊more{" nil t))
+    (user-error "This term already has a ◊more"))
+  (goto-char (point-min))
+  (while (and (not (eobp)) (looking-at-p "\\(#lang\\|◊define-meta\\|[ \t]*$\\)")) (forward-line 1))
+  (forward-paragraph)
+  (od--open-line-for-block)
+  (insert "◊more{\n")
+  (save-excursion (insert "\n}\n")))
+
+(defun od-insert-latex ()
+  "Insert ◊latex{}, the LaTeX logo (TYPE-17)."
+  (interactive)
+  (insert "◊latex{}"))
+
+(defun od-insert-changelog ()
+  "Add a dated line to the essay's ◊changelog (REV-3); not built yet (VOCAB-2)."
+  (interactive)
+  (when (eq (od--kind) 'entry)
+    (user-error "A notebook entry has no changelog: a change of mind is a new entry (KIND-2)"))
+  (unless (od--tag-get 'changelog :built) (user-error "◊changelog is not built yet (VOCAB-2)")))
+
+(defun od-insert-embed ()
+  "Insert an interactive figure, ◊embed (§9.3); not built yet (VOCAB-2)."
+  (interactive)
+  (unless (od--tag-get 'embed :built) (user-error "◊embed is not built yet (VOCAB-2)")))
+
+(defun od-insert-tag (name)
+  "Insert any tag of the vocabulary by NAME, with its required arguments as
+blanks to fill: the way in for tags with no command of their own."
+  (interactive
+   (list (completing-read "Tag: "
+                          (cl-loop with kind = (od--kind)
+                                   for (n . p) in od-vocabulary
+                                   when (and (plist-get p :built)
+                                             (or (null (plist-get p :only)) (eq (plist-get p :only) kind))
+                                             (not (memq kind (plist-get p :not))))
+                                   collect (symbol-name n))
+                          nil t)))
+  (let* ((e (od--tag name))
+         (pos (plist-get (cdr e) :pos))
+         (req (plist-get (cdr e) :req))
+         (parts (delq nil (cons (and pos (not (plist-get (cdr e) :opt-pos))
+                                     (if (memq pos '(key count)) "" "\"\""))
+                                (mapcar (lambda (k) (format "#:%s \"\"" k)) req))))
+         (args (if parts (concat "[" (string-join parts " ") "]") ""))
+         (body (cond ((plist-get (cdr e) :body) "{}") (parts "") (t "{}")))
+         (text (concat "◊" name args body)))
+    (when (plist-get (cdr e) :block) (od--open-line-for-block))
+    (let ((start (point)))
+      (insert text)
+      (when (plist-get (cdr e) :block) (insert "\n"))
+      ;; point at the first blank: an empty string, a bare [, or the body
+      (goto-char start)
+      (cond ((search-forward "\"\"" (+ start (length text)) t) (backward-char 1))
+            ((and parts (search-forward "[" (+ start (length text)) t)))
+            ((search-forward "{" (+ start (length text)) t))
+            (t (goto-char (+ start (length text))))))))
 
 ;;; Preview ------------------------------------------------------------------
 
@@ -424,48 +684,60 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;;; Vocabulary (VOCAB-1…4) ----------------------------------------------------
 
 ;; One entry per line, so pollen-test.rkt can read it (VOCAB-3). Each entry:
-;;   (TAG :pos ARG :kw (KEYWORD…) :req (REQUIRED…) :body B :block B :built B [:only KIND])
-;; :pos   the positional argument in [...], or nil (:opt-pos t: it may be left out)
-;; :body  t when the tag takes text in {...}; nil when it takes none
-;;        (◊br{} and ◊break{} may still be written with empty braces)
-;; :block t when the tag must start a line
-;; :built nil for tags in SPEC §3.3 that pollen.rkt does not provide yet:
-;;        they complete, but highlight as errors (VOCAB-2)
-;; :only  the one kind of file where the tag belongs (see `od-file-kind')
+;;   (TAG :pos ARG :kw (KEYWORD…) :req (REQUIRED…) :body B :block B :built B :command CMD [:only KIND] [:not (KIND…)])
+;; :pos     the positional argument in [...], or nil (:opt-pos t: it may be left out)
+;; :body    t when the tag takes text in {...}; nil when it takes none
+;;          (◊br{}, ◊break{} and ◊latex{} may still be written with empty braces)
+;; :block   t when the tag must start a line
+;; :built   nil for tags in SPEC §3.3 that pollen.rkt does not provide yet:
+;;          they complete, but highlight as errors (VOCAB-2)
+;; :command the command under C-c o that inserts it (VOCAB-5, SPEC EMACS-6);
+;;          `od-insert-tag' (C-c o j) for the tags with no command of their own
+;; :only    the one kind of file where the tag belongs (see `od-file-kind')
+;; :not     kinds of file where the tag is refused (KIND-2: no epistemic
+;;          status or changelog in a notebook entry)
 (defconst od-vocabulary
-  '((define-meta   :pos key    :kw ()                                                    :req ()                    :body t   :block t   :built t)
-    (section       :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t)
-    (subsection    :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t)
-    (subsubsection :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t)
-    (summary       :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
-    (abstract      :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
-    (epistemic     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t)
-    (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t)
-    (cite          :pos key    :kw (loc note)                                            :req ()                    :body nil :block nil :built t)
-    (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t)
-    (aside         :pos phrase :kw ()                                                    :req ()                    :body t   :block nil :built t :opt-pos t)
-    (margin        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
-    (sc            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
-    (em            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
-    (strong        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
-    (code          :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t)
-    (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t)
-    (ref           :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t)
-    (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t)
-    (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t)
-    (blockquote    :pos nil    :kw (source)                                              :req ()                    :body t   :block t   :built t)
-    (epigraph      :pos nil    :kw (source)                                              :req ()                    :body t   :block t   :built t)
-    (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t)
-    (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t)
-    (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t)
-    (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t)
-    (figure        :pos src    :kw (id title alt licence credit invert)                  :req (id title alt licence) :body t  :block t   :built t)
-    (more          :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :only glossary)
-    (essay-index   :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :only home)
-    (header-sample :pos nil    :kw (title subtitle published revised tags epistemic)     :req (title)               :body t   :block t   :built t :only specimen)
-    (embed         :pos name   :kw (alt fallback sticky)                                 :req ()                    :body t   :block t   :built nil)
-    (changelog     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built nil))
+  '((define-meta   :pos key    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag)
+    (section       :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-section)
+    (subsection    :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-section)
+    (subsubsection :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-section)
+    (summary       :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-summary)
+    (abstract      :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag)
+    (epistemic     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag :not (entry))
+    (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t :command od-insert-link-external)
+    (cite          :pos key    :kw (loc note)                                            :req ()                    :body nil :block nil :built t :command od-insert-cite)
+    (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t :command od-insert-term)
+    (aside         :pos phrase :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-aside :opt-pos t)
+    (margin        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-margin)
+    (sc            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
+    (em            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
+    (strong        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
+    (code          :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
+    (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-anchor)
+    (ref           :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-ref)
+    (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
+    (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-break)
+    (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-latex)
+    (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-blockquote)
+    (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-epigraph)
+    (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t :command od-insert-list)
+    (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t :command od-insert-table)
+    (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
+    (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
+    (figure        :pos src    :kw (id title alt licence credit invert)                  :req (id title alt licence) :body t  :block t   :built t :command od-insert-figure)
+    (more          :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-more :only glossary)
+    (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
+    (latest        :pos count  :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-tag :only home)
+    (header-sample :pos nil    :kw (title subtitle published revised tags epistemic kind) :req (title)              :body t   :block t   :built t :command od-insert-tag :only specimen)
+    (embed         :pos name   :kw (alt fallback sticky)                                 :req ()                    :body t   :block t   :built nil :command od-insert-embed)
+    (changelog     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built nil :command od-insert-changelog :not (entry)))
   "The site's Pollen vocabulary: what the highlighter, completion and checks read.")
+
+;; Keyword values the build accepts, where it accepts only a few (FL-6).
+(defconst od--keyword-values
+  '((italic "#t" "#f")                        ; LAYOUT-4c
+    (kind "\"essay\"" "\"entry\""))          ; ◊index, KIND-4; ◊header-sample
+  "Keywords whose value must be one of a list.")
 
 (defun od--tag (name)
   "The vocabulary entry for tag NAME (a string or symbol), or nil."
@@ -474,32 +746,39 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 (defun od--tag-get (name prop)
   (plist-get (cdr (od--tag name)) prop))
 
-;; VOCAB-4: meta keys by kind of file.
+;; VOCAB-4: meta keys by kind of file. A post's kind is never a meta: the
+;; folder decides it (KIND-1), so `kind' is in no list.
 (defconst od-meta-keys
   '((essay    . (title subtitle status published tags specimen unlisted))
-    (page     . (title subtitle status published tags specimen unlisted))
     (glossary . (term aliases see-also added)))
-  "Allowed ◊define-meta keys for each kind of file.")
+  "Allowed ◊define-meta keys: `essay' for pages and posts, `glossary' for terms.")
 
 (defconst od-statuses '("draft" "published" "revised" "superseded")
   "Values of ◊define-meta[status] (`essay-statuses' in lib/util.rkt).")
 
 (defun od-file-kind (&optional file)
   "What FILE (default: this buffer's) is, from its repository path (MODE-3).
-One of `essay', `page', `home', `specimen', `glossary', `fixture', or nil
-outside the repository or in an essay's support/ folder. `home' and
-`specimen' are pages with a tag of their own."
+One of `essay', `entry' (a notebook entry, KIND-1), `page', `home' (the
+About page at /, HOME-1), `index' (/essays and /notebook, KIND-4),
+`specimen', `glossary', `fixture', or nil outside the repository or in a
+post's support/ folder."
   (let* ((file (or file buffer-file-name))
          (root (and file (locate-dominating-file file "pollen.rkt")))
          (rel (and root (file-relative-name file root))))
     (cond ((null rel) nil)
-          ((string-match-p "\\`essays/[^/]+/support/" rel) nil)
+          ((string-match-p "\\`\\(essays\\|notebook\\)/[^/]+/support/" rel) nil)
           ((string-match-p "\\`essays/" rel) 'essay)
+          ((string-match-p "\\`notebook/" rel) 'entry)
           ((string-match-p "\\`glossary/" rel) 'glossary)
           ((string-match-p "\\`tests/" rel) 'fixture)
-          ((string= rel "index.html.pm") 'home)
+          ((string= rel "pages/index.html.pm") 'home)
+          ((member rel '("pages/essays.html.pm" "pages/notebook.html.pm")) 'index)
           ((string= rel "pages/specimen.html.pm") 'specimen)
           (t 'page))))
+
+(defun od--post-p (&optional kind)
+  "Non-nil when KIND (default: this file's) is a post: an essay or an entry."
+  (memq (or kind (od-file-kind)) '(essay entry)))
 
 ;;; Syntax (SYN-1…4) ------------------------------------------------------------
 
@@ -649,26 +928,34 @@ scanned from its lozenge. Return (START . END) when the region changed."
 Press q to close. TAB on a heading folds it. Keys marked (not built yet)
 do nothing for now; the marks go as the commands arrive.
 
-From anywhere in Emacs, dired included: C-c o N starts an essay, C-c o I
-opens this guide, C-c o k checks the whole site, C-c o d watches a deploy.
-The other keys work inside an essay.
+From anywhere in Emacs, dired included: C-c o N starts an essay or a
+notebook entry, C-c o I opens this guide, C-c o k checks the whole site,
+C-c o d watches a deploy. The other keys work inside a post.
+
+Essays and notebook entries are written the same way. An essay is
+something you will revise; an entry is something you said on a date, and
+a change of mind is a new entry. An entry has no epistemic status, no
+changelog and no contents; everything else is the same.
 
 * 1. Starting a new essay
 
-1. {od-new-essay} and give the title. It proposes a slug (the URL,
-   /slug, permanent once published) and creates:
-   - essays/<slug>/<slug>.html.pm, the essay, opened for you
-   - essays/<slug>/img/, for its figures
-   - essays/<slug>/support/notes.md, for everything else: notes, sources,
+1. {od-new-essay}, say essay or entry (C-u goes straight to an entry), and
+   give the title. It proposes a slug (the URL: /slug for an essay,
+   /notebook/slug for an entry; permanent once published) and creates,
+   under essays/ or notebook/:
+   - <slug>/<slug>.html.pm, the post, opened for you
+   - <slug>/img/, for its figures
+   - <slug>/support/notes.md, for everything else: notes, sources,
      old drafts in Word or LaTeX. support/ is never published, before or
      after publication.
-   The essay is a draft: git cannot see it, so it cannot be committed or
+   The post is a draft: git cannot see it, so it cannot be committed or
    pushed by accident.
 
 2. Fill in the meta lines at the top: subtitle, and tags with
    {od-set-tags}. Each stays on one line (M-q leaves them alone).
-   Below them, write ◊epistemic{…}, one sentence on how sure you are, and
-   ◊abstract{…} if the essay has one. These wrap like any paragraph and
+   Below them, in an essay, write ◊epistemic{…}, one sentence on how sure
+   you are, and ◊abstract{…} if the essay has one (an entry may have an
+   abstract, never an epistemic status). These wrap like any paragraph and
    may hold emphasis, citations and terms; the build moves them into the
    header. Left empty, they are left out.
 
@@ -681,7 +968,15 @@ The other keys work inside an essay.
    - a citation: {od-insert-cite}; a defined term: {od-insert-term}
      (a new one: {od-new-term})
    - an aside: {od-insert-aside} (select a phrase first, and the aside
-     comments on it); a margin note: {od-insert-margin}
+     comments on it); a margin note: {od-insert-margin}, at the start of
+     the paragraph, item or sentence it glosses
+   - emphasis and the other inline tags: {od-wrap}; the LaTeX logo:
+     {od-insert-latex}
+   - an epigraph: {od-insert-epigraph}; a block quotation:
+     {od-insert-blockquote}; italic or roman: {od-toggle-italic}
+   - a list: {od-insert-list} (C-u for numbers); a section break:
+     {od-insert-break}; a section's one-line summary: {od-insert-summary}
+   - any other tag, with its blanks to fill: {od-insert-tag}
    - links: within the essay {od-insert-link-internal}, to another essay
      {od-insert-link-essay}, to the web {od-insert-link-external}
    - a figure: put the image in img/, then {od-insert-figure}; a table:
@@ -707,7 +1002,8 @@ The other keys work inside an essay.
    - adds the essay to the site's index
    - runs make refresh (needs the network and your current Zotero export:
      it copies the essay's references into the site) and then make
-   - shows the row the home page will gain: check the title, date and tags
+   - shows the row its index (the essays or the notebook) will gain:
+     check the title, date and tags
    - stages everything and opens Magit
    It never pushes by itself.
 
@@ -716,8 +1012,8 @@ The other keys work inside an essay.
    C-c C-c to confirm, and P p to push. The push is the publication.
 
 4. {od-deploy-status} watches the build on GitHub and opens the essay
-   when it is live, at occurrentdevelopment.com/<slug>, about a minute
-   later.
+   when it is live, at occurrentdevelopment.com/<slug> (an entry at
+   /notebook/<slug>), about a minute later.
 
 Shortcut, once you trust it: C-u {od-publish} does all of the above and
 commits and pushes after one confirmation.
@@ -736,7 +1032,10 @@ commit it as a revision. The source stays in the history.
    - Meta: tags, subtitle and the like. The Revised date stays.
    - Revision: anything a reader should know changed. The Revised date
      moves to today (it comes from git), and the essay's changelog should
-     gain a line saying what changed.
+     gain a line saying what changed. An entry is not revised: a change of
+     mind is a new entry; a typo fix is fine.
+   Pages (the home page, About, the colophon) are always published:
+   {od-commit} is all they need, never {od-publish}.
    It stages the essay and opens Magit.
 
 4. As before: c c, C-c C-c, P p, then {od-deploy-status}.
@@ -755,10 +1054,7 @@ commit it as a revision. The source stays in the history.
 
 (defvar occurrent-mode-map)
 
-(defconst od--planned-keys
-  '((od-new-essay . "C-c o N") (od-insert-figure . "C-c o F") (od-insert-table . "C-c o B")
-    (od-check . "C-c o k") (od-publish . "C-c o P") (od-commit . "C-c o C")
-    (od-deploy-status . "C-c o d") (od-unwrap . "C-c o u") (od-up . "C-c o U"))
+(defconst od--planned-keys '()
   "Keys for commands still to be built (HANDOVER-EMACS LOAD-4), for the guide.")
 
 (defun od--guide-key (cmd)
@@ -935,6 +1231,109 @@ KIND is `heading', `figure', `table' or `anchor'."
                                  (or title ""))
                          id)))
 
+;;; Margin notes: where one may stand (MNOTE-6) ----------------------------------
+
+;; A margin note opens a paragraph, a list item (after its marker), a
+;; paragraph of a ◊blockquote or ◊epigraph, or a sentence inside any of
+;; those; and it must gloss something: text must follow it in its block.
+;; The highlighter (FL-6) and `od-insert-margin' (EDIT-8) share this.
+
+(defconst od--margin-containers '("list" "blockquote" "epigraph")
+  "Tags whose body may hold a margin note's paragraph.")
+
+(defconst od--sentence-end-re "[.!?…][]’”»)'\"]*\\'"
+  "Running text that ends a sentence, perhaps with closing quotes or brackets.")
+
+(defun od--margin-block (pos)
+  "The block holding POS, for MNOTE-6: (START END CONTAINER), or a string
+naming why no margin note can stand there. START is where the block's
+text begins (after a list marker), END where it ends: a blank line, the
+next list item, or the end of the enclosing body."
+  (save-excursion
+    (syntax-propertize (point-max))
+    (let* ((ppss (syntax-ppss pos))
+           (open (car (last (nth 9 ppss))))
+           (container (and open (od--paren-tag-start open)
+                           (plist-get (od--tag-parse (od--paren-tag-start open)) :name))))
+      (cond
+       ((and open (not (eq (char-after open) ?\{)))
+        "◊margin cannot stand inside […]")
+       ((and open (not (member container od--margin-containers)))
+        (format "◊margin must open a paragraph, a list item or a sentence (it is inside ◊%s)"
+                (or container "a bare {…}")))
+       (t
+        (let* ((lo (if open (1+ open) (point-min)))
+               (hi (if open (1- (or (ignore-errors (scan-lists open 1 0)) (1+ (point-max)))) (point-max)))
+               (list-p (equal container "list"))
+               (start (save-excursion
+                        (goto-char pos)
+                        (let ((blank (and (re-search-backward "\n[ \t]*\n" lo t) (match-end 0))))
+                          (goto-char pos)
+                          (let ((marker (and list-p
+                                             (re-search-backward "^[ \t]*\\(?:-\\|[0-9]+\\.\\) " (max lo (or blank lo)) t)
+                                             (match-end 0))))
+                            (max lo (or blank lo) (or marker lo))))))
+               (end (save-excursion
+                      (goto-char pos)
+                      (min hi
+                           (if (re-search-forward "\n[ \t]*\n" hi t) (match-beginning 0) hi)
+                           (progn (goto-char pos)
+                                  (if (and list-p (re-search-forward "\n[ \t]*\\(?:-\\|[0-9]+\\.\\) " hi t))
+                                      (match-beginning 0) hi))))))
+          (list start end container)))))))
+
+(defun od--running-text (beg end)
+  "The text a reader sees between BEG and END: an aside's body, cites and
+margin notes print nothing, other tags print their text; ◊br{} is a line
+break, written as a newline."
+  (let ((out '()) (p beg))
+    (save-excursion
+      (while (< p end)
+        (goto-char p)
+        (if (looking-at "◊\\([a-z][a-z0-9-]*\\)")
+            (let* ((tag (od--tag-parse p)) (name (plist-get tag :name))
+                   (args (plist-get tag :args)) (body (plist-get tag :body))
+                   (tend (max (1+ p) (min end (plist-get tag :end)))))
+              (cond
+               ((member name '("cite" "margin" "summary" "anchor")) nil)
+               ((equal name "br") (push "\n" out))
+               ((equal name "aside")
+                (when (and args (cdr args))
+                  (dolist (it (od--args (car args) (cdr args)))
+                    (when (eq (car it) 'string) (push (nth 1 it) out)))))
+               ((and body (cdr body))
+                (push (od--running-text (1+ (car body)) (1- (cdr body))) out)))
+              (setq p tend))
+          (push (string (char-after p)) out)
+          (setq p (1+ p)))))
+    (apply #'concat (nreverse out))))
+
+(defun od--margin-problem (at)
+  "Why the margin note whose lozenge is AT may not stand there, or nil (MNOTE-6)."
+  (let ((block (od--margin-block at)))
+    (if (stringp block)
+        block
+      (cl-destructuring-bind (start end _container) block
+        (let* ((tag (od--tag-parse at))
+               (after (plist-get tag :end))
+               (before (od--running-text start at))
+               (trimmed (string-trim-right before)))
+          (cond
+           ;; two notes at one anchor
+           ((save-excursion
+              (goto-char at) (skip-chars-backward " \t\n")
+              (and (eq (char-before) ?\})
+                   (let ((open (ignore-errors (scan-lists (point) -1 0))))
+                     (and open (let ((s (od--paren-tag-start open)))
+                                 (and s (equal (plist-get (od--tag-parse s) :name) "margin")))))))
+            "two margin notes at one anchor (MNOTE-6)")
+           ((not (or (string-empty-p trimmed)
+                     (string-suffix-p "\n" (string-trim-right before "[ \t]+"))
+                     (string-match-p od--sentence-end-re trimmed)))
+            "◊margin must open a paragraph, a list item or a sentence (MNOTE-6)")
+           ((string-blank-p (buffer-substring-no-properties (min after end) end))
+            "◊margin glosses nothing: move it to the start of the item or sentence (MNOTE-6)")))))))
+
 ;;; Highlighting (FL-1…7) ----------------------------------------------------------
 
 (defvar-local od-file-kind-override nil
@@ -995,8 +1394,14 @@ KIND is `heading', `figure', `table' or `anchor'."
      ((and only kind (not (memq kind (list only 'fixture))))
       (od--error at name-end (format "◊%s belongs only in %s" name
                                      (pcase only ('glossary "a glossary file") ('home "the home page")
-                                            ('specimen "the specimen") (_ only)))))
+                                            ('index "/essays or /notebook") ('specimen "the specimen") (_ only)))))
+     ((and kind (memq kind (od--tag-get name :not)))
+      (od--error at name-end (format "◊%s is not allowed in a notebook entry: entries are dated and fixed (KIND-2)" name)))
      (t (od--face at name-end 'od-markup-face)))
+    ;; MNOTE-6: where a margin note may stand
+    (when (equal name "margin")
+      (let ((problem (od--margin-problem at)))
+        (when problem (od--error at name-end problem))))
     (when entry
       (od--fontify-args name at name-end args kind ids)
       (od--fontify-body name at name-end body kind))
@@ -1034,6 +1439,13 @@ KIND is `heading', `figure', `table' or `anchor'."
                 (push sym seen)
                 (od--face (nth 2 kw) (nth 3 kw) 'od-markup-face)
                 (unless val (od--error (nth 2 kw) (nth 3 kw) (format "#:%s has no value" sym)))
+                ;; LAYOUT-4c, KIND-4: some keywords take one of a few values
+                (let ((allowed (alist-get sym od--keyword-values)))
+                  (when (and allowed val
+                             (not (member (if (eq (car val) 'string) (format "\"%s\"" (nth 1 val)) (nth 1 val))
+                                          allowed)))
+                    (od--error (nth 2 val) (nth 3 val)
+                               (format "#:%s is %s" sym (string-join allowed " or ")))))
                 (when (and val (eq sym 'id))
                   (od--face (nth 2 val) (nth 3 val) 'od-id-face)
                   (when (cl-some (lambda (e) (and (equal (car e) (nth 1 val)) (< (nth 2 e) at))) ids)
@@ -1070,11 +1482,11 @@ KIND is `heading', `figure', `table' or `anchor'."
   (let* ((key (intern (nth 1 pos)))
          (table (pcase kind
                   ('glossary (alist-get 'glossary od-meta-keys))
-                  ((or 'essay 'page 'home 'specimen) (alist-get 'essay od-meta-keys)))))
+                  ((or 'essay 'entry 'page 'home 'index 'specimen) (alist-get 'essay od-meta-keys)))))
     (if (and table (not (memq key table)))
         (od--error (nth 2 pos) (nth 3 pos)
                    (format "%s is not a meta key in %s (VOCAB-4)" key
-                           (if (eq kind 'glossary) "a glossary file" "an essay or page")))
+                           (if (eq kind 'glossary) "a glossary file" "a post or page")))
       (od--face (nth 2 pos) (nth 3 pos) 'od-meta-key-face))))
 
 (defun od--fontify-body (name at name-end body _kind)
@@ -1186,7 +1598,7 @@ KIND is `heading', `figure', `table' or `anchor'."
 ;; rows, #lang.
 (defconst od--paragraph-separate
   (concat "[ \t\f]*$"
-          "\\|◊\\(define-meta\\|section\\|subsection\\|subsubsection\\|summary\\|break\\|table-csv\\|essay-index\\)\\_>.*$"
+          "\\|◊\\(define-meta\\|section\\|subsection\\|subsubsection\\|summary\\|break\\|table-csv\\|index\\|latest\\)\\_>.*$"
           "\\|[ \t]*}[ \t]*$"
           "\\|[ \t]*|.*$"
           "\\|#lang .*$"))
@@ -1337,11 +1749,13 @@ JUSTIFY is passed on to `fill-paragraph'."
 (defun od--exclude-file ()
   (expand-file-name (od--git "rev-parse" "--git-path" "info/exclude") (od-root)))
 
-(defun od--exclude-line (slug) (format "/essays/%s/" slug))
+(defun od--exclude-line (slug &optional folder)
+  (format "/%s/%s/" (or folder "essays") slug))
 
-(defun od--exclude (slug add)
-  "Add (ADD non-nil) or remove essays/SLUG/ in .git/info/exclude (DRAFT-E1)."
-  (let ((file (od--exclude-file)) (line (od--exclude-line slug)))
+(defun od--exclude (slug add &optional folder)
+  "Add (ADD non-nil) or remove FOLDER/SLUG/ in .git/info/exclude (DRAFT-E1).
+FOLDER is essays (the default) or notebook."
+  (let ((file (od--exclude-file)) (line (od--exclude-line slug folder)))
     (with-temp-buffer
       (when (file-exists-p file) (insert-file-contents file))
       (goto-char (point-min))
@@ -1355,19 +1769,37 @@ JUSTIFY is passed on to `fill-paragraph'."
       (make-directory (file-name-directory file) t)
       (write-region nil nil file nil 'silent))))
 
+(defconst od-reserved-slugs
+  '("essays" "notebook" "glossary" "bibliography" "references" "about" "colophon"
+    "correspondence" "changelog" "specimen" "data" "widgets" "_x")
+  "Slugs the site keeps for its own pages (KIND-1; `reserved-slugs' in util.rkt).")
+
 ;;;###autoload
-(defun od-new-essay ()
-  "Start an essay: essays/<slug>/ with the .pm file, img/ and support/ (EDIT-6).
-The new essay is a draft and is kept out of git until `od-publish' (DRAFT-E1)."
-  (interactive)
-  (let* ((title (string-trim (read-string "Title: ")))
-         (slug (read-string "Slug (the URL; permanent once published): " (od-slugify title)))
-         (dir (od--file "essays" slug))
+(defun od-new-essay (&optional entry)
+  "Start an essay or a notebook entry: a folder with the .pm file, img/ and
+support/ (EDIT-6), under essays/ or notebook/ (KIND-1, KIND-6). It asks
+which; with a prefix argument ENTRY it goes straight to an entry. An entry's
+template has no epistemic status and no abstract (KIND-2). The new post is a
+draft and is kept out of git until `od-publish' (DRAFT-E1)."
+  (interactive "P")
+  (let* ((kind (if entry "entry"
+                 (completing-read "Essay or entry? " '("essay" "entry") nil t nil nil "essay")))
+         (folder (if (equal kind "entry") "notebook" "essays"))
+         (title (string-trim (read-string "Title: ")))
+         (slug (read-string (format "Slug (the URL, %s; permanent once published): "
+                                    (if (equal kind "entry") "/notebook/<slug>" "/<slug>"))
+                            (od-slugify title)))
+         (dir (od--file folder slug))
          (file (expand-file-name (concat slug ".html.pm") dir)))
-    (when (string-empty-p title) (user-error "An essay needs a title"))
+    (when (string-empty-p title) (user-error "A post needs a title"))
     (unless (od--valid-id-p slug) (user-error "A slug is lowercase and hyphenated"))
-    (when (file-exists-p dir) (user-error "essays/%s already exists" slug))
-    (od--exclude slug t)                      ; first, so git never sees it
+    (when (member slug od-reserved-slugs) (user-error "The slug %s is reserved for the site's own pages (KIND-1)" slug))
+    (dolist (f '("essays" "notebook"))
+      (when (file-exists-p (od--file f slug))
+        (user-error "%s/%s already exists: slugs are unique across essays and the notebook (KIND-1)" f slug)))
+    (when (file-exists-p (od--file "pages" (concat slug ".html.pm")))
+      (user-error "A page is already called %s" slug))
+    (od--exclude slug t folder)               ; first, so git never sees it
     (make-directory (expand-file-name "img" dir) t)
     (make-directory (expand-file-name "support" dir) t)
     (with-temp-file (expand-file-name "support/notes.md" dir)
@@ -1379,11 +1811,10 @@ The new essay is a draft and is kept out of git until `od-publish' (DRAFT-E1)."
               "◊define-meta[status]{draft}\n"
               (format "◊define-meta[published]{%s}\n" (format-time-string "%Y-%m-%d"))
               "◊define-meta[tags]{}\n\n"
-              "◊epistemic{}\n\n"
-              "◊abstract{}\n\n"))
+              (if (equal kind "entry") "" "◊epistemic{}\n\n◊abstract{}\n\n")))
     (find-file file)
     (goto-char (point-max))
-    (message "Draft essays/%s/ started; git cannot see it until C-c o P" slug)))
+    (message "Draft %s/%s/ started; git cannot see it until C-c o P" folder slug)))
 
 ;; EDIT-7
 (defconst od--licences
@@ -1525,6 +1956,14 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
 (defun od--slug ()
   (file-name-nondirectory (directory-file-name (file-name-directory buffer-file-name))))
 
+(defun od--folder ()
+  "This post's folder: essays or notebook (KIND-1)."
+  (if (eq (od-file-kind) 'entry) "notebook" "essays"))
+
+(defun od--post-url (slug &optional folder)
+  "Where a published post is served: /<slug>, or /notebook/<slug> (D14)."
+  (concat od-site-url (if (equal folder "notebook") "notebook/" "") slug))
+
 (defun od--set-meta (key value)
   "Set ◊define-meta[KEY] to VALUE, adding the line after the others if absent."
   (save-excursion
@@ -1535,15 +1974,16 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
       (while (re-search-forward "^◊define-meta\\[" nil t) (forward-line 1))
       (insert (format "◊define-meta[%s]{%s}\n" key value)))))
 
-(defun od--ptree-add (slug)
-  "PUB-1 step 4: list essays/SLUG/SLUG.html in index.ptree, after the last essay."
-  (let ((file (od--file "index.ptree")) (line (format "essays/%s/%s.html" slug slug)))
+(defun od--ptree-add (slug &optional folder)
+  "PUB-1 step 4: list FOLDER/SLUG/SLUG.html in index.ptree, after the last post.
+FOLDER is essays (the default) or notebook."
+  (let ((file (od--file "index.ptree")) (line (format "%s/%s/%s.html" (or folder "essays") slug slug)))
     (with-temp-buffer
       (insert-file-contents file)
       (goto-char (point-min))
       (unless (re-search-forward (concat "^" (regexp-quote line) "$") nil t)
         (goto-char (point-max))
-        (if (re-search-backward "^essays/" nil t) (forward-line 1) (goto-char (point-max)))
+        (if (re-search-backward "^\\(essays\\|notebook\\)/" nil t) (forward-line 1) (goto-char (point-max)))
         (unless (bolp) (insert "\n"))
         (insert line "\n")
         (write-region nil nil file nil 'silent)))))
@@ -1554,7 +1994,7 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
     ;; support/ never, even where .gitignore is missing or wrong (BUILD-3a)
     (apply #'od--git "add" "--"
            (append (cl-remove-if-not (lambda (p) (file-exists-p (expand-file-name p root))) paths)
-                   '(":(exclude)essays/*/support/*" ":(exclude)*~" ":(exclude)*#*")))
+                   '(":(exclude)essays/*/support/*" ":(exclude)notebook/*/support/*" ":(exclude)*~" ":(exclude)*#*")))
     (let ((diff (od--git "diff" "--cached" "-U0")) (start 0))
       (while (string-match "[A-Za-z0-9._%+-]+@\\([A-Za-z0-9-]+\\(\\.[A-Za-z0-9-]+\\)+\\)" diff start)
         (let ((domain (match-string 1 diff)))
@@ -1571,16 +2011,18 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
     (add-hook 'git-commit-setup-hook fn)))
 
 (defun od--index-row ()
-  "PUB-7: the row this essay will add to the home page."
-  (format "Home page gains: %s  ·  %s  ·  tags: %s"
+  "PUB-7: the row this post will add to its index (INDEX-1, KIND-4)."
+  (format "%s gains: %s  ·  %s  ·  tags: %s"
+          (if (eq (od-file-kind) 'entry) "The notebook" "The essay index")
           (or (od--meta "title") "?") (or (od--meta "published") "?")
           (let ((tags (od--meta "tags"))) (if (and tags (not (string-empty-p tags))) tags "none"))))
 
 ;;;###autoload
 (defun od-publish (&optional commit-and-push)
-  "Publish this essay (PUB-1): it becomes visible to git, its status published,
-its date set, its line added to index.ptree; then `make refresh' and `make'
-run, and if they pass, the essay and the caches are staged and Magit opens
+  "Publish this essay or notebook entry (PUB-1, KIND-1).
+It becomes visible to git, its status published, its date set, its line
+added to index.ptree; then `make refresh' and `make' run, and if they
+pass, the post and the caches are staged and Magit opens
 for you to read the diff, commit (c c) and push (P p). It never pushes by
 itself. With a prefix argument COMMIT-AND-PUSH it commits with the proposed
 message and pushes after one confirmation (PUB-2).
@@ -1590,13 +2032,14 @@ status to superseded and commit that as a revision. Its source stays in the
 history."
   (interactive "P")
   (od--require-magit)
-  (unless (eq (od-file-kind) 'essay) (user-error "Publish works from an essay: essays/<slug>/<slug>.html.pm"))
-  (when (buffer-modified-p) (user-error "Save the essay first"))
-  (let ((title (od--meta "title")) (slug (od--slug)) (today (format-time-string "%Y-%m-%d")))
-    (unless (and title (not (string-empty-p title))) (user-error "The essay has no title"))
+  (unless (od--post-p)
+    (user-error "Publish works from a post: essays/<slug>/<slug>.html.pm or notebook/<slug>/<slug>.html.pm; a page needs only C-c o C"))
+  (when (buffer-modified-p) (user-error "Save the post first"))
+  (let ((title (od--meta "title")) (slug (od--slug)) (folder (od--folder)) (today (format-time-string "%Y-%m-%d")))
+    (unless (and title (not (string-empty-p title))) (user-error "The post has no title"))
     (od--check-identity)
     (od--check-branch)
-    (od--exclude slug nil)
+    (od--exclude slug nil folder)
     (let ((status (od--meta "status")))
       (when (equal status "draft")
         (unless (y-or-n-p "Status is draft. Set it to published? ") (user-error "Not published"))
@@ -1607,16 +2050,17 @@ history."
                   (y-or-n-p (format "The published date is %s (perhaps the day the draft began). Make it today, %s? " pub today)))
              (od--set-meta "published" today))))
     (save-buffer)
-    (od--ptree-add slug)
+    (od--ptree-add slug folder)
     (let ((buf (current-buffer)))
       (od--run "make refresh && make"
                (lambda (ok)
                  (if (not ok)
                      (message "make failed: see *od-check*. Nothing is staged.")
-                   (with-current-buffer buf (od--publish-stage slug title commit-and-push))))))))
+                   (with-current-buffer buf (od--publish-stage slug title commit-and-push folder))))))))
 
-(defun od--publish-stage (slug title commit-and-push)
-  (let* ((dir (format "essays/%s" slug))
+(defun od--publish-stage (slug title commit-and-push &optional folder)
+  (let* ((folder (or folder "essays"))
+         (dir (format "%s/%s" folder slug))
          (listing (od--git "status" "--porcelain" "--untracked-files=all" "--" dir)))
     (dolist (line (split-string listing "\n" t))
       (when (string-match-p od--forbidden-rx line)
@@ -1630,31 +2074,32 @@ history."
           (when (yes-or-no-p (format "Commit \"%s\" and push main to origin, which deploys it? " msg))
             (od--git "commit" "-q" "-m" msg)
             (od--git "push" "-q" "origin" "main")
-            (od-deploy-status (concat od-site-url slug)))
+            (od-deploy-status (od--post-url slug folder)))
         (od--propose-message msg)
         (magit-status-setup-buffer (od-root))
         (message "%s. Staged: c c to commit, P p to push and deploy" (od--index-row))))))
 
 ;;;###autoload
 (defun od-commit ()
-  "Commit a change to a published essay, page or glossary file (PUB-3).
-Typo and Meta commits are marked so the essay's Revised date stays (REV-1)."
+  "Commit a change to a published post, page or glossary file (PUB-3).
+Typo and Meta commits are marked so the post's Revised date stays (REV-1).
+Entries are not meant to be revised (KIND-2), but a typo fix is fine."
   (interactive)
   (od--require-magit)
   (let ((kind (od-file-kind)))
-    (unless (memq kind '(essay page home specimen glossary)) (user-error "Not a page of the site"))
+    (unless (memq kind '(essay entry page home index specimen glossary)) (user-error "Not a page of the site"))
     (when (buffer-modified-p) (save-buffer))
     (od--check-identity)
     (od--check-branch)
-    (let* ((choice (if (eq kind 'essay)
+    (let* ((choice (if (od--post-p kind)
                        (completing-read "Kind of change: " '("Typo" "Meta" "Revision") nil t)
                      "Revision"))
            (prefix (pcase choice ("Typo" "[typo] ") ("Meta" "[meta] ") (_ "")))
            (root (od-root))
-           (what (if (eq kind 'essay)
+           (what (if (od--post-p kind)
                      (file-relative-name (file-name-directory buffer-file-name) root)
                    (file-relative-name buffer-file-name root))))
-      (when (equal choice "Revision")
+      (when (and (equal choice "Revision") (eq kind 'essay))
         (if (od--tag-get 'changelog :built)
             (unless (string-match-p "◊changelog" (buffer-string))
               (user-error "A revision needs a line in ◊changelog{…} saying what changed (REV-3)"))
@@ -1664,11 +2109,20 @@ Typo and Meta commits are marked so the essay's Revised date stays (REV-1)."
       (magit-status-setup-buffer root))))
 
 ;;;###autoload
+(defconst od--deploy-command
+  (concat "id=$(gh run list --branch main --limit 1 --json databaseId -q '.[0].databaseId') && "
+          "echo \"Watching run $id on main; this buffer reports when it ends.\" && "
+          ;; gh redraws the whole screen every few seconds, which a compilation
+          ;; buffer shows as escape codes; so watch silently, then report once
+          "{ gh run watch \"$id\" --exit-status > /dev/null 2>&1; ok=$?; "
+          "NO_COLOR=1 GH_FORCE_TTY= gh run view \"$id\" 2>&1 | cat; exit $ok; }")
+  "The shell command `od-deploy-status' runs: wait for the run, then summarise it.")
+
 (defun od-deploy-status (&optional url)
   "Watch the latest deploy; when it succeeds, open URL (PUB-5)."
   (interactive)
   (if (executable-find "gh")
-      (od--run "gh run watch $(gh run list --branch main --limit 1 --json databaseId -q '.[0].databaseId') --exit-status"
+      (od--run od--deploy-command
                (lambda (ok)
                  (if ok (progn (message "Deployed") (when url (browse-url url)))
                    (message "The deploy failed: see *od-deploy*")))
@@ -1708,6 +2162,22 @@ Typo and Meta commits are marked so the essay's Revised date stays (REV-1)."
     (define-key m (kbd "C-c o P") #'od-publish)
     (define-key m (kbd "C-c o C") #'od-commit)
     (define-key m (kbd "C-c o d") #'od-deploy-status)
+    ;; the rest of the vocabulary (EDIT-8, SPEC EMACS-6)
+    (define-key m (kbd "C-c o Q") #'od-insert-epigraph)
+    (define-key m (kbd "C-c o q") #'od-insert-blockquote)
+    (define-key m (kbd "C-c o o") #'od-toggle-italic)
+    (define-key m (kbd "C-c o w") #'od-wrap)
+    (define-key m (kbd "C-c o b") #'od-insert-break)
+    (define-key m (kbd "C-c o l") #'od-insert-list)
+    (define-key m (kbd "C-c o S") #'od-insert-summary)
+    (define-key m (kbd "C-c o A") #'od-insert-anchor)
+    (define-key m (kbd "C-c o M") #'od-insert-more)
+    (define-key m (kbd "C-c o L") #'od-insert-latex)
+    (define-key m (kbd "C-c o H") #'od-insert-changelog)
+    (define-key m (kbd "C-c o W") #'od-insert-embed)
+    (define-key m (kbd "C-c o j") #'od-insert-tag)
+    (define-key m (kbd "C-c o <") #'od-promote)
+    (define-key m (kbd "C-c o >") #'od-demote)
     (define-key m [remap fill-paragraph] #'od-fill-paragraph)
     ;; outline's promote and demote would rewrite ◊section by its regexp
     (define-key m [remap outline-promote] #'od-promote)
