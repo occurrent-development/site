@@ -1,8 +1,6 @@
 #lang pollen
 
 ◊define-meta[title]{About}
-◊define-meta[published]{2026-10-20}
-◊define-meta[tags]{site}
 
 ◊section[#:id "me"]{Me}
 I'm a paediatrician in Sydney, Australia. My clinical work focuses almost exclusively on the kinds of problems conventionally called "developmental" or "behavioural", categories that vastly oversimplify what is actually going on.
@@ -34,6 +32,12 @@ I have a rather obsessive nature. Little things bother me; I often need things t
 The only way that I could have a website and retain such granular control over visual design was to build it from scratch to my precise specifications. While I was able to teach myself enough ◊latex{} for my clinic letter project, I'm no web designer. Luckily I designed this website in 2026: it was built by Claude Code.
 
 The site is written in ◊link["https://docs.racket-lang.org/pollen/" #:note "Pollen"]{Pollen} markup, built with Racket on GitHub Actions, and served as static files by Cloudflare. It uses no framework and no third-party requests.
+
+◊break{}
+
+Start here: ◊link["/placeholder"]{Placeholder}.
+
+◊latest[3]
 
 ◊; ◊section[#:id "type" #:short "Type"]{Type}
 
