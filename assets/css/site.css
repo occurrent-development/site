@@ -609,8 +609,12 @@ a.link::after, a.term::after, a.aside-phrase::after, a.circle-link::after, a.bac
 a.link:hover, a.link:focus-visible, a.term:hover, a.term:focus-visible,
 a.aside-phrase:hover, a.aside-phrase:focus-visible { color: var(--accent); }
 
-/* ── Margin notes (MNOTE-3): run in, italic, until Phase 2 lifts them ── */
-.margin-note { font-style: italic; }
+/* ── Margin notes (MNOTE-3): only in the left margin. Where there is none
+   (tiers M and S, no scripts, popups, fragments) they are not shown at all:
+   a signpost is optional, and run into the text it reads as part of it
+   (seen on a phone, 2026-10-22). The space the build leaves after a note is
+   inside it, so hiding it leaves the text spaced as written. ── */
+.margin-note { display: none; font-style: italic; }
 .margin-note em { font-style: normal; }
 
 /* ── Lists (LIST-1…7) ──────────────────────────────────────────────── */
@@ -1179,7 +1183,8 @@ p + ul.latest { margin-top: 0.5em; }
    wide page the notes start in the margin, so lifting them moves nothing in
    the text (CLS, §14). */
 @container page (min-width: 66.5em) {
-  .js article .margin-note, .margin-note.in-margin {
+  .js article .margin-note, .js article .margin-note.in-margin {
+    display: block;
     position: absolute;
     left: calc(-1 * var(--left-margin) - var(--margin-gap) / 0.85);
     width: var(--left-margin);
