@@ -62,6 +62,8 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `sort-key` | value | — | yes | no |
 | `figure` | src | `#:id` (required) `#:title` (required) `#:alt` (required) `#:licence` (required) `#:credit` `#:invert` | caption | yes |
 | `more` | — | — | yes | yes (glossary only) |
+| `index` | — | `#:kind` (required: `"essay"` or `"entry"`) | no | yes (`/essays` and `/notebook` only; KIND-4) |
+| `latest` | count | — | no | yes (the home page only; HOME-1) |
 | `embed` | name | `#:alt` `#:fallback` `#:sticky` | caption | yes (**not built**) |
 | `changelog` | — | — | yes | yes (**not built**) |
 | `m` | — | `#:display` | TeX source | no (**not built**; Phase 3, SPEC MATH-1) |
@@ -283,9 +285,10 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 | `t` | `od-insert-term` | | |
 | `u` | `od-unwrap` | | |
 | `w` | `od-wrap` | | |
+| `j` | `od-insert-tag` | | |
 | `x` | `od-insert-link-external` | | |
 
-List them all in the `occurrent-mode` docstring. Reserved for Phase 3: `R` for `od-new-reference` (SPEC BIB-3), `$` for `od-insert-math` (SPEC MATH-1), and `od-insert-cite` gains the pinned-key check of SPEC BIB-2 (ask Better BibTeX at `localhost:23119`; refuse an unpinned key; warn and continue when Zotero is not running). Neither is built in this handover. Free for later: `h j v y z` and `D E G J K O V X Y Z`.
+List them all in the `occurrent-mode` docstring. Reserved for Phase 3: `R` for `od-new-reference` (SPEC BIB-3), `$` for `od-insert-math` (SPEC MATH-1), and `od-insert-cite` gains the pinned-key check of SPEC BIB-2 (ask Better BibTeX at `localhost:23119`; refuse an unpinned key; warn and continue when Zotero is not running). Neither is built in this handover. Free for later: `h v y z` and `D E G J K O V X Y Z` (`j` went to `od-insert-tag` on 2026-10-21, for the tags with no command of their own).
 
 ---
 
