@@ -273,7 +273,7 @@ function tagFilter(index) {
   update(false);
 }
 
-const index = document.querySelector(".essay-index");
+const index = document.querySelector(".post-index");
 if (index) tagFilter(index);
 
 for (const table of document.querySelectorAll(".table-wrap table")) {

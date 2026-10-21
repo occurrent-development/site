@@ -2,6 +2,7 @@
 ;; Shared helpers for the build. Requirement IDs refer to SPEC.md.
 
 (require racket/list
+         racket/match
          racket/string
          racket/path
          txexpr
@@ -11,8 +12,8 @@
 
 (provide build-error warn text-of words id-pattern check-id
          tag? has-class? source-path source-dir project-file
-         WJ visually-hidden essay-statuses essay-source? published?
-         output->url parse-tags site-value source-urls)
+         WJ visually-hidden essay-statuses essay-source? post-source? post-kind published?
+         output->url parse-tags site-value source-urls reserved-slugs check-post-slugs)
 
 (define (build-error fmt . args)
   (raise-user-error (string-append "build error: " (where) (apply format fmt args))))
@@ -66,15 +67,26 @@
 
 (define (essay-source? path) (regexp-match? #rx"(^|/)essays/" (format "~a" path)))
 
-;; Pages (not essays) are always published; essays only when not drafts.
+;; KIND-1: a post is an essay or a notebook entry, and its kind comes from
+;; its folder, never from a meta: 'essay, 'entry, or #f for a page.
+(define (post-kind path)
+  (define s (format "~a" path))
+  (cond [(regexp-match? #rx"(^|/)essays/" s) 'essay]
+        [(regexp-match? #rx"(^|/)notebook/" s) 'entry]
+        [else #f]))
+(define (post-source? path) (and (post-kind path) #t))
+
+;; Pages (not posts) are always published; posts only when not drafts (DRAFT-2).
 (define (published? path status)
-  (or (not (essay-source? path))
+  (or (not (post-source? path))
       (and (member status '("published" "revised" "superseded")) #t)))
 
 ;; Rendered file (relative to the project root) → public URL. Pages and
-;; essays are flattened to /<slug>; the index is /.
+;; essays are flattened to /<slug>, entries to /notebook/<slug> (D14); the
+;; About page, pages/index, is / (HOME-1).
 (define (output->url out)
-  (cond [(equal? out "index.html") "/"]
+  (cond [(member out '("index.html" "pages/index.html")) "/"]
+        [(regexp-match #px"^notebook/[^/]+/([a-z0-9-]+)\\.html$" out) => (λ (m) (string-append "/notebook/" (cadr m)))]
         [(regexp-match #px"^(?:pages|essays/[^/]+)/([a-z0-9-]+)\\.html$" out) => (λ (m) (string-append "/" (cadr m)))]
         [else (string-append "/" (regexp-replace #rx"\\.html$" out ""))]))
 
@@ -112,3 +124,21 @@
   (define branch (site-value 'branch))
   (values (format "~a/blob/~a/~a" repo branch path)
           (format "~a/commits/~a/~a" repo branch path)))
+
+;; KIND-1: slugs are unique across essays/ and notebook/, and never one of
+;; the site's own paths. SLUGS is a list of (slug . source) pairs, the
+;; pages' names among them; returns a list of error messages.
+(define reserved-slugs
+  '("essays" "notebook" "glossary" "bibliography" "references" "about" "colophon"
+    "correspondence" "changelog" "specimen" "data" "widgets" "_x"))
+(define (check-post-slugs posts pages)
+  (define seen (make-hash))
+  (for ([pg (in-list pages)]) (hash-set! seen pg "a page"))
+  (for/fold ([errs '()] #:result (reverse errs)) ([p (in-list posts)])
+    (match-define (cons slug src) p)
+    (cond
+      [(member slug reserved-slugs)
+       (cons (format "~a: the slug ~s is reserved for the site's own pages (KIND-1)" src slug) errs)]
+      [(hash-ref seen slug #f)
+       => (λ (other) (cons (format "~a: the slug ~s is already used by ~a; slugs are unique across essays and the notebook (KIND-1)" src slug other) errs))]
+      [else (hash-set! seen slug src) errs])))

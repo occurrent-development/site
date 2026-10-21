@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="frame◊(if (has-toc? doc) " has-toc" "")">
-<div class="page">
+<div class="◊(page-class metas)">
 <header class="site-header">
 ◊(site-menu metas)
 <button class="theme-toggle" type="button" data-theme-toggle aria-label="Theme" hidden>

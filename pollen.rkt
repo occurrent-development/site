@@ -41,10 +41,10 @@
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv sort-key figure ref
          ;; the home page (§13a); the specimen's sample header (THEME-7)
-         essay-index header-sample
+         index latest header-sample
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
-         page-title doc-body format-date revised-date site-menu has-toc?)
+         page-title doc-body format-date revised-date site-menu has-toc? page-class)
 
 (module setup racket/base
   (require racket/runtime-path)
@@ -548,11 +548,11 @@
                              #:unless (assq (string->symbol (format "data-~a" k)) data))
                     (list (string->symbol (format "data-~a" k)) (format "~a" v))))
      `(a ((class "link ext") (href ,href) ,@data ,@meta) ,@(with-mark kids 'ext))]
-    [(regexp-match? #px"^/[a-z0-9-]*(#[a-z0-9-]+)?$" href)
+    [(regexp-match? #px"^/(?:notebook/)?[a-z0-9-]*(#[a-z0-9-]+)?$" href)   ; KIND-5: entries too
      `(a ((class "link xref") (href ,href)) ,@(with-mark kids 'xref))]
     [(regexp-match? #px"^#[a-z0-9-]+$" href)
      `(a ((class "link same") (href ,href)) ,@(with-mark kids 'od-dir))]
-    [else (build-error "◊link target ~s is not http(s)://…, /slug, /slug#id or #id" href)]))
+    [else (build-error "◊link target ~s is not http(s)://…, /slug, /notebook/slug, either with #id, or #id" href)]))
 
 ;; The numbering walk and end matter (steps 4–6, CITE-1/2/10).
 (define (annotate doc-elems)
@@ -959,9 +959,12 @@
   (for ([k '(abstract epistemic)])
     (when (and (current-metas) (select-from-metas k (current-metas)))
       (build-error "◊define-meta[~a] is now ◊~a{…}, written in the body (SRC-4a)" k k)))
-  ;; VAL-1: essays need their meta fields.
+  ;; KIND-1: the kind comes from the folder, never from a meta
+  (when (and (current-metas) (select-from-metas 'kind (current-metas)))
+    (build-error "◊define-meta[kind] is not allowed: a post's kind comes from its folder, essays/ or notebook/ (KIND-1)"))
+  ;; VAL-1: posts need their meta fields.
   (define p (source-path))
-  (when (and p (essay-source? p))
+  (when (and p (post-source? p))
     (for ([k '(title status published)])
       (unless (select-from-metas k (current-metas))
         (build-error "missing ◊define-meta[~a]" k)))
@@ -981,6 +984,10 @@
   (check-essay-metas)
   (let ([t (and (current-metas) (select-from-metas 'tags (current-metas)))]) (when t (parse-tags t)))
   (define-values (abstract-el epistemic-el flat) (take-header-text (prepare elems)))
+  (define entry? (eq? (post-kind (or (source-path) "")) 'entry))
+  ;; KIND-2: an entry records what was thought on a date; it states no epistemic status
+  (when (and entry? epistemic-el)
+    (build-error "◊epistemic is for essays: a notebook entry has no epistemic status (KIND-2)"))
   (for ([el (in-list (list abstract-el epistemic-el))] #:when (and el (pair? (find-all el (tag? 'od-margin)))))
     (build-error "~a (it is inside the essay header)" margin-anchor-error))
   (check-headings-top-level flat)
@@ -996,7 +1003,7 @@
   (define numbered (number-exhibits (if header (cons header lifted) lifted)))
   (define-values (nested toc-entries)
     (nest-sections (mark-intro (if header (cdr numbered) numbered))))
-  (define toc (make-toc toc-entries))
+  (define toc (and (not entry?) (make-toc toc-entries)))   ; KIND-3: entries have no contents
   ;; LAYOUT-1c, §17: the header closes itself, so a break straight after it
   ;; is a style error
   (when (and header (pair? nested) (has-class? (car nested) "break"))
@@ -1012,15 +1019,23 @@
   doc)
 
 ;; ---------------------------------------------------------------------------
-;; The home page (§13a): every listed page as a table, newest first.
+;; The indexes and the home page (§13a, §13b)
 
-;; INDEX-1: a page is listed when it has a `published` date and is not a draft.
-(define (index-entries ptree)
+;; Every listed post, from the pagetree's metas: published (a date, and not
+;; a draft, DRAFT-2) and of the kind asked for. The essay index also lists a
+;; page that carries a date, which only the specimen does (INDEX-1, THEME-7).
+;; The pages that list posts are never listed, and are skipped unread: each
+;; would otherwise require the others, and itself, while it is being built.
+(define index-pages '("pages/index.html" "pages/essays.html" "pages/notebook.html" "index.html"))
+
+(define (index-entries ptree [kind #f])
   (for*/list ([node (in-list (pagetree->list (get-pagetree (project-file ptree))))]
               [out (in-value (symbol->string node))]
-              #:unless (equal? out "index.html")
+              #:unless (member out index-pages)
               [src (in-value (project-file (string-append out ".pm")))]
               #:when (file-exists? src)
+              [k (in-value (post-kind out))]
+              #:when (or (not kind) (eq? k kind) (and (eq? kind 'essay) (not k)))
               [metas (in-value (get-metas src))]
               [published (in-value (select-from-metas 'published metas))]
               #:when published
@@ -1029,11 +1044,15 @@
     (define revised (revised-date src))
     (define title (select-from-metas 'title metas))
     (hasheq 'url (output->url out)
+            'kind (or k 'essay)
+            'post? (and k #t)
             'title (string-trim (if (string? title) title (text-of title)))
             'published pub
             ;; INDEX-2: never revised since publication → the publication date
             'reviewed (if (and revised (string>? revised pub)) revised pub)
             'tags (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null)))))
+
+(define (newest-first entries) (sort entries string>? #:key (λ (e) (hash-ref e 'published))))
 
 ;; "2026-10-01" → "1 Oct 2026", for table columns; on a phone it may break
 ;; before the year only
@@ -1045,39 +1064,70 @@
 (define (date-cell iso)
   (list (sort-key iso `(time ((datetime ,iso)) ,(format-date-short iso)))))
 
-;; INDEX-1a: the index is an ordinary table, built by the same code as
-;; ◊table (TABLE-1…6): one cell per column in every row, or the build fails.
-;; It sorts at any number of rows (INDEX-3); Tags does not sort, and its
-;; heading opens the tag filter. #:pagetree is for the tests.
-(define (essay-index #:pagetree [ptree "index.ptree"])
-  (define entries (sort (index-entries ptree) string>? #:key (λ (e) (hash-ref e 'published))))
-  `(div ((class "essay-index"))
+;; INDEX-1a, KIND-4: ◊index[#:kind "essay"] and ◊index[#:kind "entry"]. Each is
+;; an ordinary table, built by the same code as ◊table (TABLE-1…6): one cell
+;; per column in every row, or the build fails. The kind decides the posts
+;; it reads and the columns it emits, and nothing else: essays have
+;; Title · Date published · Last review · Tags, entries (never reviewed,
+;; KIND-2) Title · Date · Tags. Sortable at any number of rows (INDEX-3);
+;; Tags does not sort, and its heading opens the index's own tag filter.
+;; #:pagetree is for the tests.
+(define (index #:kind [kind #f] #:pagetree [ptree "index.ptree"])
+  (define k (match kind ["essay" 'essay] ["entry" 'entry]
+              [_ (build-error "◊index needs #:kind \"essay\" or #:kind \"entry\" (got ~s)" kind)]))
+  (define entries (newest-first (index-entries ptree k)))
+  (define (tags-cell e)
+    (add-between (for/list ([t (in-list (hash-ref e 'tags))]) `(span ((class "tag")) ,t)) ", "))
+  (define-values (header cells classes)
+    (if (eq? k 'essay)
+        (values '(("Title") ("Date published") ("Last review") ("Tags"))
+                (λ (e) (list (list `(a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
+                             (date-cell (hash-ref e 'published))
+                             (date-cell (hash-ref e 'reviewed))
+                             (tags-cell e)))
+                '("title" "date-col" "date-col" "tags"))
+        (values '(("Title") ("Date") ("Tags"))
+                (λ (e) (list (list `(a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
+                             (date-cell (hash-ref e 'published))
+                             (tags-cell e)))
+                '("title" "date-col" "tags"))))
+  (define n (length header))
+  `(div ((class "post-index"))
         (div ((class "table-wrap size-normal"))
-             (div ((class "table-scroll") (tabindex "0") (role "region") (aria-label "Essays"))
-                  ,(table-element
-                    '(("Title") ("Date published") ("Last review") ("Tags"))
-                    '(#f #f #f #f)
-                    (for/list ([e (in-list entries)])
-                      (list (list `(a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
-                            (date-cell (hash-ref e 'published))
-                            (date-cell (hash-ref e 'reviewed))
-                            (add-between (for/list ([t (in-list (hash-ref e 'tags))])
-                                           `(span ((class "tag")) ,t))
-                                         ", ")))
-                    #:class "index-table" #:sortable #t
-                    #:row-attrs (for/list ([e (in-list entries)])
-                                  `((data-tags ,(string-join (hash-ref e 'tags) "|"))))
-                    #:head-attrs '(#f #f #f ((data-nosort "") (data-tag-filter "")))
-                    #:col-classes '("title" "date-col" "date-col" "tags"))))))
+             (div ((class "table-scroll") (tabindex "0") (role "region")
+                   (aria-label ,(if (eq? k 'essay) "Essays" "Notebook")))
+                  ,(table-element header (make-list n #f) (map cells entries)
+                                  #:class "index-table" #:sortable #t
+                                  #:row-attrs (for/list ([e (in-list entries)])
+                                                `((data-tags ,(string-join (hash-ref e 'tags) "|"))))
+                                  #:head-attrs (append (make-list (sub1 n) #f) '(((data-nosort "") (data-tag-filter ""))))
+                                  #:col-classes classes)))))
 
-;; NAV-1: the menu at the top left. Items live here, once.
-(define menu-items '(("Home" "/") ("About" "/about")))
+;; HOME-1: ◊latest[3], the newest published posts of both kinds, one line
+;; each: title, kind and date, in the text face; no table, no tags.
+(define (latest [n 3] #:pagetree [ptree "index.ptree"])
+  (unless (exact-positive-integer? n) (build-error "◊latest takes a count, as in ◊latest[3]"))
+  (define entries (newest-first (filter (λ (e) (hash-ref e 'post?)) (index-entries ptree))))
+  (define shown (take entries (min n (length entries))))
+  `(ul ((class "latest"))
+       ,@(for/list ([e (in-list shown)])
+           `(li ,(link (hash-ref e 'url) (hash-ref e 'title))
+                (span ((class "latest-meta"))
+                      ,(if (eq? (hash-ref e 'kind) 'entry) " · notebook · " " · essay · ")
+                      (time ((datetime ,(hash-ref e 'published))) ,(format-date (hash-ref e 'published))))))))
+
+;; NAV-1: the menu at the top left. Items live here, once. Glossary (TERM-8)
+;; and Bibliography (BIB-4) join it when their pages are built, in Phase 3.
+(define menu-items '(("Home" "/") ("Essays" "/essays") ("Notebook" "/notebook")))
 
 (define (site-menu metas)
   (define here (select-from-metas 'here-path metas))
-  (define url (and here (output->url (path->string (path-replace-extension
-                                                    (find-relative-path (current-project-root) (string->path (format "~a" here)))
-                                                    #""))))) 
+  (define rel (and here (path->string (path-replace-extension
+                                       (find-relative-path (current-project-root) (string->path (format "~a" here)))
+                                       #""))))
+  (define url (and rel (output->url rel)))
+  ;; an essay marks Essays, an entry Notebook
+  (define current (case (and rel (post-kind rel)) [(essay) "/essays"] [(entry) "/notebook"] [else url]))
   (->html
    `(details ((class "site-menu"))
              (summary (span ((class "site-name")) "Occurrent Development")
@@ -1087,8 +1137,13 @@
              (nav ((aria-label "Site"))
                   (ul ,@(for/list ([item (in-list menu-items)])
                           `(li (a ,(append `((href ,(cadr item)))
-                                           (if (equal? url (cadr item)) '((aria-current "page")) null))
+                                           (if (equal? current (cadr item)) '((aria-current "page")) null))
                                   ,(car item)))))))))
+
+;; KIND-1: the page wrapper's class, the only place CSS and scripts see a kind.
+(define (page-class metas)
+  (define here (select-from-metas 'here-path metas))
+  (if (and here (eq? (post-kind (format "~a" here)) 'entry)) "page kind-entry" "page"))
 
 (define (root . elems)
   (if (glossary-source? (source-path))
@@ -1217,8 +1272,11 @@
 ;; puts its first baseline on the title's (LAYOUT-1a).
 ;; EPISTEMIC is a list of inline elements; ABSTRACT a list of paragraphs.
 ;; SOURCE, when given, is the page's source file, for the source links; so a
-;; page has a block even without dates or tags.
-(define (header-parts title-el subtitle published revised tags epistemic abstract #:source [source #f])
+;; page has a block even without dates or tags. INDEX-URL is the index the
+;; tags link to: the post's own kind's (LAYOUT-1b, KIND-4). An entry's header
+;; is this same header with no epistemic line (KIND-3).
+(define (header-parts title-el subtitle published revised tags epistemic abstract
+                      #:source [source #f] #:index [index-url "/essays"])
   (define (label s) `(span ((class "meta-label")) ,s))
   (define (date name iso) `(span ((class "date")) ,(label name) " " ,(format-date iso)))
   (define dates
@@ -1228,7 +1286,7 @@
   (define (sep) '(span ((class "sep")) " · "))
   (define tag-links
     (for/list ([t (in-list tags)])
-      `(a ((class "tag-link") (href ,(string-append "/?tags=" (string-replace t " " "%20"))))
+      `(a ((class "tag-link") (href ,(string-append index-url "?tags=" (string-replace t " " "%20"))))
           ,@(with-mark (list t) 'xref))))
   (when (and epistemic (> (string-length (text-of epistemic)) 220))
     (warn "the epistemic status runs to ~a characters; it should be one sentence, four or five margin lines (LAYOUT-1)"
@@ -1273,7 +1331,9 @@
                              (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
                              (and epi (get-elements (txexpr 'span null (newlines->spaces-list (get-elements epi)))))
                              (and abs (abstract-paragraphs (paragraphs (get-elements abs))))
-                             #:source (select-from-metas 'here-path metas)))))
+                             #:source (select-from-metas 'here-path metas)
+                             #:index (if (eq? (post-kind (format "~a" (or (select-from-metas 'here-path metas) ""))) 'entry)
+                                         "/notebook" "/essays")))))
 
 ;; LAYOUT-1a: "Abstract", a small heading run into its first paragraph.
 (define (abstract-paragraphs ps)
@@ -1288,9 +1348,14 @@
 
 ;; THEME-7: a sample header inside the specimen, to show the forms the page's
 ;; own header does not (no abstract, say). Its title is not an h1.
+;; #:kind "entry" shows a notebook entry's header (KIND-3, THEME-7).
 (define (header-sample #:title [title #f] #:subtitle [subtitle #f] #:published [published #f]
-                       #:revised [revised #f] #:tags [tags #f] #:epistemic [epistemic #f] . abstract)
+                       #:revised [revised #f] #:tags [tags #f] #:epistemic [epistemic #f]
+                       #:kind [kind "essay"] . abstract)
   (unless title (build-error "◊header-sample needs a #:title"))
+  (unless (member kind '("essay" "entry")) (build-error "◊header-sample #:kind is \"essay\" or \"entry\""))
+  (when (and epistemic (equal? kind "entry"))
+    (build-error "◊header-sample: an entry has no epistemic status (KIND-2)"))
   (define (clean v) (and v (string-normalize-spaces v)))
   (define abs (and (pair? abstract) (string-normalize-spaces (text-of abstract))))
   (txexpr 'div `((class ,(if abs "essay-header sample" "essay-header sample no-abstract")) (role "group")
@@ -1299,4 +1364,5 @@
                         (clean subtitle) published revised
                         (if tags (parse-tags tags) null)
                         (and epistemic (list (clean epistemic)))
-                        (and abs (abstract-paragraphs (list `(p ,abs)))))))
+                        (and abs (abstract-paragraphs (list `(p ,abs))))
+                        #:index (if (equal? kind "entry") "/notebook" "/essays"))))

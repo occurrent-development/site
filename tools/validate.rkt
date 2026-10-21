@@ -24,7 +24,7 @@
          pollen/core
          pollen/pagetree
          (only-in pollen/template ->html)
-         (only-in "../lib/util.rkt" text-of published? output->url))
+         (only-in "../lib/util.rkt" text-of published? output->url check-post-slugs))
 
 (define errors 0)
 (define (fail fmt . args) (set! errors (add1 errors)) (eprintf "build error: ~a\n" (apply format fmt args)))
@@ -64,13 +64,28 @@
             'published (published? src status)
             'sections sections 'ids ids 'xrefs xrefs 'terms terms)))
 
-;; An essay missing from index.ptree would be neither rendered nor listed.
+;; Every post's source: essays/<slug>/<slug>.html.pm and notebook/<slug>/<slug>.html.pm.
+(define post-sources
+  (for*/list ([dir (in-list '("essays" "notebook"))] #:when (directory-exists? dir)
+              [f (in-directory dir (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
+              #:when (regexp-match? #px"^(?:essays|notebook)/[^/]+/[^/]+\\.html\\.pm$" (path->string f)))
+    f))
+
+;; KIND-1: one slug, one post, across both folders; none of the site's own paths.
+(for ([e (in-list (check-post-slugs
+                   (for/list ([f (in-list post-sources)])
+                     (cons (cadr (regexp-match #px"/([^/]+)\\.html\\.pm$" (path->string f))) (path->string f)))
+                   (for/list ([f (in-list (directory-list "pages"))]
+                              #:when (regexp-match? #rx"\\.html\\.pm$" (path->string f)))
+                     (cadr (regexp-match #px"^([^/]+)\\.html\\.pm$" (path->string f))))))])
+  (fail "~a" e))
+
+;; A post missing from index.ptree would be neither rendered nor listed.
 ;; A draft is the exception (DRAFT-E1: drafts sit at their final path, kept
 ;; out of git, and od-publish adds the index.ptree line), so it only warns.
-(when (directory-exists? "essays")
+(let ()
   (define listed (for/list ([p (in-list all-pages)]) (path->string (hash-ref p 'src))))
-  (for ([f (in-directory "essays" (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
-        #:when (regexp-match? #px"^essays/[^/]+/[^/]+\\.html\\.pm$" (path->string f))
+  (for ([f (in-list post-sources)]
         #:unless (member (path->string f) listed))
     (define status
       (let ([m (regexp-match #px"◊define-meta\\[status\\]\\{\\s*([a-z]+)\\s*\\}" (file->string (path->string f)))])

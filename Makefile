@@ -21,11 +21,11 @@ PORT    ?= 8080
 
 FONTS_SRC := $(wildcard assets/fonts/*.otf)
 # Emacs's lock files (.#name, a dangling link while a buffer is modified) are not sources.
-SOURCES   := $(shell find . -name '*.pm' -not -name '.\#*' -not -path './public/*' -not -path './essays/*/support/*') \
+SOURCES   := $(shell find . -name '*.pm' -not -name '.\#*' -not -path './public/*' -not -path './essays/*/support/*' -not -path './notebook/*/support/*') \
              template.html.p pollen.rkt typography.rkt
 FONTS     := assets/fonts/fonts.rktd
 IMAGES    := assets/img/images.json
-IMG_SRC   := $(shell find pages essays -path '*/img/*' -type f 2>/dev/null)
+IMG_SRC   := $(shell find pages essays notebook -path '*/img/*' -type f 2>/dev/null)
 
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
@@ -52,9 +52,11 @@ $(FONTS): $(FONTS_SRC) $(SOURCES) tools/fonts.py
 $(IMAGES): $(IMG_SRC) $(SOURCES) tools/images.py
 	$(PYTHON) tools/images.py
 
-# The home page lists every essay, so it is rebuilt whenever anything is.
+# The indexes and the home page list every post, so they are rebuilt
+# whenever anything is.
+INDEXES := pages/index.html.pm pages/essays.html.pm pages/notebook.html.pm
 render: $(FONTS) $(IMAGES)
-	touch index.html.pm
+	touch $(INDEXES)
 	$(RACO) pollen render -p index.ptree
 	$(RACO) make tools/validate.rkt && racket tools/validate.rkt
 
@@ -62,19 +64,19 @@ render: $(FONTS) $(IMAGES)
 publish: render
 	rm -rf public
 	mkdir -p public/assets/fonts public/assets/icons public/assets/img public/assets/js public/data
-	while read src dest; do cp "$$src" "public/$$dest"; done < data/publish.txt
+	while read src dest; do mkdir -p "public/$$(dirname "$$dest")"; cp "$$src" "public/$$dest"; done < data/publish.txt
 	cp assets/fonts/*.woff2 public/assets/fonts/
 	cp assets/icons/*.svg public/assets/icons/
 	cp assets/js/site.js assets/js/tables.js public/assets/js/
 	find assets/img -type f ! -name images.json -exec cp {} public/assets/img/ \;
 	cp data/anchors.json public/data/
 	cp -R build/_x public/_x
-	cp _headers public/
+	cp _headers _redirects public/
 	@bad=$$(find public $(FORBIDDEN)); \
 	  if [ -n "$$bad" ]; then echo "Refusing to publish: $$bad"; exit 1; fi
 
 serve: $(FONTS) $(IMAGES)
-	touch index.html.pm
+	touch $(INDEXES)
 	$(RACO) pollen start . $(PORT)
 
 refresh:
@@ -84,5 +86,5 @@ refresh:
 clean:
 	$(RACO) pollen reset
 	rm -rf public
-	rm -f index.html pages/*.html essays/*/*.html assets/fonts/*.woff2 $(FONTS)
+	rm -f index.html pages/*.html essays/*/*.html notebook/*/*.html assets/fonts/*.woff2 $(FONTS)
 	rm -rf assets/img build data/anchors.json data/links.json data/publish.txt

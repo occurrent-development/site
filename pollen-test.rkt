@@ -9,7 +9,7 @@
          txexpr
          (except-in "pollen.rkt" list)
          (only-in "pollen.rkt" [list od-list])
-         (only-in "lib/util.rkt" parse-tags output->url text-of source-urls)
+         (only-in "lib/util.rkt" parse-tags output->url text-of source-urls post-kind check-post-slugs)
          (only-in "lib/tables.rkt" table-element))
 
 (define (fails? thunk) (with-handlers ([exn:fail? (λ (e) #t)]) (thunk) #f))
@@ -302,13 +302,17 @@
 (test-case "URLs: pages and essays are flattened to /<slug>"
   (check-equal? (output->url "index.html") "/")
   (check-equal? (output->url "pages/about.html") "/about")
-  (check-equal? (output->url "essays/placeholder/placeholder.html") "/placeholder"))
+  (check-equal? (output->url "essays/placeholder/placeholder.html") "/placeholder")
+  ;; HOME-1: the About page is the root; D14: entries live under /notebook
+  (check-equal? (output->url "pages/index.html") "/")
+  (check-equal? (output->url "pages/essays.html") "/essays")
+  (check-equal? (output->url "notebook/a-day/a-day.html") "/notebook/a-day"))
 
-(test-case "INDEX-1: the home page lists dated pages, newest first, with tags"
-  (define idx (essay-index #:pagetree "tests/index.ptree"))
+(test-case "INDEX-1: the essay index lists dated essays, newest first, with tags"
+  (define idx (index #:kind "essay" #:pagetree "tests/index.ptree"))
   (define rows (find-all idx (tag? 'tr)))
   (define titles (for/list ([r (in-list (cdr rows))]) (string-trim (apply string-append (filter string? (get-elements (car (find-all r (tag? 'a)))))))))
-  (check-equal? titles '("Newer" "Listed"))         ; undated pages and drafts are left out
+  (check-equal? titles '("Newer" "Listed"))         ; undated pages, drafts and entries are left out
   (check-equal? (attr-ref (caddr rows) 'data-tags) "site|philosophy")
   (check-not-false (findf (λ (th) (attrs-have-key? th 'data-nosort)) (find-all idx (tag? 'th)))))
 
@@ -359,7 +363,7 @@
 (test-case "VOCAB-3: od-vocabulary's built tags are exactly the tags pollen.rkt provides"
   (define template-helpers
     '(root site-css font-preloads head-script asset-url specimen? specimen-css page-title
-      essay-header doc-body format-date revised-date site-menu has-toc?))
+      essay-header doc-body format-date revised-date site-menu has-toc? page-class))
   ;; tags with keyword arguments are exported as syntax, so read both lists
   (define-values (vars stx) (module->exports (string->path (path->string (build-path (current-directory) "pollen.rkt")))))
   (define provided
@@ -373,9 +377,11 @@
   (check-not-false (pair? built) "no vocabulary entries found in emacs/occurrent.el")
   ;; built in pollen.rkt by HANDOVER-PHASE2 Job A, which may not touch
   ;; emacs/; Job B adds them to od-vocabulary and empties this list
-  (define pending-in-emacs '(latex))
+  (define pending-in-emacs '(latex index latest))
+  ;; retired in pollen.rkt by Job A; Job B takes them out of od-vocabulary
+  (define retired-in-emacs '(essay-index))
   ;; define-meta is Pollen's own, not a pollen.rkt export
-  (check-equal? (sort (remq 'define-meta built) symbol<?)
+  (check-equal? (sort (filter (λ (t) (not (memq t retired-in-emacs))) (remq 'define-meta built)) symbol<?)
                 (sort (filter (λ (t) (not (memq t pending-in-emacs))) provided) symbol<?)))
 
 ;; SRC-4a: ◊abstract and ◊epistemic are written in the body and set in the header.
@@ -494,7 +500,7 @@
 
 (test-case "INDEX-1a: the index is a table with four cells in every row"
   ;; two fixture pages are listed (tests/essays/listed)
-  (define idx (essay-index #:pagetree "tests/index.ptree"))
+  (define idx (index #:kind "essay" #:pagetree "tests/index.ptree"))
   (define head (car (find-all idx (tag? 'thead))))
   (check-equal? (map (λ (th) (string-trim (text th))) (find-all head (tag? 'th)))
                 '("Title" "Date published" "Last review" "Tags"))
@@ -577,3 +583,81 @@
   ;; it sits in running text, in italic and in an aside alike
   (define doc (root "Set in " (latex) ", " (em "and " (latex)) "." (aside "Even " (latex) ".")))
   (check-equal? (length (find-all doc (λ (x) (has-class* x "latex")))) 4))   ; the aside's two copies
+
+;; §13b: the notebook. Entries are posts of the second kind, set from the folder.
+(define (in-entry thunk)
+  (define here (path->string (build-path (current-directory) "tests" "notebook" "x" "x.html.pm")))
+  (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-01" 'here-path here)])
+    (thunk)))
+
+(test-case "KIND-1: the kind comes from the folder; a kind meta and a clashing slug fail"
+  (check-equal? (post-kind "essays/a/a.html.pm") 'essay)
+  (check-equal? (post-kind "notebook/a/a.html.pm") 'entry)
+  (check-false (post-kind "pages/colophon.html.pm"))
+  (check-exn #rx"kind comes from its folder"
+             (λ () (parameterize ([current-metas (hasheq 'title "T" 'kind "entry")]) (root "x"))))
+  (check-equal? (check-post-slugs '(("a" . "essays/a") ("b" . "notebook/b")) '("index")) '())
+  (check-equal? (length (check-post-slugs '(("a" . "essays/a") ("a" . "notebook/a")) '())) 1)
+  (check-equal? (length (check-post-slugs '(("about" . "notebook/about") ("glossary" . "essays/glossary")) '())) 2)
+  (check-equal? (length (check-post-slugs '(("essays" . "notebook/essays")) '("essays"))) 1)
+  ;; the page wrapper says which kind, and nothing else does
+  (check-equal? (page-class (hasheq 'here-path "/x/notebook/a/a.html.pm")) "page kind-entry")
+  (check-equal? (page-class (hasheq 'here-path "/x/essays/a/a.html.pm")) "page"))
+
+(test-case "KIND-2: an entry has no epistemic status; an abstract is allowed"
+  (check-exn #rx"no epistemic status" (λ () (in-entry (λ () (root (epistemic "Sure.") "\n\n" "Text.")))))
+  (define doc (in-entry (λ () (root (abstract "Briefly.") "\n\n" "Text."))))
+  (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all doc txexpr?)))
+  ;; DRAFT-2 applies to entries
+  (check-false (published? "notebook/x/x.html.pm" "draft"))
+  (check-true (published? "notebook/x/x.html.pm" "published")))
+
+(test-case "KIND-3: an entry has no contents at any section count, and the essay header without the epistemic line"
+  (define doc (fixture "notebook/sectioned-entry/sectioned-entry.html.pm"))
+  (check-equal? (find-all doc (λ (x) (has-class* x "toc"))) '())
+  (check-equal? (length (find-all doc (λ (x) (and (eq? (get-tag x) 'section) (has-class* x "level-1"))))) 3)
+  (define header (car (get-elements doc)))
+  (check-equal? (get-tag header) 'header)
+  (define block (car (find-all header (λ (x) (has-class* x "header-meta")))))
+  (check-equal? (map classes (get-elements block)) '("dates" "tags" "source"))
+  (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all header txexpr?)))
+  (check-not-false (has-class* (last (get-elements header)) "header-rule"))
+  ;; LAYOUT-1b, KIND-4: its tags link to the notebook's index
+  (check-equal? (attr-ref (car (find-all block (λ (x) (has-class* x "tag-link")))) 'href) "/notebook?tags=site")
+  ;; an essay with the same sections has contents, and its tags go to /essays
+  (define essay (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-01" 'tags "site" 'here-path (path->string (build-path (current-directory) "essays" "x" "x.html.pm")))])
+                  (root (section #:id "a" "A") "\n\n" "x" "\n\n" (section #:id "b" "B") "\n\n" "y" "\n\n" (section #:id "c" "C") "\n\n" "z")))
+  (check-not-false (findf (λ (x) (has-class* x "toc")) (find-all essay txexpr?)))
+  (check-equal? (attr-ref (car (find-all essay (λ (x) (has-class* x "tag-link")))) 'href) "/essays?tags=site"))
+
+(test-case "KIND-4, INDEX-1a: the notebook index has three cells in every row: Title · Date · Tags"
+  (define idx (index #:kind "entry" #:pagetree "tests/index.ptree"))
+  (check-equal? (map (λ (th) (string-trim (text th))) (find-all (car (find-all idx (tag? 'thead))) (tag? 'th)))
+                '("Title" "Date" "Tags"))
+  (define rows (find-all (car (find-all idx (tag? 'tbody))) (tag? 'tr)))
+  (define cells (map (λ (r) (filter txexpr? (get-elements r))) rows))
+  (check-equal? (map length cells) '(3 3 3))
+  (check-equal? (map (λ (c) (string-trim (text (first c)))) cells) '("Newer entry" "A sectioned entry" "Older entry"))
+  (check-equal? (map classes (first cells)) '("title" "date-col" "tags"))
+  (check-equal? (attr-ref (car (find-all (second (third cells)) (tag? 'time))) 'datetime) "2026-10-03")
+  (check-equal? (string-trim (text (third (third cells)))) "site, notebook")
+  ;; (a fixture's URL keeps its tests/ prefix; a real entry's is /notebook/<slug>)
+  (check-regexp-match #rx"/notebook/newer-entry/newer-entry$" (attr-ref (car (find-all (first (first cells)) (tag? 'a))) 'href))
+  (check-not-false (attrs-have-key? (car (find-all idx (tag? 'table))) 'data-sortable))
+  (check-true (fails? (λ () (index #:kind "blog" #:pagetree "tests/index.ptree")))))
+
+(test-case "HOME-1: ◊latest lists the newest posts of both kinds, one line each"
+  (define l (latest 3 #:pagetree "tests/index.ptree"))
+  (define items (find-all l (tag? 'li)))
+  (check-equal? (length items) 3)
+  (check-equal? (map (λ (li) (text (car (find-all li (tag? 'od-link))))) items)
+                '("Newer entry" "Newer" "A sectioned entry"))
+  (check-regexp-match #rx"notebook · 6 October 2026" (text (first items)))
+  (check-regexp-match #rx"essay · 5 October 2026" (text (second items))))
+
+(test-case "NAV-1: Home · Essays · Notebook; an essay marks Essays, an entry Notebook"
+  (define (menu here) (site-menu (hasheq 'here-path (path->string (build-path (current-directory) here)))))
+  (check-regexp-match #rx">Home<.*>Essays<.*>Notebook<" (menu "pages/index.html.pm"))
+  (check-regexp-match #rx"href=\"/essays\" aria-current=\"page\"" (menu "essays/placeholder/placeholder.html.pm"))
+  (check-regexp-match #rx"href=\"/notebook\" aria-current=\"page\"" (menu "notebook/a/a.html.pm"))
+  (check-regexp-match #rx"href=\"/\" aria-current=\"page\"" (menu "pages/index.html.pm")))

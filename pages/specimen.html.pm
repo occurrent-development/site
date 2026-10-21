@@ -200,6 +200,13 @@ lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
 #:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. Its
 block starts on the line of the title's first baseline."]
 
+A notebook entry has the same header with less in it: no epistemic status,
+so no gap, and no contents however many sections it has. Its tags lead to
+the notebook's index rather than the essays':
+
+◊header-sample[#:kind "entry" #:title "A sample entry" #:published
+"2026-10-21" #:tags "site"]
+
 The epigraph at the top of the page is set a little in from the left edge, in
 italic, with its source on a line of its own at the right; the ◊em{same} in
 it is emphasis, set roman because the epigraph is italic. The abstract is
