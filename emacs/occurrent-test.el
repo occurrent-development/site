@@ -265,7 +265,9 @@ notebook/demo/ when `od-test-kind' is \"entry\")."
          (magit-opened nil))
      (cl-letf (((symbol-function 'od--require-magit) #'ignore)
                ((symbol-function 'magit-status-setup-buffer) (lambda (&rest _) (setq magit-opened t)))
-               ((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+               ((symbol-function 'y-or-n-p) (lambda (&rest _) t))
+               ((symbol-function 'completing-read)
+                (lambda (prompt &rest _) (if (string-prefix-p "Kind of change" prompt) "Typo" ""))))
        ,@body)))
 
 (ert-deftest od-test-new-essay-is-hidden ()
@@ -418,6 +420,42 @@ notebook/demo/ when `od-test-kind' is \"entry\")."
 (ert-deftest od-test-link-groups ()
   (should (equal (mapcar #'od--url-group '("/placeholder" "/notebook/a-day" "/" "/essays" "/specimen"))
                  '("Essays" "Notebook" "Pages" "Pages" "Pages"))))
+
+;;; One key everywhere: C-c o P publishes a draft and commits anything else
+
+(ert-deftest od-test-publish-commits-a-page ()
+  "On a page (never a draft), od-publish stages the page and opens Magit."
+  (od-test-with-repo
+    (let ((page (expand-file-name "pages/about.html.pm" (od-root))))
+      (make-directory (file-name-directory page) t)
+      (with-temp-file page (insert "#lang pollen\n\n◊define-meta[title]{About}\n\nText.\n"))
+      (od-test-git (od-root) "add" "pages/about.html.pm")
+      (od-test-git (od-root) "commit" "-q" "-m" "about")
+      (od-test-git (od-root) "push" "-q" "origin" "main")
+      (find-file page)
+      (goto-char (point-max)) (insert "More.\n") (save-buffer)
+      (od-test-publishing
+       (od-publish)
+       (should magit-opened)
+       (should (equal (split-string (od-test-git (od-root) "diff" "--cached" "--name-only") "\n" t)
+                      '("pages/about.html.pm")))))))
+
+(ert-deftest od-test-publish-commits-a-published-post ()
+  "Once a post is in git, od-publish commits its changes instead of publishing again."
+  (od-test-with-repo
+    (od-test-publishing
+     (od-publish)                                  ; the first time: publish
+     (od-test-git (od-root) "commit" "-q" "-m" "Publish: demo")
+     (od-test-git (od-root) "push" "-q" "origin" "main")
+     (goto-char (point-max)) (insert "A later paragraph.\n") (save-buffer)
+     (setq magit-opened nil)
+     (let ((ptree-before (with-temp-buffer (insert-file-contents (expand-file-name "index.ptree" (od-root))) (buffer-string))))
+       (od-publish)                                ; the second time: commit
+       (should magit-opened)
+       (should (member "essays/demo/demo.html.pm"
+                       (split-string (od-test-git (od-root) "diff" "--cached" "--name-only") "\n" t)))
+       (should (equal ptree-before
+                      (with-temp-buffer (insert-file-contents (expand-file-name "index.ptree" (od-root))) (buffer-string))))))))
 
 ;;; §12: the site's own files open with nothing in the error face
 

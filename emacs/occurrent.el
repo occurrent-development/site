@@ -1027,15 +1027,18 @@ commit it as a revision. The source stays in the history.
 
 2. {od-check}.
 
-3. {od-commit} asks what kind of change it is:
+3. {od-publish}, the same key as for publishing, asks what kind of
+   change it is ({od-commit} does the same):
    - Typo: spelling, punctuation. The essay's Revised date stays.
    - Meta: tags, subtitle and the like. The Revised date stays.
    - Revision: anything a reader should know changed. The Revised date
      moves to today (it comes from git), and the essay's changelog should
      gain a line saying what changed. An entry is not revised: a change of
      mind is a new entry; a typo fix is fine.
-   Pages (the home page, About, the colophon) are always published:
-   {od-commit} is all they need, never {od-publish}.
+   {od-publish} does the same on anything already published, so one key
+   serves every file: a draft is published, anything else committed.
+   Pages (the home page, the indexes, the colophon) and glossary files are
+   never drafts: {od-publish} commits their change as a revision.
    It stages the essay and opens Magit.
 
 4. As before: c c, C-c C-c, P p, then {od-deploy-status}.
@@ -2018,22 +2021,39 @@ FOLDER is essays (the default) or notebook."
           (let ((tags (od--meta "tags"))) (if (and tags (not (string-empty-p tags))) tags "none"))))
 
 ;;;###autoload
-(defun od-publish (&optional commit-and-push)
-  "Publish this essay or notebook entry (PUB-1, KIND-1).
-It becomes visible to git, its status published, its date set, its line
-added to index.ptree; then `make refresh' and `make' run, and if they
-pass, the post and the caches are staged and Magit opens
-for you to read the diff, commit (c c) and push (P p). It never pushes by
-itself. With a prefix argument COMMIT-AND-PUSH it commits with the proposed
-message and pushes after one confirmation (PUB-2).
+(defun od--tracked-p ()
+  "Non-nil when this buffer's file is in git: published, not a draft (DRAFT-E1)."
+  (od--git-ok "ls-files" "--error-unmatch" "--" (file-relative-name buffer-file-name (od-root))))
 
-There is no command to unpublish (PUB-6): to withdraw an essay, set its
+(defun od-publish (&optional commit-and-push)
+  "Put this file's changes on the site: the one command for every kind of file.
+
+A draft essay or notebook entry (one git cannot see yet, DRAFT-E1) is
+published (PUB-1, KIND-1): it becomes visible to git, its status published,
+its date set, its line added to index.ptree; then `make refresh' and `make'
+run, and if they pass, the post and the caches are staged.
+
+Anything already published, a post, the home page, a page or a glossary
+file, has its change committed as `od-commit' does (PUB-3): Typo, Meta or
+Revision for a post, a revision for anything else.
+
+Either way Magit opens for you to read the diff, commit (c c) and push
+\(P p); it never pushes by itself. With a prefix argument COMMIT-AND-PUSH it
+commits with the proposed message and pushes after one confirmation (PUB-2).
+
+There is no command to unpublish (PUB-6): to withdraw a post, set its
 status to superseded and commit that as a revision. Its source stays in the
 history."
   (interactive "P")
   (od--require-magit)
-  (unless (od--post-p)
-    (user-error "Publish works from a post: essays/<slug>/<slug>.html.pm or notebook/<slug>/<slug>.html.pm; a page needs only C-c o C"))
+  (unless (memq (od-file-kind) '(essay entry page home index specimen glossary))
+    (user-error "Not a page of the site"))
+  (if (and (od--post-p) (not (od--tracked-p)))
+      (od--publish-draft commit-and-push)
+    (od-commit commit-and-push)))
+
+(defun od--publish-draft (commit-and-push)
+  "Publish a draft post (PUB-1); see `od-publish'."
   (when (buffer-modified-p) (user-error "Save the post first"))
   (let ((title (od--meta "title")) (slug (od--slug)) (folder (od--folder)) (today (format-time-string "%Y-%m-%d")))
     (unless (and title (not (string-empty-p title))) (user-error "The post has no title"))
@@ -2080,11 +2100,23 @@ history."
         (message "%s. Staged: c c to commit, P p to push and deploy" (od--index-row))))))
 
 ;;;###autoload
-(defun od-commit ()
+(defun od--page-url ()
+  "Where this file is served, or nil (a glossary file has no page of its own yet)."
+  (let ((kind (od-file-kind)) (base (file-name-base (file-name-base buffer-file-name))))
+    (pcase kind
+      ((or 'essay 'entry) (od--post-url (od--slug) (od--folder)))
+      ('home od-site-url)
+      ((or 'index 'page 'specimen) (concat od-site-url base))
+      (_ nil))))
+
+(defun od-commit (&optional commit-and-push)
   "Commit a change to a published post, page or glossary file (PUB-3).
 Typo and Meta commits are marked so the post's Revised date stays (REV-1).
-Entries are not meant to be revised (KIND-2), but a typo fix is fine."
-  (interactive)
+Entries are not meant to be revised (KIND-2), but a typo fix is fine.
+`od-publish' (C-c o P) does this too, for anything already published.
+With a prefix argument COMMIT-AND-PUSH, ask for a line saying what
+changed, then commit and push after one confirmation."
+  (interactive "P")
   (od--require-magit)
   (let ((kind (od-file-kind)))
     (unless (memq kind '(essay entry page home index specimen glossary)) (user-error "Not a page of the site"))
@@ -2105,8 +2137,16 @@ Entries are not meant to be revised (KIND-2), but a typo fix is fine."
               (user-error "A revision needs a line in ◊changelog{…} saying what changed (REV-3)"))
           (message "◊changelog is not built yet: no changelog line to check")))
       (od--stage (cons what od--caches))
-      (od--propose-message (format "%s%s: " prefix (or (od--meta "title") (file-name-base buffer-file-name))))
-      (magit-status-setup-buffer root))))
+      (let ((head (format "%s%s: " prefix (or (od--meta "title") (file-name-base buffer-file-name)))))
+        (if (not commit-and-push)
+            (progn (od--propose-message head)
+                   (magit-status-setup-buffer root)
+                   (message "Staged: c c to commit, P p to push and deploy"))
+          (let ((msg (concat head (string-trim (read-string head)))))
+            (when (yes-or-no-p (format "Commit \"%s\" and push main to origin, which deploys it? " msg))
+              (od--git "commit" "-q" "-m" msg)
+              (od--git "push" "-q" "origin" "main")
+              (od-deploy-status (od--page-url)))))))))
 
 ;;;###autoload
 (defconst od--deploy-command
