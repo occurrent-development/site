@@ -1220,7 +1220,7 @@ p + ul.latest { margin-top: 0.5em; }
 .stub:focus-visible { outline-offset: 3px; }
 .stub-head { font-variant-caps: all-small-caps; letter-spacing: 0.04em; }
 .stub-extra { display: none; }
-.stub.is-open .stub-extra { display: block; }
+.stub.is-open:not(.is-preview) .stub-extra { display: block; }   /* a preview shows the short text only */
 .stub-extra .term-more, .stub-extra .see-also, .stub-more-line { display: block; margin: 0.4em 0 0; }
 .stub-extra .term-more p { margin: 0 0 0.4em; text-indent: 0; }
 .stub-extra .see-also { color: var(--text-muted); }

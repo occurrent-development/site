@@ -277,10 +277,12 @@ as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects}
 it carries a circle; later uses, like this second
 ◊term["occurrent"]{occurrent}, are plain text. ◊margin{A note at a sentence
 inside a paragraph} On a wide screen a definition
-also waits in the right margin as a single line beside its circle, and
-clicking either lets it grow there, in place, while the rest of the margin
-moves down to make room; More, inside it, opens the longer discussion, and a
-defined word inside it opens over the page. On a narrower screen a definition
+also waits in the right margin as a single line beside its circle. Resting
+the pointer on either lets it grow there, in place, while the rest of the
+margin moves down to make room, and it folds again when the pointer leaves;
+clicking pins it open, its circle filled. More, inside a pinned definition,
+opens the longer discussion, and a defined word inside it opens over the
+page. On a narrower screen a definition
 opens over the text. Without scripts, a circle is a link to the end of the
 page, where definitions are collected under Terms.
 
@@ -309,9 +311,9 @@ need it◊aside{An aside may cite, too: Hacking's essay on
 ◊term["looping-effect"]{looping} is the fuller version of the
 argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered at
 its place in the argument.} and is unnumbered. On a wide screen it sits in the
-right margin as a single line, cut short, and opening it lets it grow
-downward in place; a short one is shown whole. Open the first aside and then
-the circle inside it: the note opens over the page, and the aside stays where
+right margin as a single line, cut short; resting the pointer on it lets it
+grow downward in place, and clicking pins it there. A short one is shown
+whole. Pin the first aside and then open the circle inside it: the note opens over the page, and the aside stays where
 it is. On a narrower screen both open over the text. Without scripts each
 aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
 

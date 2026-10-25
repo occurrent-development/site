@@ -495,7 +495,9 @@ function closeLightbox() {
 
 // ── The margin item: an aside or definition expanded in place (ASIDE-3) ────
 
-let marginOpen = null;   // { stub, trigger }
+let marginOpen = null;      // the pinned item: { stub, trigger }
+let marginPreview = null;   // the item hover is previewing (ASIDE-3): { stub, trigger }
+let previewTimer = 0, previewCloseTimer = 0;
 
 // The stub a trigger opens, in tiers L and XL, when the trigger is in the text (a
 // circle inside an open margin item opens a popup instead, POP-6).
@@ -504,16 +506,36 @@ function stubFor(t) {
   return t._stub?.isConnected ? t._stub : null;
 }
 
-function toggleMargin(stub, { focus = false } = {}) {
-  if (marginOpen && marginOpen.stub === stub) { collapseMargin({ returnFocus: focus }); return; }
-  collapseMargin();
-  if (stub.dataset.full) { if (focus) stub.focus(); return; }   // shown in full; never collapses
+// Grow a stub in place, or fold it again. A pinned item fills its circle; a
+// preview does not (ASIDE-2), and shows a definition's short text only:
+// More and see-also make sense once the reader has chosen to stay.
+function expandStub(stub, pinned) {
   const t = stub._trigger;
   stub.classList.add("is-open");
+  stub.classList.toggle("is-preview", !pinned);
   stub.setAttribute("aria-expanded", "true");
   t?.setAttribute("aria-expanded", "true");
-  fill(t, true);
-  marginOpen = { stub, trigger: t };
+  if (pinned) fill(t, true);
+}
+function foldStub(stub) {
+  const t = stub._trigger;
+  stub.classList.remove("is-open", "is-preview");
+  stub.setAttribute("aria-expanded", "false");
+  stub.scrollTop = 0;
+  for (const m of stub.querySelectorAll(".term-more")) m.hidden = true;     // More folds again
+  for (const l of stub.querySelectorAll(".stub-more-line")) l.hidden = false;
+  t?.setAttribute("aria-expanded", "false");
+  fill(t, false);
+}
+
+// Click or Enter pins (ASIDE-3): a previewed item becomes the pinned one.
+function toggleMargin(stub, { focus = false } = {}) {
+  if (marginOpen && marginOpen.stub === stub) { collapseMargin({ returnFocus: focus }); return; }
+  if (marginPreview && marginPreview.stub === stub) { clearTimeout(previewCloseTimer); marginPreview = null; }
+  collapseMargin();
+  if (stub.dataset.full) { if (focus) stub.focus(); return; }   // shown in full; never collapses
+  expandStub(stub, true);
+  marginOpen = { stub, trigger: stub._trigger };
   positionMargin();
   if (focus) stub.focus({ preventScroll: true });
 }
@@ -522,15 +544,53 @@ function collapseMargin({ returnFocus = false } = {}) {
   if (!marginOpen) return;
   const { stub, trigger } = marginOpen;
   marginOpen = null;
-  stub.classList.remove("is-open");
-  stub.setAttribute("aria-expanded", "false");
-  stub.scrollTop = 0;
-  for (const m of stub.querySelectorAll(".term-more")) m.hidden = true;     // More folds again
-  for (const l of stub.querySelectorAll(".stub-more-line")) l.hidden = false;
-  trigger?.setAttribute("aria-expanded", "false");
-  fill(trigger, false);
+  foldStub(stub);
   positionMargin();
   if (returnFocus) (trigger || stub).focus?.();
+}
+
+// ASIDE-3: hover previews, after the popup delay, so a pointer sweeping
+// across a line of circles opens nothing. A preview never takes focus, so
+// Esc and Tab stay where the reader left them.
+function previewMargin(stub) {
+  if (!stub?.isConnected || !wide() || stub.dataset.full) return;
+  if (marginOpen?.stub === stub || marginPreview?.stub === stub) return;
+  endPreview({ layout: false });
+  expandStub(stub, false);
+  marginPreview = { stub, trigger: stub._trigger };
+  highlight(stub._trigger, true, stub);
+  positionMargin();
+}
+function endPreview({ layout = true } = {}) {
+  clearTimeout(previewTimer);
+  clearTimeout(previewCloseTimer);
+  if (!marginPreview) return;
+  const { stub, trigger } = marginPreview;
+  marginPreview = null;
+  foldStub(stub);
+  highlight(trigger, false, stub);
+  if (layout) positionMargin();
+}
+function schedulePreview(stub) {
+  clearTimeout(previewTimer);
+  clearTimeout(previewCloseTimer);
+  if (marginPreview?.stub === stub || marginOpen?.stub === stub || stub.dataset.full) return;
+  previewTimer = setTimeout(() => previewMargin(stub), 300);
+}
+// The preview closes ~250 ms after the pointer has left circle and stub
+// alike, unless it has gone into a popup opened from inside the preview.
+function schedulePreviewEnd() {
+  clearTimeout(previewTimer);
+  clearTimeout(previewCloseTimer);
+  if (!marginPreview) return;
+  previewCloseTimer = setTimeout(() => {
+    const p = marginPreview;
+    if (!p) return;
+    const inside = (x) => x && (x.matches(":hover") || x.contains(document.activeElement));
+    if (inside(p.stub) || inside(p.trigger)) return;
+    if (open && p.stub.contains(open.trigger) && open.box.matches(":hover")) return;
+    endPreview();
+  }, 250);
 }
 
 // ── Events ────────────────────────────────────────────────────────────────
@@ -553,8 +613,9 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest(TRIGGERS);
   const stub = e.target.closest(".stub");
 
-  // A collapsed stub opens wherever it is clicked (ASIDE-3).
-  if (stub && !stub.classList.contains("is-open") && !stub.dataset.full) {
+  // A collapsed or previewed stub is pinned wherever it is clicked (ASIDE-3).
+  if (stub && (!stub.classList.contains("is-open") || stub.classList.contains("is-preview")) && !stub.dataset.full
+      && !e.target.closest("a, button")) {
     e.preventDefault();
     close();
     toggleMargin(stub);
@@ -600,6 +661,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (open) { close({ returnFocus: true }); return; }
     if (marginOpen) { collapseMargin({ returnFocus: true }); return; }
+    if (marginPreview) { endPreview(); return; }
   }
   const stub = e.target.closest?.(".stub");
   if (stub && e.target === stub && (e.key === "Enter" || e.key === " ")) {
@@ -619,7 +681,7 @@ document.addEventListener("pointerover", (e) => {
   if (t && !t.closest(".popup, .bar")) {
     const s = stubFor(t);
     highlight(t, true, s);
-    if (s) return;
+    if (s) { schedulePreview(s); return; }
     if (kindOf(t) === "xref") fetchFragment(t.getAttribute("href"));   // prefetch
     clearTimeout(closeTimer);
     if (open && open.trigger === t) return;
@@ -628,19 +690,34 @@ document.addEventListener("pointerover", (e) => {
     return;
   }
   const stub = e.target.closest(".stub");
-  if (stub) highlight(stub._trigger, true, stub);
-  if (e.target.closest(".popup")) clearTimeout(closeTimer);
+  if (stub) {
+    highlight(stub._trigger, true, stub);
+    if (wide() && !stub.dataset.full) schedulePreview(stub);
+  }
+  if (e.target.closest(".popup")) { clearTimeout(closeTimer); clearTimeout(previewCloseTimer); }
 });
 
 document.addEventListener("pointerout", (e) => {
   if (e.pointerType !== "mouse") return;
+  const r = e.relatedTarget;
+  // ASIDE-3: a margin item's circle and its stub count as one place for
+  // hover, whichever element inside them the pointer leaves from.
+  const item = e.target.closest?.(".stub") || stubFor(e.target.closest?.(TRIGGERS));
+  if (item) {
+    const staying = r && (item.contains(r) || item._trigger?.contains(r));
+    if (!staying) {
+      clearTimeout(previewTimer);
+      if (marginPreview?.stub === item) schedulePreviewEnd();
+      else highlight(item._trigger, false, item);
+    }
+  }
   const from = e.target.closest(TRIGGERS + ", .popup, .stub");
   if (!from) return;
-  const to = e.relatedTarget?.closest?.(TRIGGERS + ", .popup, .stub");
+  const to = r?.closest?.(TRIGGERS + ", .popup, .stub");
   if (to === from) return;
-  if (from.matches(TRIGGERS)) highlight(from, false, stubFor(from));
-  if (from.matches(".stub")) highlight(from._trigger, false, from);
-  if (from.matches(".stub")) return;
+  if (from.matches(".stub") || (item && from === item._trigger)) return;   // handled above
+  if (from.matches(TRIGGERS)) highlight(from, false, null);
+  if (from.matches(".popup") && marginPreview) schedulePreviewEnd();
   clearTimeout(openTimer);
   if (open && to && (to === open.trigger || to === open.box)) return;
   scheduleClose();
@@ -698,6 +775,7 @@ function setupMargin() {
   const L = wide();
   if (L === ["L", "XL"].includes(currentTier) && currentTier !== null) return;
   collapseMargin();   // a popup stays open: popups exist at every tier
+  endPreview({ layout: false });
   if (!article) return;
   for (const a of article.querySelectorAll(".aside[id^='aside-text-']")) {
     if (a.closest("#asides")) continue;
@@ -880,7 +958,7 @@ function positionMargin() {
     ...headerItems,
   ].sort((a, b) => a.top - b.top);
   for (const it of items) if (it.natural === undefined) it.natural = it.top;
-  const O = marginOpen?.stub;
+  const openStubs = [marginOpen?.stub, marginPreview?.stub].filter(Boolean);
   const lineOf = (i) => parseFloat(getComputedStyle(i).lineHeight);
   const gap = stubs.length ? lineOf(stubs[0]) * 0.25 : 4;
   const clear = (y, h, zones) => {
@@ -899,16 +977,16 @@ function positionMargin() {
   const fixedZones = items.filter((i) => i.fixed).map((i) => [i.y, i.y + i.h]);
   let last = -Infinity;
   for (const it of items) {
-    const h = it.els[0] === O ? lineOf(O) : it.h;
+    const h = openStubs.includes(it.els[0]) ? lineOf(it.els[0]) : it.h;
     if (it.fixed) { last = Math.max(last, it.y + h); continue; }
     it.y = clear(Math.max(it.top, last + gap), h, fixedZones);
     last = it.y + h;
   }
-  // Pass 2: the open item keeps its place and grows; what is below moves down.
-  const open_ = items.find((i) => i.els[0] === O);
-  if (open_) {
-    let bottom = open_.y + open_.h;
-    for (const it of items.filter((i) => i !== open_ && i.y >= open_.y).sort((a, b) => a.y - b.y)) {
+  // Pass 2: an open item (pinned or previewed) keeps its place and grows;
+  // what is below it moves down, each open item in turn.
+  for (const o of items.filter((i) => openStubs.includes(i.els[0])).sort((a, b) => a.y - b.y)) {
+    let bottom = o.y + o.h;
+    for (const it of items.filter((i) => i !== o && i.y >= o.y).sort((a, b) => a.y - b.y)) {
       it.y = Math.max(it.y, bottom + gap);
       bottom = it.y + it.h;
     }
