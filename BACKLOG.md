@@ -96,6 +96,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 - Per-essay reading time, word counts, or "similar essays" — all easy, all clutter until the site is bigger.
 - Full-text search across essays: worth revisiting past ~15 essays; a build-time index plus a small client script.
 - A tag or topic index: *partly built 2026-10-14*, as the tag filter on the home page (INDEX-3). Separate pages per tag, with descriptions, wait for the same threshold.
+- Print and PDF: **decided 2026-10-22, not parked.** A print stylesheet and a built PDF per post with footnotes are Phase 4 (SPEC §10.7, PRINT-1…8, D15). Recorded here because "PDF export" was listed as deferred under item 17.
 - Mathematics: **decided 2026-10-20, not parked.** The LaTeX logo is a Phase 2 tag (SPEC TYPE-17); inline maths is Phase 3, pre-rendered in Libertinus Math by LuaLaTeX at `make refresh` (SPEC MATH-1). KaTeX and MathJax were considered and rejected because they set maths in their own faces beside the text face. Recorded here so the choice is not reopened.
 
 ## 17. Interactive figures: beyond the v1 frame
@@ -103,7 +104,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 *v1 gives `◊embed` a frame: lazy loading, a required static fallback, sticky behaviour, theming and accessibility (§9.3). These extensions wait.*
 
 - **Full-screen expansion** of a widget, sharing the image-zoom overlay (item 7), for complex figures on small screens.
-- **Per-format rendering**: a PDF or print projection generated from the widget's own data rather than a static screenshot. PDF export is deferred generally, and the required fallback image covers print in the meantime.
+- **Per-format rendering**: a PDF or print projection generated from the widget's own data rather than a static screenshot. *2026-10-22: a PDF of every post is now Phase 4 (SPEC §10.7); in it a widget prints its fallback image (EMBED-4, PRINT-1). Only the projection from the widget's own data stays deferred.*
 - **A shared widget runtime** (common controls, state model, caption/description panel) — worth extracting only once a third widget exists; before that it is speculative abstraction.
 - **Deep links into widget states**, so an essay or a reader can link to "the 45° view".
 - **A second figure type for reticulate developmental trajectories** (branching, converging, rejoining), noted in the *Autism and Moles* material as a possible closing figure. Specify it when that essay reaches a draft.
@@ -111,3 +112,10 @@ Each item says **why it's deferred** — usually because it needs design iterati
 ## 18. Paid typefaces (parked)
 
 *Removed 2026-10-15: Libertinus Serif is the typeface (TYPE-7). Number kept so later items do not shift.*
+
+## 19. Audio: beyond the first recording
+
+*Deferred with Phase 5 itself (SPEC §13c, 2026-10-23). These two are what §13c's AUDIO-10 leaves out, with the reasons.*
+
+- **"Listen from here" links on headings.** `#:t` on `◊section` giving a media-fragment URL (`<file>#t=754`), which native players honour with no script, so the cost of building it is near zero. Excluded because every re-recording and most text revisions make the timestamps wrong, and keeping them right is exactly the lockstep maintenance §13c refuses. If ever built, the page and the feed must be correct when timestamps are absent or stale.
+- **A styled player** matching the site's type and colours, in place of the browser's controls. Wait until the native player has been lived with; `color-scheme` and `accent-color` already carry the theme.

@@ -1,6 +1,6 @@
 # Handover to Claude Code — Emacs
 
-Status: draft 1.3 · Owner: Ryan · 2026-10-15 (revised the same day for IMG-7: figure and table ids, titles and `◊ref`; and again for the per-essay `support/` folder; revised 2026-10-20: `#:italic` on `epigraph` and `blockquote`, a command for every tag (SPEC EMACS-6), the end-of-block `◊margin` check)
+Status: draft 1.4 · Owner: Ryan · 2026-10-22 (EDIT-1a, EDIT-9, LOAD-4a, the SRC-4a changes to VOCAB-4 and EDIT-6, and PUB-3's CITE-5a note, all written 2026-10-15/16 on the Emacs branch and lost from this file at a merge, are restored; `od-preview` gains its Phase 4 prefix). Previously draft 1.3 · 2026-10-15 (revised the same day for IMG-7: figure and table ids, titles and `◊ref`; and again for the per-essay `support/` folder; revised 2026-10-20: `#:italic` on `epigraph` and `blockquote`, a command for every tag (SPEC EMACS-6), the end-of-block `◊margin` check)
 
 Read `SPEC.md` §3 (authoring format), §6 (glossary), §13 (revisions), §16 (Emacs) and `emacs/occurrent.el` first. This file specifies two things on top of what exists: a **major mode** for the site's Pollen dialect, with syntax highlighting that catches build errors before `make` does, and **publishing from Emacs with Magit**. Requirements carry IDs so commits and tests can reference them. **MUST** = required; **SHOULD** = expected, may slip; **MAY** = optional.
 
@@ -67,6 +67,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `embed` | name | `#:alt` `#:fallback` `#:sticky` | caption | yes (**not built**) |
 | `changelog` | — | — | yes | yes (**not built**) |
 | `m` | — | `#:display` | TeX source | no (**not built**; Phase 3, SPEC MATH-1) |
+| `audio` | file | `#:bytes` `#:duration` `#:recorded` (all required) | description | yes (**not built**; Phase 5, SPEC AUDIO-3) |
 
 `#:width` is deliberately absent from `figure`, `table`, `table-csv` and `embed`: the build rejects it (IMG-2, 2026-10-15), so the highlighter must too (FL-6). `#:italic` takes `#t` or `#f` only; any other value is an error (FL-6). *2026-10-20.*
 
@@ -74,7 +75,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 
 **VOCAB-3 (MUST) Sync test.** `pollen-test.rkt` gains a test that reads `emacs/occurrent.el`, extracts the tag names with `:built t` from `od-vocabulary`, and asserts the set equals the tag functions `pollen.rkt` provides (the `provide` form minus the template helpers and `root`). `make test` therefore fails when the two drift. Keep `od-vocabulary` a plain quoted list with one entry per line so the Racket side can parse it with a regexp.
 
-**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published epistemic abstract tags specimen unlisted`; glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
+**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published tags specimen unlisted` (`abstract` and `epistemic` became tags on 2026-10-15, SPEC SRC-4a, so as meta keys they are errors); glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
 
 **VOCAB-5 (MUST) A command for every tag.** Each entry also names its insert command (`:command`), so the vocabulary is the one place that says what `C-c o` can do (SPEC EMACS-6). Every `:built t` entry must name a command that exists; TEST-1 checks it. The unbuilt tags name theirs too, and those commands `user-error` with "not built yet" until the flag flips. *Added 2026-10-20.*
 
@@ -147,6 +148,8 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 
 **EDIT-1 (MUST) Filling.** `fill-paragraph` and `auto-fill` treat as paragraph boundaries: a line starting with any block tag (VOCAB-1), a line that is only `}`, and the `#lang` line. Meta lines are never filled (existing SRC-4 behaviour). Inside `◊list{…}`, `adaptive-fill-mode` recognises `- ` and `N. ` with their indentation so a wrapped item keeps its level (two spaces per level, LIST-1). Filling never breaks inside `[...]` argument groups except inside a string (SPEC §3.2 wraps a `#:note`), and never separates a `◊name` from its `[` or `{`.
 
+**EDIT-1a (MUST) Soft wrap.** *Decided 2026-10-15:* essays are written one line per paragraph and shown wrapped (`visual-line-mode`, with `olivetti-mode` for the width, both from Ryan's config), so nothing needs refilling while typing or revising. `od-soft-wrap` (default `t`) makes `M-q` join a paragraph onto one line rather than break it, which also converts older hard-wrapped paragraphs. `auto-fill-mode` is not used. The cost in diffs, a whole paragraph marked as changed for one word, is met by Magit's word highlighting (`magit-diff-refine-hunk` set to `all` in Ryan's config). The rest of EDIT-1 applies when `od-soft-wrap` is nil.
+
 **EDIT-2 (MUST) Wrapping commands** keep EMACS-2: every insert command wraps the active region. Add `od-unwrap` (`C-c o u`): with point inside a tag body, remove the `◊name[...]{` and its `}` and leave the body. Add `od-up` (`C-c o U`): move point just after the enclosing tag.
 
 **EDIT-3 (MUST) Completion at point.** A `completion-at-point-functions` entry that completes: a tag name after `◊` (from `od-vocabulary`, `:built` tags first); a keyword after `#:` inside an argument group (those allowed for the enclosing tag); a cite key inside `◊cite["` (the Zotero export, via the existing cache); a term id inside `◊term["` (EMACS-3 cache); a section, figure, table or anchor id after `◊link["#`; a figure or table id inside `◊ref["`; a page then section after `◊link["/` (`data/anchors.json`). Plain `completing-read` pickers remain the primary route; CAPF is for when the hands are already typing.
@@ -159,7 +162,7 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 
 ```
 essays/<slug>/
-├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, epistemic, abstract, tags; then a blank line, point there
+├── <slug>.html.pm      # the meta block: title, subtitle, status = draft, published = today, tags; then ◊epistemic{} and ◊abstract{} (SRC-4a); point at the end
 ├── img/                # figures; published with the essay
 └── support/            # everything else: notes, sources, drafts in other formats, sketches; never published (BUILD-3a)
     └── notes.md        # created empty, with the title as its first line
@@ -183,6 +186,10 @@ then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored f
 - `od-insert-margin` (`C-c o m`) gains a check: when point is at the end of a paragraph, list item or quoted paragraph (only whitespace before the block ends), it asks "A margin note here glosses nothing; insert at the start of this item/paragraph instead?" and, on yes, moves point there first (MNOTE-6, 2026-10-20).
 
 ---
+
+**EDIT-9 (MUST) The guide.** `od-guide` (`C-c o I`) opens a read-only org buffer, `*Occurrent guide*`, walking through the three workflows: starting a new essay, publishing it, revising and republishing. Keys in it are read from the keymap; a command not yet defined shows its planned key marked *(not built yet)*, so the guide is never wrong about what works. `q` closes it. When a workflow changes, the guide's text (`od--guide`) changes with it. *Added 2026-10-15 at Ryan's request.*
+
+**EDIT-10 (MUST) Org table separators.** Inside `◊table{…}` the build accepts Org's separator lines (`|---+---|` as well as `|---|---|`), so a pipe table can be edited with `org-table` commands and realigned with `C-c C-c`. *Added 2026-10-15 (c906b40).*
 
 ## 7. Checking before publishing
 
@@ -233,7 +240,7 @@ Build DRAFT-E1 unless Ryan says otherwise.
 
 **PUB-2 (MUST)** `od-publish` never pushes on its own. With a prefix argument (`C-u C-c o P`) it commits with the proposed message and pushes to `origin/main` in one step, after a `yes-or-no-p` that quotes the branch and remote. That is the only path that skips the Magit review.
 
-**PUB-3 (MUST)** `od-commit` (`C-c o C`), for a change to an already-published essay: asks **Typo / Meta / Revision**; prefixes the message `[typo]` or `[meta]` for the first two (REV-1 ignores them for "last revised"); for a Revision, checks that the essay's `◊changelog{…}` (once built; until then, warns and continues) has a new line, then stages the essay folder and the caches as in PUB-1 step 6 and opens `magit-status`. Pages (`pages/*.pm`) and glossary files use the same command with the Revision choice.
+**PUB-3 (MUST)** `od-commit` (`C-c o C`), for a change to an already-published essay: asks **Typo / Meta / Revision**; prefixes the message `[typo]` or `[meta]` for the first two (REV-1 ignores them for "last revised"); for a Revision, checks that the essay's `◊changelog{…}` (once built; until then, warns and continues) has a new line, then stages the essay folder and the caches as in PUB-1 step 6 and opens `magit-status`. Pages (`pages/*.pm`) and glossary files use the same command with the Revision choice. *2026-10-16: the caches PUB-3 stages hold only what published pages cite (SPEC CITE-5a), so staging them never carries a draft's references.*
 
 **PUB-4 (MUST)** Refuse to run `od-publish` or `od-commit` when the current branch is not `main`, or when `main` is behind `origin/main` (fetch first, `magit-git-string "rev-list" "--count" "main..origin/main"`); say which.
 
@@ -260,7 +267,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-3 (MUST)** Dependencies: Emacs 29+, Magit (soft: the `od-publish` family is defined only when `magit` is loadable, and says so if not), `citar` (soft, as now). No `pollen-mode`, no `company`.
 
-**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. The full map, as of 2026-10-20:
+**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. The full map, as of 2026-10-20:
 
 | Key | Command | Key | Command |
 |---|---|---|---|
@@ -288,7 +295,9 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 | `j` | `od-insert-tag` | | |
 | `x` | `od-insert-link-external` | | |
 
-List them all in the `occurrent-mode` docstring. Reserved for Phase 3: `R` for `od-new-reference` (SPEC BIB-3), `$` for `od-insert-math` (SPEC MATH-1), and `od-insert-cite` gains the pinned-key check of SPEC BIB-2 (ask Better BibTeX at `localhost:23119`; refuse an unpinned key; warn and continue when Zotero is not running). Neither is built in this handover. Free for later: `h v y z` and `D E G J K O V X Y Z` (`j` went to `od-insert-tag` on 2026-10-21, for the tags with no command of their own).
+List them all in the `occurrent-mode` docstring. Reserved for Phase 3: `R` for `od-new-reference` (SPEC BIB-3), `$` for `od-insert-math` (SPEC MATH-1), and `od-insert-cite` gains the pinned-key check of SPEC BIB-2 (ask Better BibTeX at `localhost:23119`; refuse an unpinned key; warn and continue when Zotero is not running). Neither is built in this handover. Phase 4: `od-preview` with a prefix argument builds and opens the post's PDF (SPEC PRINT-7); no new key. Reserved for Phase 5: `V` for `od-insert-audio` (SPEC AUDIO-4). Free for later: `h v y z` and `D E G J K O X Y Z` (`j` went to `od-insert-tag` on 2026-10-21, for the tags with no command of their own).
+
+**LOAD-4a (MUST) Keys from anywhere.** `od-global-map` holds the commands that make sense outside an essay: `N` new essay, `I` guide, `k` check (the full `make` when not in an essay), `d` deploy status. The user's config binds it to `C-c o` globally; inside an essay the mode's own `C-c o` keys take precedence. `od-site-directory` names the repository, so `od-root` works from a buffer outside it, dired included. *Added 2026-10-15 at Ryan's request.*
 
 ---
 
