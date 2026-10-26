@@ -1098,20 +1098,27 @@ function datum(header) {
 }
 
 // LAYOUT-1a, TOC-2: in tier XL the "Contents" heading sits on the
-// subtitle's baseline. Measured while the heading reads "Contents", since
-// the title it becomes once stuck is set differently.
+// subtitle's baseline. The heading's baseline is measured from the top of
+// the column while it reads "Contents" and kept, since the title it becomes
+// once stuck is set differently; the column is then moved by the
+// difference, never reset first, so nothing on the page jumps.
+let labelDrop = null;   // the heading's baseline below the column's top, unstuck
 function alignContents() {
   const toc = article?.querySelector("nav.toc");
   if (!toc) return;
-  toc.style.top = "";
   const header = article.querySelector(".essay-header:not(.sample)");
   const label = toc.querySelector(".toc-title");
-  if (tier() !== "XL" || !header || !label || getComputedStyle(toc).position !== "absolute") return;
-  const stuck = label.classList.contains("is-title");
-  if (stuck) showTocHeading(false);
+  if (tier() !== "XL" || !header || !label || getComputedStyle(toc).position !== "absolute") {
+    toc.style.top = "";
+    labelDrop = null;
+    return;
+  }
+  if (!label.classList.contains("is-title")) labelDrop = firstBaseline(label) - toc.getBoundingClientRect().top;
   const y = datum(header);
-  if (y != null) toc.style.top = `${y - firstBaseline(label)}px`;
-  if (stuck) showTocHeading(true);
+  if (y == null || labelDrop == null) return;
+  const now = parseFloat(toc.style.top) || 0;
+  const want = now + y - (toc.getBoundingClientRect().top + labelDrop);
+  if (Math.abs(want - now) >= 0.5) toc.style.top = `${want}px`;
 }
 
 // TOC-2: the heading reads "Contents" until the list sticks under the menu
@@ -1339,7 +1346,7 @@ function placeBar() {
   section.style.marginLeft = `${Math.max(menuShown ? space : 0, colL - after)}px`;
 }
 function hideBar() {
-  if (keepBar()) return;
+  if (keepBar() || touch.matches) return;
   bar.classList.remove("is-shown");
   const m = bar.querySelector(".bar-menu");
   if (m) m.open = false;
@@ -1360,10 +1367,13 @@ const essayTitle = document.querySelector(".essay-header h1")?.textContent.trim(
 function setupBar() {
   if (!bar) return;
   bar.hidden = false;
+  // BAR-1: on touch devices the bar is always there, at the bottom; the
+  // showing and hiding below is for pointers
+  if (touch.matches) bar.classList.add("is-shown");
   const header = document.querySelector(".site-header");
   new IntersectionObserver(([e]) => {
     headerVisible = e.isIntersecting;
-    if (headerVisible) bar.classList.remove("is-shown");
+    if (headerVisible && !touch.matches) bar.classList.remove("is-shown");
   }).observe(header);
   // BAR-1b: direction and an idle timer, nothing else
   addEventListener("scroll", () => {
@@ -1527,7 +1537,8 @@ for (const menu of document.querySelectorAll(".site-menu")) {
 // ── The scratch pad (POP-12) ─────────────────────────────────────────────
 // One pad for the site, in localStorage, capped at 64 KB; nothing leaves the
 // browser. Opened from the Scratch link at the foot of the contents and in
-// the menu: docked in tier XL, pinned in L, a popup or popin elsewhere.
+// the menu: docked in tier XL, pinned in L, a popup elsewhere; never on
+// touch devices.
 
 const PAD_KEY = "scratch", PAD_MAX = 64 * 1024;
 const padBox = () => document.querySelector(".popup.scratch");
@@ -1619,6 +1630,7 @@ addEventListener("storage", (e) => {
 // and the dock under it; and the Scratch item in the menus. All need
 // scripts, so the script makes or shows them.
 function setupScratch() {
+  if (touch.matches) return;   // not on touch devices (2026-10-26)
   for (const li of document.querySelectorAll(".menu-scratch")) li.hidden = false;
   const inner = article?.querySelector("nav.toc .toc-inner");
   if (!inner) return;

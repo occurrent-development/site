@@ -284,6 +284,52 @@ async function done(body = "") {
   await fetch("/__results", { method: "POST", body });
 }
 
+// On a touch device (the browser told it has no hover and a coarse
+// pointer): the bar at the bottom, taller, always there, its menu three
+// bars; no scratch pad; a definition as a popin (BAR-1, NAV-1, POP-5, POP-12).
+async function touchTests() {
+  await load("/specimen", 390, 844);
+  await test("The browser is a touch device (the rest assume one)", async () => {
+    expect(w.matchMedia("(hover: none)").matches, "the page sees a hovering pointer; see TOUCH in browser_test.py");
+  });
+  await test("BAR-1: the bar is at the bottom, at least 52 px tall, shown without scrolling, and stays", async () => {
+    const bar = d.getElementById("bar");
+    expect(bar.classList.contains("is-shown"), "not shown at the top of the page");
+    const r = rect(bar);
+    near(r.bottom, w.innerHeight, 1, "bar's bottom vs the window's");
+    expect(r.height >= 52, `bar ${r.height}px tall`);
+    await scroll(3000);
+    await scroll(3500);
+    await sleep(2300);
+    expect(bar.classList.contains("is-shown") && rect(bar).bottom <= w.innerHeight + 1, "hid on scrolling down or when idle");
+    const controls = [...bar.querySelectorAll("button, summary")].filter((b) => b.getClientRects().length);
+    expect(controls.every((b) => rect(b).height >= 44 && rect(b).width >= 44), "a control smaller than 44 × 44 px");
+  });
+  await test("NAV-1: the bar's menu is three bars, named, and opens upward", async () => {
+    const m = d.querySelector(".bar-menu");
+    const shown = (sel) => w.getComputedStyle(m.querySelector(sel)).display !== "none";
+    expect(shown(".menu-icon") && !shown(".site-name") && !shown(".site-name-short"), "the name shows, or the icon does not");
+    expect(m.querySelector("summary").getAttribute("aria-label") === "Site menu", "no accessible name");
+    m.open = true;
+    expect(rect(m.querySelector("nav")).bottom <= rect(m).top + 1, "the menu does not open upward");
+    m.open = false;
+  });
+  await test("POP-12: no scratch pad on touch devices", async () => {
+    expect([...d.querySelectorAll(".menu-scratch")].every((li) => li.hidden || w.getComputedStyle(li).display === "none"), "Scratch in a menu");
+    expect(!d.querySelector(".toc-scratch"), "Scratch under the contents");
+  });
+  await test("POP-5: a definition opens as a popin", async () => {
+    await scroll(0);
+    trig("term-occurrent").click();
+    await settle(200);
+    const box = d.querySelector(".popup");
+    expect(box?.classList.contains("is-popin") && !box.querySelector(".popup-pin:not([hidden])"), "not a popin, or it has Pin");
+  });
+  const out = document.getElementById("results");
+  out.textContent = JSON.stringify(results);
+  await done(out.textContent);
+}
+
 // ── Screenshot scenarios ─────────────────────────────────────────────────
 
 const SCENARIOS = {
@@ -356,4 +402,5 @@ async function show(name, theme) {
 }
 
 if (params.get("run") === "tests") { document.body.classList.add("tests"); tests(); }
+else if (params.get("run") === "touch") touchTests();
 else if (params.get("show")) show(params.get("show"), params.get("theme"));

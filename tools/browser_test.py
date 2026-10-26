@@ -121,12 +121,14 @@ def serve():
 # device, so the browser is told it has one: hover = 2 (hover),
 # pointer = 4 (fine), Blink's own values.
 POINTER = "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4"
+# A phone, for the touch tests: no hover (1), a coarse pointer (2).
+TOUCH = "--blink-settings=primaryHoverType=1,availableHoverTypes=1,primaryPointerType=2,availablePointerTypes=2"
 
 
-def run_chrome(binary, profile, args, url, timeout=180):
+def run_chrome(binary, profile, args, url, timeout=180, device=POINTER):
     cmd = [binary, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
            "--no-default-browser-check", "--disable-extensions", f"--user-data-dir={profile}",
-           POINTER, *args, url]
+           device, *args, url]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
 
@@ -200,6 +202,14 @@ def main():
             return 1
         results = json.loads(RESULTS["body"])
         failed = report(results, "headless Chrome")
+        DONE.clear()
+        RESULTS.clear()
+        r = run_chrome(binary, profile, ["--window-size=600,900", "--dump-dom"],
+                       f"{base}/__test/harness.html?run=touch", device=TOUCH)
+        if "body" not in RESULTS:
+            print("browser tests: the touch harness posted no results")
+            return 1
+        failed += report(json.loads(RESULTS["body"]), "headless Chrome as a touch device")
         if shots:
             for name, w, h, scenario, theme in SHOTS:
                 out = os.path.join(shots, f"{name}-{theme}.png" if theme == "dark" else f"{name}.png")

@@ -1121,7 +1121,7 @@
 (define menu-items '(("Home" "/") ("Essays" "/essays") ("Notebook" "/notebook")))
 
 ;; NAV-1, BAR-1: BAR? makes the reading bar's copy, which on tier S shows a
-;; shortened name. The last item, Scratch (POP-12), needs scripts: it is
+;; shortened name and on touch devices three bars. The last item, Scratch (POP-12), needs scripts: it is
 ;; hidden until the script shows it.
 (define (site-menu metas #:bar [bar? #f])
   (define here (select-from-metas 'here-path metas))
@@ -1133,8 +1133,13 @@
   (define current (case (and rel (post-kind rel)) [(essay) "/essays"] [(entry) "/notebook"] [else url]))
   (->html
    `(details ((class ,(if bar? "site-menu bar-menu" "site-menu")))
-             (summary (span ((class "site-name")) "Occurrent Development")
-                      ,@(if bar? '((span ((class "site-name-short") (aria-hidden "true")) "Occurrent")) null)
+             (summary ,@(if bar? '(((aria-label "Site menu"))) null)
+                      (span ((class "site-name")) "Occurrent Development")
+                      ,@(if bar? '((span ((class "site-name-short") (aria-hidden "true")) "Occurrent")
+                                   (svg ((class "menu-icon") (viewBox "0 0 20 20") (aria-hidden "true"))
+                                        (path ((d "M3 5.5h14M3 10h14M3 14.5h14") (fill "none") (stroke "currentColor")
+                                               (stroke-width "1.5") (stroke-linecap "round")))))
+                                null)
                       (svg ((class "chevron") (viewBox "0 0 12 12") (aria-hidden "true"))
                            (path ((d "M2.5 4.5 6 8l3.5-3.5") (fill "none") (stroke "currentColor")
                                   (stroke-width "1.3") (stroke-linecap "round") (stroke-linejoin "round")))))

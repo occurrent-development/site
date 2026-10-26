@@ -508,6 +508,10 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     margin: 0;
     font-size: 1em;             /* so the widths above are in the page's em */
     z-index: 3;                 /* docked popups cover margin notes (POP-11) */
+    /* Never the scroll anchor: Chrome anchored on the stuck list, and when a
+       margin item opened and the column was measured again, it "corrected"
+       the scroll to the top of the page (seen 2026-10-26). */
+    overflow-anchor: none;
   }
   .toc-inner {
     font-family: var(--sans);
@@ -1048,17 +1052,24 @@ p + ul.latest { margin-top: 0.5em; }
   transition: transform 0.2s ease;
 }
 /* BAR-1: on touch devices the bar sits at the bottom, whatever the tier,
-   so rotating a phone never moves it */
+   so rotating a phone never moves it. It is taller there, so a thumb finds
+   its controls without catching the browser's own bar beneath it, and it
+   stays put rather than coming and going with the scrolling (seen on a
+   phone, 2026-10-26); the page leaves room for it at its foot. */
 @media (hover: none) {
   .page > .bar {
     top: auto;
     bottom: 0;
-    height: calc(2.6rem + env(safe-area-inset-bottom));
+    height: calc(3.4rem + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     border-bottom: 0;
     border-top: 1px solid var(--rule);
-    transform: translateY(100%);
+    transform: none;
+    transition: none;
   }
+  .bar button, .bar-menu summary { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .bar .bar-section { justify-content: flex-start; display: block; line-height: 44px; }
+  .page { padding-bottom: calc(4em + 3.4rem + env(safe-area-inset-bottom)); }
 }
 .page > .bar.is-shown { transform: none; }
 .bar > * { font-size: 0.8em; }   /* not on .bar itself: its width is set in em (.page > *) */
@@ -1085,8 +1096,14 @@ p + ul.latest { margin-top: 0.5em; }
   .bar-menu .site-name { display: none; }
   .bar-menu .site-name-short { display: inline; }
 }
-@media (hover: none) {                  /* the bar is at the bottom: the menu opens upward */
+/* NAV-1: on touch devices the bar's menu is three bars, opening upward */
+.bar-menu .menu-icon { display: none; width: 1.35rem; height: 1.35rem; }
+@media (hover: none) {
   .bar-menu nav { top: auto; bottom: 100%; margin: 0 0 0.35em; }
+  .bar-menu .site-name, .bar-menu .site-name-short, .bar-menu .chevron { display: none; }
+  .bar-menu .menu-icon { display: block; }
+  .bar-menu summary { justify-content: flex-start; }
+  .menu-scratch, .toc-scratch { display: none !important; }   /* POP-12: no scratch pad on touch */
 }
 .size-down span { font-size: 0.8em; }
 .size-up span { font-size: 1.15em; }
