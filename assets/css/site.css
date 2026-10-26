@@ -1096,14 +1096,16 @@ p + ul.latest { margin-top: 0.5em; }
     .page { padding-bottom: calc(4em + 3.4rem + max(env(safe-area-inset-bottom), 14px)); }
   }
   /* BRAND-3: opened from the Home Screen there is no Safari toolbar, so the
-     14px floor is dead space; the home indicator's inset is all that remains. */
+     14px floor was dead space; but with none at all the controls sat on
+     the screen's foot (seen on an iPhone, 2026-10-26). A 10px floor, or
+     the home indicator's inset where that is more. */
   @media (hover: none) and (display-mode: standalone) {
     .page > .bar {
-      height: calc(3.4rem + env(safe-area-inset-bottom));
-      padding-bottom: env(safe-area-inset-bottom);
+      height: calc(3.4rem + max(env(safe-area-inset-bottom), 10px));
+      padding-bottom: max(env(safe-area-inset-bottom), 10px);
     }
-    .bar-menu nav { bottom: calc(3.4rem + env(safe-area-inset-bottom)); }
-    .page { padding-bottom: calc(4em + 3.4rem + env(safe-area-inset-bottom)); }
+    .bar-menu nav { bottom: calc(3.4rem + max(env(safe-area-inset-bottom), 10px)); }
+    .page { padding-bottom: calc(4em + 3.4rem + max(env(safe-area-inset-bottom), 10px)); }
   }
 }
 .page > .bar.is-shown { transform: none; }
