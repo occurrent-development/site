@@ -745,7 +745,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (more          :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-more :only glossary)
     (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
     (latest        :pos count  :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-tag :only home)
-    (header-sample :pos nil    :kw (title subtitle published revised tags epistemic kind) :req (title)              :body t   :block t   :built t :command od-insert-tag :only specimen)
+    (header-sample :pos nil    :kw (title subtitle published revised tags epistemic author kind) :req (title)       :body t   :block t   :built t :command od-insert-tag :only specimen)
     (embed         :pos name   :kw (alt fallback sticky)                                 :req ()                    :body t   :block t   :built nil :command od-insert-embed)
     (changelog     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built nil :command od-insert-changelog :not (entry)))
   "The site's Pollen vocabulary: what the highlighter, completion and checks read.")
@@ -1053,9 +1053,9 @@ commit it as a revision. The source stays in the history.
 
 3. {od-publish}, the same key as for publishing, asks what kind of
    change it is ({od-commit} does the same):
-   - Typo: spelling, punctuation. The essay's Revised date stays.
-   - Meta: tags, subtitle and the like. The Revised date stays.
-   - Revision: anything a reader should know changed. The Revised date
+   - Typo: spelling, punctuation. The essay's Edited date stays.
+   - Meta: tags, subtitle and the like. The Edited date stays.
+   - Revision: anything a reader should know changed. The Edited date
      moves to today (it comes from git), and the essay's changelog should
      gain a line saying what changed. An entry is not revised: a change of
      mind is a new entry; a typo fix is fine.
@@ -2170,7 +2170,7 @@ open Magit with the message proposed."
 
 (defun od-commit (&optional commit-and-push)
   "Commit a change to a published post, page or glossary file (PUB-3).
-Typo and Meta commits are marked so the post's Revised date stays (REV-1).
+Typo and Meta commits are marked so the post's Edited date stays (REV-1).
 Entries are not meant to be revised (KIND-2), but a typo fix is fine.
 `od-publish' (C-c o P) does this too, for anything already published.
 With a prefix argument COMMIT-AND-PUSH, ask for a line saying what

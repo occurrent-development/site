@@ -1048,8 +1048,8 @@
             'post? (and k #t)
             'title (string-trim (if (string? title) title (text-of title)))
             'published pub
-            ;; INDEX-2: never revised since publication → the publication date
-            'reviewed (if (and revised (string>? revised pub)) revised pub)
+            ;; INDEX-2: never edited since publication → the publication date
+            'edited (if (and revised (string>? revised pub)) revised pub)
             'tags (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null)))))
 
 (define (newest-first entries) (sort entries string>? #:key (λ (e) (hash-ref e 'published))))
@@ -1068,8 +1068,9 @@
 ;; an ordinary table, built by the same code as ◊table (TABLE-1…6): one cell
 ;; per column in every row, or the build fails. The kind decides the posts
 ;; it reads and the columns it emits, and nothing else: essays have
-;; Title · Date published · Last review · Tags, entries (never reviewed,
-;; KIND-2) Title · Date · Tags. Sortable at any number of rows (INDEX-3);
+;; Title · Published · Edited · Tags, entries (not meant to be edited,
+;; KIND-2) Title · Published · Tags; short headings. Each column carries a
+;; class, so that tier S can drop Edited and Tags (INDEX-1b). Sortable at any number of rows (INDEX-3);
 ;; Tags does not sort, and its heading opens the index's own tag filter.
 ;; #:pagetree is for the tests.
 (define (index #:kind [kind #f] #:pagetree [ptree "index.ptree"])
@@ -1080,17 +1081,17 @@
     (add-between (for/list ([t (in-list (hash-ref e 'tags))]) `(span ((class "tag")) ,t)) ", "))
   (define-values (header cells classes)
     (if (eq? k 'essay)
-        (values '(("Title") ("Date published") ("Last review") ("Tags"))
+        (values '(("Title") ("Published") ("Edited") ("Tags"))
                 (λ (e) (list (list `(a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
                              (date-cell (hash-ref e 'published))
-                             (date-cell (hash-ref e 'reviewed))
+                             (date-cell (hash-ref e 'edited))
                              (tags-cell e)))
-                '("title" "date-col" "date-col" "tags"))
-        (values '(("Title") ("Date") ("Tags"))
+                '("title" "date-col published" "date-col edited" "tags"))
+        (values '(("Title") ("Published") ("Tags"))
                 (λ (e) (list (list `(a ((href ,(hash-ref e 'url))) ,(hash-ref e 'title)))
                              (date-cell (hash-ref e 'published))
                              (tags-cell e)))
-                '("title" "date-col" "tags"))))
+                '("title" "date-col published" "tags"))))
   (define n (length header))
   `(div ((class "post-index"))
         (div ((class "table-wrap size-normal"))
@@ -1235,7 +1236,8 @@
      (format "~a ~a ~a" (string->number d) (vector-ref months (sub1 (string->number m))) y)]
     [_ (build-error "bad date ~s (expected YYYY-MM-DD)" iso)]))
 
-;; REV-1: latest commit touching the source, ignoring [typo] and [meta].
+;; REV-1: the Edited date, the latest commit touching the source, ignoring
+;; [typo] and [meta].
 (define (revised-date source)
   (define git (find-executable-path "git"))
   (and git source (file-exists? source)
@@ -1280,7 +1282,8 @@
 ;; The header's parts, shared by the essay header and the specimen's sample
 ;; (LAYOUT-1). Inline order: title, subtitle, the metadata block, abstract,
 ;; then the short rule that closes the header (LAYOUT-1c). The block holds
-;; the dates, one per line; the tags, labelled (LAYOUT-1b); the source links
+;; the author (LAYOUT-1e); the two dates, one per line (LAYOUT-1d); the
+;; tags, labelled (LAYOUT-1b); the source links
 ;; (REV-2); and last, after a gap, the epistemic status when there is one. On
 ;; tiers L and XL CSS lifts the block into the right margin, and the script
 ;; puts its first baseline on the title's (LAYOUT-1a).
@@ -1290,13 +1293,18 @@
 ;; tags link to: the post's own kind's (LAYOUT-1b, KIND-4). An entry's header
 ;; is this same header with no epistemic line (KIND-3).
 (define (header-parts title-el subtitle published revised tags epistemic abstract
-                      #:source [source #f] #:index [index-url "/essays"])
-  (define (label s) `(span ((class "meta-label")) ,s))
+                      #:author [author #f] #:source [source #f] #:index [index-url "/essays"])
+  ;; LAYOUT-1b: the labels carry colons, since the author line asked for one
+  (define (label s) `(span ((class "meta-label")) ,(string-append s ":")))
   (define (date name iso) `(span ((class "date")) ,(label name) " " ,(format-date iso)))
+  ;; LAYOUT-1d: a post always shows both dates. Edited is the REV-1 date, or
+  ;; the publication date when nothing has been edited since, so the two
+  ;; read the same until the first edit. Pages have no dates (LAYOUT-1).
   (define dates
-    (filter values (list (and published (date "Published" published))
-                         ;; pages have no dates (LAYOUT-1): a revision shows only beside a publication
-                         (and published revised (string>? revised published) (date "Revised" revised)))))
+    (if published
+        (list (date "Published" published)
+              (date "Edited" (if (and revised (string>? revised published)) revised published)))
+        null))
   (define (sep) '(span ((class "sep")) " · "))
   (define tag-links
     (for/list ([t (in-list tags)])
@@ -1310,8 +1318,10 @@
          (let-values ([(blob commits) (source-urls source)])
            `(p ((class "source")) ,(link blob "Source") ,(sep) ,(link commits "History")))))
   (define meta-block
-    (and (or (pair? dates) (pair? tags) epistemic source-line)
+    (and (or author (pair? dates) (pair? tags) epistemic source-line)
          `(div ((class "header-meta"))
+               ;; LAYOUT-1e: the author first, before the dates
+               ,@(if author `((p ((class "author")) ,(label "Author") " " ,(typeset-string author))) null)
                ,@(if (pair? dates) `((p ((class "dates")) ,@(add-between dates (sep)))) null)
                ,@(if (pair? tags) `((p ((class "tags")) ,(label "Tagged") " " (span ((class "tag-list")) ,@(add-between tag-links (sep))))) null)
                ,@(if source-line (list source-line) null)
@@ -1345,6 +1355,10 @@
                              (let ([t (select-from-metas 'tags metas)]) (if t (parse-tags t) null))
                              (and epi (get-elements (txexpr 'span null (newlines->spaces-list (get-elements epi)))))
                              (and abs (abstract-paragraphs (paragraphs (get-elements abs))))
+                             ;; LAYOUT-1e: posts carry an author line, the site's author
+                             ;; unless the post names its own; pages (the indexes, the colophon) none
+                             #:author (and (post-source? (format "~a" (or (select-from-metas 'here-path metas) "")))
+                                           (or (meta 'author) (site-value 'author)))
                              #:source (select-from-metas 'here-path metas)
                              #:index (if (eq? (post-kind (format "~a" (or (select-from-metas 'here-path metas) ""))) 'entry)
                                          "/notebook" "/essays")))))
@@ -1365,7 +1379,7 @@
 ;; #:kind "entry" shows a notebook entry's header (KIND-3, THEME-7).
 (define (header-sample #:title [title #f] #:subtitle [subtitle #f] #:published [published #f]
                        #:revised [revised #f] #:tags [tags #f] #:epistemic [epistemic #f]
-                       #:kind [kind "essay"] . abstract)
+                       #:author [author #f] #:kind [kind "essay"] . abstract)
   (unless title (build-error "◊header-sample needs a #:title"))
   (unless (member kind '("essay" "entry")) (build-error "◊header-sample #:kind is \"essay\" or \"entry\""))
   (when (and epistemic (equal? kind "entry"))
@@ -1379,4 +1393,5 @@
                         (if tags (parse-tags tags) null)
                         (and epistemic (list (clean epistemic)))
                         (and abs (abstract-paragraphs (list `(p ,abs))))
+                        #:author (or (clean author) (site-value 'author))
                         #:index (if (equal? kind "entry") "/notebook" "/essays"))))

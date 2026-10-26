@@ -190,7 +190,7 @@ Nothing on a page is centred but the section break. The header at the top of
 this page shows the full form: title, subtitle and abstract in the column,
 closed by a short rule, and, on a wide screen, the facts about the page in the
 right margin beside the title, their first line on the subtitle's baseline.
-The dates come first, one to a line; then the tags, labelled; then links to
+The author comes first; then the dates, one to a line; then the tags, labelled; then links to
 the page's source and to its history; and last, after a gap, the epistemic
 status, the one line of prose among them, when there is one. Where the window
 is wide enough for the contents beside the left margin, their heading starts
@@ -206,10 +206,12 @@ block starts on the subtitle's baseline."]
 A notebook entry has the same header with less in it: no epistemic status,
 so no gap, and no contents however many sections it has. With no subtitle,
 its block starts on the line a second line of the title would take. Its tags lead to
-the notebook's index rather than the essays':
+the notebook's index rather than the essays'. This one is by a guest, so its
+author line is not the site's; and it has never been edited, so its two dates
+agree:
 
-◊header-sample[#:kind "entry" #:title "A sample entry" #:published
-"2026-10-21" #:tags "site"]
+◊header-sample[#:kind "entry" #:title "A sample entry" #:author "A Guest"
+#:published "2026-10-21" #:tags "site"]
 
 The epigraph at the top of the page is set a little in from the left edge, in
 italic, with its source on a line of its own at the right; the ◊em{same} in

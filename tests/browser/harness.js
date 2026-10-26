@@ -115,11 +115,56 @@ async function tests() {
     near(leftSpace, rightSpace, 2, "space left vs right of the block");
   });
 
-  await test("LAYOUT-1a: the Contents heading and Published sit on the subtitle's baseline", async () => {
-    const header = d.querySelector(".essay-header:not(.sample)");
-    const sub = baseline(header.querySelector(".subtitle"));
-    near(baseline(d.querySelector("nav.toc .toc-title")), sub, 1.5, "Contents");
-    near(baseline(header.querySelector(".header-meta")), sub, 1.5, "Published");
+  await test("LAYOUT-1a: the Contents heading and the block's first line sit on the subtitle's baseline, in both themes, samples too", async () => {
+    for (const theme of ["light", "dark"]) {
+      d.documentElement.dataset.theme = theme;
+      await settle(300);
+      const header = d.querySelector(".essay-header:not(.sample)");
+      const sub = baseline(header.querySelector(".subtitle"));
+      const block = header.querySelector(".header-meta");
+      // the specimen is a page: no author line (LAYOUT-1e), so its block opens with Published
+      expect(/^Published:/.test(block.firstElementChild.textContent.trim()), `${theme}: the block opens with ${block.firstElementChild.textContent}`);
+      near(baseline(d.querySelector("nav.toc .toc-title")), sub, 1.5, `${theme}: Contents`);
+      near(baseline(block), sub, 1.5, `${theme}: the block`);
+      // the specimen's samples: with a subtitle, its baseline; without, the title's second line
+      for (const h of d.querySelectorAll(".essay-header.sample")) {
+        const title = h.querySelector("h1, .essay-title"), s = h.querySelector(".subtitle");
+        const want = s ? baseline(s) : baseline(title) + parseFloat(w.getComputedStyle(title).lineHeight);
+        const meta = h.querySelector(".header-meta");
+        expect(/^Author:/.test(meta.firstElementChild.textContent.trim()), `${theme}: a sample's block opens with ${meta.firstElementChild.textContent}`);
+        near(baseline(meta), want, 1.5, `${theme}: sample "${title.textContent.slice(0, 20)}", its Author line`);
+      }
+    }
+    delete d.documentElement.dataset.theme;
+    await settle(200);
+  });
+
+  await test("LAYOUT-1b, 1d, 1e: Author:, Published: and Edited: on every post; a never-edited post shows the same date twice", async () => {
+    const lines = (h) => [...h.querySelectorAll(".header-meta .meta-label")].map((l) => l.textContent.trim());
+    const main = d.querySelector(".essay-header:not(.sample)");
+    expect(lines(main).join(" ") === "Published: Edited: Tagged:", `specimen (a page): ${lines(main)}`);
+    const sample = d.querySelector(".essay-header.sample");
+    expect(lines(sample).join(" ") === "Author: Published: Edited: Tagged:", `the essay sample: ${lines(sample)}`);
+    const entry = [...d.querySelectorAll(".essay-header.sample")].find((h) => /Guest/.test(h.textContent));
+    expect(entry, "no guest sample");
+    expect(/Author:\s*A Guest/.test(entry.querySelector(".author").textContent), "the guest's name");
+    const dates = [...entry.querySelectorAll(".date")].map((x) => x.textContent.replace(/^\S+\s*/, "").trim());
+    expect(dates.length === 2 && dates[0] === dates[1], `the entry's dates: ${dates}`);
+  });
+
+  await test("BRAND-3: the manifest is linked and served, with the head metas", async () => {
+    const link = d.querySelector('link[rel="manifest"]');
+    expect(link?.getAttribute("href") === "/assets/brand/site.webmanifest", "no manifest link");
+    const m = await (await w.fetch(link.getAttribute("href"))).json();
+    expect(m.name === "Occurrent Development" && m.short_name === "Occ Dev" && m.display === "standalone"
+      && m.start_url === "/" && m.scope === "/", `manifest: ${JSON.stringify(m)}`);
+    for (const ic of m.icons) {
+      const r = await w.fetch(ic.src);
+      expect(r.ok, `${ic.src}: ${r.status}`);
+    }
+    expect(d.querySelector('meta[name="apple-mobile-web-app-title"]')?.content === "Occ Dev", "no apple-mobile-web-app-title");
+    const tc = [...d.querySelectorAll('meta[name="theme-color"]')].map((x) => `${x.media} ${x.content}`);
+    expect(tc.includes("(prefers-color-scheme: light) #EFE7D4") && tc.includes("(prefers-color-scheme: dark) #121212"), `theme-color: ${tc}`);
   });
 
   await test("TOC-2: the heading reads Contents, the title once stuck, Contents again when scrolled back", async () => {
@@ -268,6 +313,24 @@ async function tests() {
     pad = d.querySelector(".popup.scratch");
     expect(pad.querySelector("textarea").value === "A note to self: Hacking 1996, p. 23.", "the text was lost");
     w.localStorage.removeItem("scratch");
+  });
+
+  await test("INDEX-1b: the essay index shows Title and Published only at tier S, Published on one line, Title filling the rest; every column from tier M", async () => {
+    const visible = () => [...d.querySelectorAll(".index-table thead th")].filter((th) => w.getComputedStyle(th).display !== "none").map((th) => th.textContent.trim().replace(/\s+.*$/, ""));
+    for (const [width, want] of [[390, "Title Published"], [900, "Title Published Edited Tags"], [1400, "Title Published Edited Tags"]]) {
+      await load("/essays", width, 844);
+      expect(visible().join(" ") === want, `${width}px: ${visible()}`);
+    }
+    await load("/essays", 390, 844);
+    const table = d.querySelector(".index-table");
+    for (const td of d.querySelectorAll(".index-table td.published")) {
+      const lh = parseFloat(w.getComputedStyle(td).lineHeight) || 20;
+      expect(rect(td).height < 2 * lh, `a Published date wraps: ${td.textContent}`);
+    }
+    const title = d.querySelector(".index-table th.title, .index-table thead th:first-child");
+    const pub = d.querySelector(".index-table thead th.published");
+    near(rect(title).width + rect(pub).width, rect(table).width, 2, "Title + Published vs the table");
+    await load("/specimen", 2560, 1440);
   });
 
   await test("Tier L: Pin, no Dock, contents in the bar; tier M: no Pin, one popup at a time, the pinned closed", async () => {
@@ -432,10 +495,11 @@ const SCENARIOS = {
 
 async function show(name, theme) {
   if (params.get("w")) { frame.style.width = `${params.get("w")}px`; frame.style.height = `${params.get("h")}px`; }
-  await load("/specimen");
+  const path = params.get("page") || "/specimen";
+  await load(path);
   if (theme === "dark" || theme === "light") {
     w.localStorage.setItem("theme", theme);
-    await load("/specimen");
+    await load(path);
   }
   await SCENARIOS[name]?.();
   w.localStorage.removeItem("theme");

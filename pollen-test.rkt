@@ -497,15 +497,15 @@
   (define idx (index #:kind "essay" #:pagetree "tests/index.ptree"))
   (define head (car (find-all idx (tag? 'thead))))
   (check-equal? (map (λ (th) (string-trim (text th))) (find-all head (tag? 'th)))
-                '("Title" "Date published" "Last review" "Tags"))
+                '("Title" "Published" "Edited" "Tags"))
   (define body-rows (find-all (car (find-all idx (tag? 'tbody))) (tag? 'tr)))
   (check-equal? (length body-rows) 2)
   (for ([r (in-list body-rows)])
     (define cells (filter txexpr? (get-elements r)))
     (check-equal? (length cells) 4)
     (check-equal? (map get-tag cells) '(td td td td))
-    (check-equal? (map classes cells) '("title" "date-col" "date-col" "tags")))
-  ;; Title · Date published · Last review · Tags, in that order
+    (check-equal? (map classes cells) '("title" "date-col published" "date-col edited" "tags")))
+  ;; Title · Published · Edited · Tags, in that order
   (define newer (filter txexpr? (get-elements (car body-rows))))
   (check-equal? (string-trim (text (first newer))) "Newer")
   (check-equal? (attr-ref (car (find-all (second newer) (tag? 'time))) 'datetime) "2026-10-05")
@@ -549,21 +549,28 @@
   (check-regexp-match #rx"Plato’s “Cratylus”"
                       (text (car (find-all (root (epigraph #:source "Plato's \"Cratylus\"" "Motto.")) (tag? 'footer))))))
 
-(test-case "LAYOUT-1, 1b, 1c: the header's block, its labelled tags, and the closing rule"
+(test-case "LAYOUT-1, 1b, 1c, 1d, 1e: the header's block, its author line, labelled tags, both dates, and the closing rule"
   (define h (header-sample #:title "T" #:published "2026-10-01" #:revised "2026-10-15"
                            #:tags "site, typography" #:epistemic "A sample."))
   (define block (car (find-all h (λ (x) (has-class* x "header-meta")))))
-  ;; dates, tags, then the epistemic status last (no source links in a sample)
-  (check-equal? (map classes (get-elements block)) '("dates" "tags" "epistemic"))
-  (define tags (cadr (get-elements block)))
-  (check-equal? (string-trim (text (car (get-elements tags)))) "Tagged")
+  ;; author, dates, tags, then the epistemic status last (no source links in a sample)
+  (check-equal? (map classes (get-elements block)) '("author" "dates" "tags" "epistemic"))
+  (define tags (caddr (get-elements block)))
+  (check-equal? (string-trim (text (car (get-elements tags)))) "Tagged:")
   (check-equal? (length (find-all tags (λ (x) (has-class* x "tag-link")))) 2)
   (check-equal? (map (λ (d) (text (car (find-all d (λ (x) (has-class* x "meta-label"))))))
                      (find-all block (λ (x) (has-class* x "date"))))
-                '("Published" "Revised"))
+                '("Published:" "Edited:"))
   ;; no tags, no line; no epistemic status, no line
   (define bare (header-sample #:title "T" #:published "2026-10-01"))
-  (check-equal? (map classes (get-elements (car (find-all bare (λ (x) (has-class* x "header-meta")))))) '("dates"))
+  (check-equal? (map classes (get-elements (car (find-all bare (λ (x) (has-class* x "header-meta")))))) '("author" "dates"))
+  ;; LAYOUT-1d: never edited → both dates show, and they are the same
+  (check-equal? (map (λ (d) (string-trim (text d))) (find-all bare (λ (x) (has-class* x "date"))))
+                '("Published: 1 October 2026" "Edited: 1 October 2026"))
+  ;; LAYOUT-1e: the author line opens the block and defaults to the site's author
+  (define by (λ (h) (string-trim (text (car (find-all h (λ (x) (has-class* x "author"))))))))
+  (check-equal? (by bare) "Author: Ryan Lucas")
+  (check-equal? (by (header-sample #:title "T" #:published "2026-10-01" #:author "A Guest")) "Author: A Guest")
   ;; LAYOUT-1c: the header ends with its rule, with or without an abstract
   (check-not-false (has-class* (last (get-elements h)) "header-rule"))
   (check-not-false (has-class* (last (get-elements (header-sample #:title "T" "An abstract."))) "header-rule")))
@@ -613,7 +620,9 @@
   (define header (car (get-elements doc)))
   (check-equal? (get-tag header) 'header)
   (define block (car (find-all header (λ (x) (has-class* x "header-meta")))))
-  (check-equal? (map classes (get-elements block)) '("dates" "tags" "source"))
+  ;; KIND-3, LAYOUT-1d, 1e: the author, both dates, tags and source; no epistemic line
+  (check-equal? (map classes (get-elements block)) '("author" "dates" "tags" "source"))
+  (check-equal? (length (find-all block (λ (x) (has-class* x "date")))) 2)
   (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all header txexpr?)))
   (check-not-false (has-class* (last (get-elements header)) "header-rule"))
   ;; LAYOUT-1b, KIND-4: its tags link to the notebook's index
@@ -627,12 +636,12 @@
 (test-case "KIND-4, INDEX-1a: the notebook index has three cells in every row: Title · Date · Tags"
   (define idx (index #:kind "entry" #:pagetree "tests/index.ptree"))
   (check-equal? (map (λ (th) (string-trim (text th))) (find-all (car (find-all idx (tag? 'thead))) (tag? 'th)))
-                '("Title" "Date" "Tags"))
+                '("Title" "Published" "Tags"))
   (define rows (find-all (car (find-all idx (tag? 'tbody))) (tag? 'tr)))
   (define cells (map (λ (r) (filter txexpr? (get-elements r))) rows))
   (check-equal? (map length cells) '(3 3 3))
   (check-equal? (map (λ (c) (string-trim (text (first c)))) cells) '("Newer entry" "A sectioned entry" "Older entry"))
-  (check-equal? (map classes (first cells)) '("title" "date-col" "tags"))
+  (check-equal? (map classes (first cells)) '("title" "date-col published" "tags"))
   (check-equal? (attr-ref (car (find-all (second (third cells)) (tag? 'time))) 'datetime) "2026-10-03")
   (check-equal? (string-trim (text (third (third cells)))) "site, notebook")
   ;; (a fixture's URL keeps its tests/ prefix; a real entry's is /notebook/<slug>)

@@ -964,13 +964,20 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .post-index .tag-set .clear { color: var(--text-muted); text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 
 .index-table { width: 100%; }
-/* tier S: smaller, and the headings may wrap, so four columns fit a phone */
+/* INDEX-1b, tier S: two columns only. Edited and Tags are dropped; Published
+   is as narrow as its widest date and never wraps; Title takes the rest. */
 .index-table { font-size: 0.85em; }
+.index-table .edited, .index-table .tags { display: none; }
+.index-table .published { width: 1%; white-space: nowrap; }
 .table-wrap .index-table th, .table-wrap .index-table td { padding-left: 0.3em; padding-right: 0.3em; }
 .table-wrap .index-table :is(th, td):first-child { padding-left: 0; }
 .table-wrap .index-table :is(th, td):last-child { padding-right: 0; }
+.table-wrap .index-table .published:not(:last-child) { padding-right: 0; }   /* it is the last column shown */
 @container page (min-width: 39em) {
   .index-table { font-size: 1em; }
+  .index-table .edited, .index-table .tags { display: table-cell; }
+  .index-table .published { width: auto; }
+  .table-wrap .index-table .published:not(:last-child) { padding-right: 0.75em; }
   .index-table th, .index-table td.date-col { white-space: nowrap; }
   .table-wrap .index-table th, .table-wrap .index-table td { padding-left: 0.75em; padding-right: 0.75em; }
   .table-wrap .index-table :is(th, td):first-child { padding-left: 0; }
@@ -1087,6 +1094,16 @@ p + ul.latest { margin-top: 0.5em; }
     }
     .bar-menu nav { bottom: calc(3.4rem + max(env(safe-area-inset-bottom), 14px)); }
     .page { padding-bottom: calc(4em + 3.4rem + max(env(safe-area-inset-bottom), 14px)); }
+  }
+  /* BRAND-3: opened from the Home Screen there is no Safari toolbar, so the
+     14px floor is dead space; the home indicator's inset is all that remains. */
+  @media (hover: none) and (display-mode: standalone) {
+    .page > .bar {
+      height: calc(3.4rem + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bar-menu nav { bottom: calc(3.4rem + env(safe-area-inset-bottom)); }
+    .page { padding-bottom: calc(4em + 3.4rem + env(safe-area-inset-bottom)); }
   }
 }
 .page > .bar.is-shown { transform: none; }
