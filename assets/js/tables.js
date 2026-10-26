@@ -168,7 +168,9 @@ function tagFilter(index) {
   }
   index.append(panel);
 
-  const none = Object.assign(document.createElement("p"), { className: "tag-none", textContent: "No essay has all of these tags." });
+  // INDEX-3: said only when the chosen tags leave no row, not of an empty list
+  const noun = location.pathname.startsWith("/notebook") ? "entry" : "essay";
+  const none = Object.assign(document.createElement("p"), { className: "tag-none", textContent: `No ${noun} has all of these tags.` });
   none.hidden = true;
   index.append(none);
 
@@ -186,7 +188,7 @@ function tagFilter(index) {
 
   function update(push) {
     for (const r of rows) r.hidden = ![...chosen].every((t) => tagsOf(r).includes(t));
-    none.hidden = rows.some((r) => !r.hidden);
+    none.hidden = chosen.size === 0 || rows.some((r) => !r.hidden);
     for (const box of panel.querySelectorAll("input")) box.checked = chosen.has(box.value);
     for (const b of index.querySelectorAll("td button.tag")) {
       b.classList.toggle("is-current", chosen.has(b.dataset.tag));

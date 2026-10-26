@@ -171,7 +171,9 @@ article { --tier: S; }
 }
 
 /* XL: the contents are the first column of the text block (TOC-2,
-   LAYOUT-6a). An outer container, .frame, decides whether they fit: their
+   LAYOUT-6a). Every page has the column, so every page is laid out alike
+   (2026-10-26): it holds the menu, the contents when the page has them
+   (TOC-1), the Scratch link and the dock. An outer container, .frame, decides whether they fit: their
    column and its gap (11 + 2.5em) plus tier L (66.5em) = 80em. When they do,
    that width is reserved at the left of .page, so the tiers above see only
    what is left and centre the text block in it; the contents then sit just
@@ -180,8 +182,8 @@ article { --tier: S; }
    together. As the window narrows the contents go first (below 80em), then
    both margins together (below 66.5em). */
 @container frame (min-width: 80em) {
-  .has-toc > .page { padding-left: calc(var(--toc) + var(--margin-gap)); }
-  .has-toc article { position: relative; --tier: XL; }
+  .has-column > .page { padding-left: calc(var(--toc) + var(--margin-gap)); }
+  .has-column article { position: relative; --tier: XL; }
 }
 
 /* ── Running text (§10.1) ──────────────────────────────────────────────── */
@@ -277,7 +279,7 @@ blockquote.epigraph footer::before { content: "— "; }
 }
 .menu-rail .site-menu { height: 2.25rem; display: flex; align-items: center; width: max-content; }
 @container frame (min-width: 80em) {
-  .has-toc > .page > .menu-rail {
+  .has-column > .page > .menu-rail {
     position: sticky;
     top: calc((2.6rem - 2.25rem) / 2);
     width: var(--toc);
@@ -498,7 +500,7 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 .toc + p, .toc + .intro { text-indent: 0; }
 
 @container frame (min-width: 80em) {
-  .has-toc .toc, .js .has-toc .toc {
+  .has-column .toc, .js .has-column .toc {
     display: block;
     position: absolute;
     top: 0;                     /* the script puts the heading on the subtitle's baseline (LAYOUT-1a) */
@@ -577,6 +579,7 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
   }
   /* POP-12: the scratch pad's link, at the foot of the list */
   .toc-inner > .toc-scratch { display: block; flex: none; margin: 0.9em 0 0 0.7em; }
+  .toc-inner > .toc-scratch:first-child { margin-top: 0; }   /* a page without contents */
 }
 .toc-scratch { display: none; }
 .toc-scratch button {
@@ -1106,7 +1109,7 @@ p + ul.latest { margin-top: 0.5em; }
 .bar-controls { display: flex; align-items: center; gap: 0.15rem; flex: none; margin-left: auto; }
 .bar-menu { flex: none; color: var(--text-muted); }
 .bar-menu summary { padding: 0.25rem 0; }
-@container frame (min-width: 80em) { .has-toc .bar-menu { display: none; } }
+@container frame (min-width: 80em) { .has-column .bar-menu { display: none; } }
 @container page (width < 39em) {        /* tier S: the chevron and a shortened name */
   .bar-menu .site-name { display: none; }
   .bar-menu .site-name-short { display: inline; }

@@ -15,7 +15,7 @@
 ◊(site-css)◊when/splice[(specimen? metas)]{◊(specimen-css)}</style>
 </head>
 <body>
-<div class="frame◊(if (has-toc? doc) " has-toc" "")">
+<div class="frame has-column">
 <div class="◊(page-class metas)">
 <div class="menu-rail">◊(site-menu metas)</div>
 <header class="site-header">

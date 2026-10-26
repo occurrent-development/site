@@ -577,7 +577,7 @@ function scheduleClose() {
 // margin together; sticky with the contents. Docked popups stack downward in
 // the order docked; when they no longer fit the window, the oldest closes.
 
-const dockEl = () => (tier() === "XL" ? article?.querySelector("nav.toc .dock") : null);
+const dockEl = () => (tier() === "XL" ? article?.querySelector(".toc .dock") : null);
 
 function dockPin(p) {
   const d = dockEl();
@@ -1104,10 +1104,11 @@ function datum(header) {
 // difference, never reset first, so nothing on the page jumps.
 let labelDrop = null;   // the heading's baseline below the column's top, unstuck
 function alignContents() {
-  const toc = article?.querySelector("nav.toc");
+  const toc = article?.querySelector(".toc");
   if (!toc) return;
   const header = article.querySelector(".essay-header:not(.sample)");
-  const label = toc.querySelector(".toc-title");
+  // a page without contents puts its Scratch link on the datum instead
+  const label = toc.querySelector(".toc-title") || toc.querySelector(".toc-scratch");
   if (tier() !== "XL" || !header || !label || getComputedStyle(toc).position !== "absolute") {
     toc.style.top = "";
     labelDrop = null;
@@ -1126,7 +1127,7 @@ function alignContents() {
 // A one-pixel sentinel at the top of the column says when: once it has
 // passed above the line where the list sticks, the list is stuck.
 function showTocHeading(stuck) {
-  const label = article?.querySelector("nav.toc .toc-title");
+  const label = article?.querySelector(".toc .toc-title");
   if (!label) return;
   label.classList.toggle("is-title", stuck);
   label.textContent = stuck ? essayTitle : "Contents";
@@ -1632,8 +1633,16 @@ addEventListener("storage", (e) => {
 function setupScratch() {
   if (touch.matches) return;   // not on touch devices (2026-10-26)
   for (const li of document.querySelectorAll(".menu-scratch")) li.hidden = false;
-  const inner = article?.querySelector("nav.toc .toc-inner");
-  if (!inner) return;
+  if (!article) return;
+  let inner = article.querySelector("nav.toc .toc-inner");
+  if (!inner) {
+    // TOC-2: every page has the column in tier XL; one without contents
+    // gets an empty one, for the Scratch link and the dock
+    inner = el("div", { class: "toc-inner" });
+    const column = el("div", { class: "toc toc-column" }, inner);
+    const header = article.querySelector(".essay-header:not(.sample)");
+    if (header) header.after(column); else article.prepend(column);
+  }
   inner.append(
     el("p", { class: "toc-scratch" },
       el("button", { type: "button", class: "scratch-open", "aria-label": "Scratch pad" },

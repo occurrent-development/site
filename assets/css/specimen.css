@@ -7,4 +7,4 @@
 @container page (min-width: 39em)   { .tier::after { content: "Tier M (justified)"; } }
 @container page (min-width: 66.5em) { .tier::after { content: "Tier L (justified, both margins)"; } }
 
-@container frame (min-width: 80em) { .has-toc .tier::after { content: "Tier XL (contents beside the left margin)"; } }
+@container frame (min-width: 80em) { .has-column .tier::after { content: "Tier XL (contents beside the left margin)"; } }

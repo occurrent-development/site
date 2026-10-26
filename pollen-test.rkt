@@ -363,7 +363,7 @@
 (test-case "VOCAB-3: od-vocabulary's built tags are exactly the tags pollen.rkt provides"
   (define template-helpers
     '(root site-css font-preloads head-script asset-url specimen? specimen-css page-title
-      essay-header doc-body format-date revised-date site-menu has-toc? page-class))
+      essay-header doc-body format-date revised-date site-menu page-class))
   ;; tags with keyword arguments are exported as syntax, so read both lists
   (define-values (vars stx) (module->exports (string->path (path->string (build-path (current-directory) "pollen.rkt")))))
   (define provided
