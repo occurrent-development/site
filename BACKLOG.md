@@ -12,6 +12,8 @@ Each item says **why it's deferred** — usually because it needs design iterati
 
 ## 2. Nested popups
 
+*2026-10-26: the pinning half of this item (several pinned popups, stacking, Esc on the focused one) moved into v1 as SPEC POP-9; nesting itself, a popup opening a child popup, stays here.*
+
 *Deferred: the stacking, focus and lifetime rules are where a popup system gets expensive. v1 has one level: a circle inside an open margin item opens one popup, and a circle inside a popup replaces its content (POP-6, revised 2026-10-15). This item is everything beyond that.*
 
 - A link inside a popup opens a child popup; children close with their parent; cap the depth (~4).
@@ -20,7 +22,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 
 ## 3. Popup dragging and resizing
 
-*Deferred, probably permanently: fiddly, rarely used on a reading site.*
+*Moved into v1 on 2026-10-26 (SPEC POP-10, with the dock POP-11), after Ryan found pinned popups worth keeping and moving on gwern.net. Kept here so the numbering of later items does not shift.*
 
 ## 4. Section-level backlinks (← n)
 
