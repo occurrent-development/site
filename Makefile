@@ -2,6 +2,7 @@
 #
 #   make           test, subset fonts, render, assemble public/   (offline; BUILD-2)
 #   make test      typography rules (TYPE-14) and the root pass
+#   make test-browser  the interactive layer in headless Chrome (skipped without Chrome)
 #   make test-emacs  the Emacs mode's tests (needs Emacs 29+)
 #   make serve     Pollen project server on http://localhost:8080
 #   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json, invert.json
@@ -30,14 +31,19 @@ IMG_SRC   := $(shell find pages essays notebook -path '*/img/*' -type f 2>/dev/n
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
 
-.PHONY: all test test-emacs render publish serve refresh clean
+.PHONY: all test test-browser test-emacs render publish serve refresh clean
 
-all: test publish
+all: test publish test-browser
 
 test:
 	$(RACO) test typography-test.rkt pollen-test.rkt
 	@! grep -rn --include='*.pm' '◊quote\b' . || \
 	  { echo "◊quote is not a tag (Racket's quote swallows it); use ◊blockquote"; exit 1; }
+
+# The interactive layer, in headless Chrome against the built site (TOC-2,
+# POP-9…12, TERM-3 and the rest in tests/browser/harness.js). Needs public/.
+test-browser:
+	$(PYTHON) tools/browser_test.py
 
 # The Emacs mode's tests (TEST-1, TEST-3); not part of `make', so CI needs no Emacs.
 # No input: a command that prompts in a test fails instead of waiting.

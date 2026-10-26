@@ -11,8 +11,23 @@ const article = document.querySelector("article");
 // Firefox lays out tier XL first with the page's container units read from
 // its width before the contents' column is reserved, putting the text block
 // 8em too far right, and corrects it only on a later restyle, ~300 ms on.
-// One restyle now corrects it at once (LAYOUT-6a, CLS §14).
-if (page) { void page.offsetWidth; page.style.setProperty("--restyle", "1"); }
+// One restyle now corrects it at once (LAYOUT-6a, CLS §14). Leaving tier XL
+// as the window narrows, it keeps the page's queries evaluated against the
+// width the page had while the column was reserved (tier M at 1,400 px,
+// seen 2026-10-26), and a restyle does not correct that; re-establishing
+// the page as a container does. So each layout pass after the page's width
+// has changed does that, in the same frame, before anything is painted.
+let restyledAt = -1;
+function restyle() {
+  if (!page) return;
+  const width = page.offsetWidth;
+  if (width === restyledAt) return;
+  restyledAt = width;
+  page.style.containerType = "normal";
+  void page.offsetWidth;
+  page.style.containerType = "";
+}
+restyle();
 
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -175,7 +190,7 @@ function termItem(target) {
     // TERM-3: More expands in place
     more.hidden = true;
     const btn = el("button", { type: "button", class: "popup-more", "aria-expanded": "false" }, "More");
-    btn.addEventListener("click", () => { more.hidden = false; btn.parentElement.remove(); });
+    btn.addEventListener("click", (e) => { e.stopPropagation(); more.hidden = false; btn.parentElement.remove(); });
     body.append(el("p", {}, btn), more);
   }
   const see = c.querySelector(".see-also");
@@ -294,11 +309,25 @@ async function contentFor(t) {
   }
 }
 
-// ── The open popup: a popup, a popin, or the bar's contents ─────────────────
+// ── Popups: the open one, and the pinned ones (§11, §11.2) ──────────────────
+//
+// `open` is the one popup that is not among the pinned: a hover popup in
+// tiers L and XL, the one popup or popin in M, S and on touch devices
+// (pinned or not, as before), or the bar's contents. `pins` are the popups
+// pinned on pointer devices in tiers L and XL (POP-9), oldest first; `stack`
+// is the same popups in the order last touched, the last on top.
 
 let open = null;      // { box, trigger, pinned, mode, shade }
 let openTimer = 0, closeTimer = 0, seq = 0;
+const pins = [];      // { box, trigger, docked }
+const stack = [];
+const MAX_PINS = 6;
 const touch = matchMedia("(hover: none)");   // POP-5, BAR-1
+
+// POP-9: several pinned at once only with a pointer and room for them.
+const multi = () => !touch.matches && wide();
+const pinOf = (t) => pins.find((p) => p.trigger === t);
+const pinOfBox = (b) => pins.find((p) => p.box === b);
 
 // THEME-5b: popups are mounted in the scaled wrapper, so they step with the text.
 const mount = () => document.querySelector(".frame") || document.body;
@@ -324,15 +353,35 @@ function fill(t, on) {
   if (t?.matches?.("a.aside-phrase")) t.classList.toggle("is-open", on);
 }
 
-function buildPopup(c, pinned) {
+// POP-1: the title, Pin, Dock, Open in new tab, Close. Pin and Dock show
+// only where they work (controls, below); the bar's contents have neither.
+function buildPopup(c, pinned, { pinnable = true } = {}) {
   const id = `popup-title-${++seq}`;
   const box = el("div", { class: "popup", role: pinned ? "dialog" : "tooltip", "aria-labelledby": id, tabindex: "-1" });
   const bar = el("div", { class: "popup-bar" },
     el("span", { class: c.plain ? "popup-title plain" : "popup-title", id }, c.title || ""),
+    pinnable ? el("button", { type: "button", class: "popup-pin", "aria-pressed": "false", hidden: "" }, "Pin") : null,
+    pinnable ? el("button", { type: "button", class: "popup-dock", "aria-pressed": "false", hidden: "" }, "Dock") : null,
     c.url ? el("a", { class: "popup-open", href: c.url, target: "_blank", rel: "noopener" }, "Open in new tab") : null,
     el("button", { type: "button", class: "popup-close", "aria-label": "Close" }, icon(CROSS)));
   box.append(bar, el("div", { class: "popup-body" }, c.body));
+  controls(box);
   return box;
+}
+
+// Pin in tiers L and XL with a pointer; Dock in tier XL, on a pinned popup.
+function controls(box) {
+  const p = pinOfBox(box);
+  const pinB = box.querySelector(".popup-pin"), dockB = box.querySelector(".popup-dock");
+  if (pinB) {
+    pinB.hidden = !multi();
+    pinB.setAttribute("aria-pressed", String(!!p));
+  }
+  if (dockB) {
+    dockB.hidden = !(p && multi() && tier() === "XL" && dockEl());
+    dockB.setAttribute("aria-pressed", String(!!p?.docked));
+    dockB.textContent = p?.docked ? "Undock" : "Dock";
+  }
 }
 
 // POP-2: in the viewport, never over the element that opened it.
@@ -373,13 +422,24 @@ function placePopin(box) {
 
 async function openFor(t, { pinned = false, focus = false } = {}) {
   clearTimeout(closeTimer);
+  const p = pinOf(t);
+  if (p) { raise(p); if (focus) p.box.focus({ preventScroll: true }); return; }
   if (open && open.trigger === t) {
     if (pinned) pin();
-    if (focus) open.box.focus();
+    if (focus) (pinOf(t)?.box || open?.box)?.focus({ preventScroll: true });
     return;
   }
   const c = await contentFor(t);
-  if (!c || (open && open.trigger === t)) return;
+  if (!c || pinOf(t) || (open && open.trigger === t)) return;
+  if (pinned && multi()) {
+    // POP-9: pinning adds to the pinned; it closes nothing but a hover popup
+    close();
+    const box = buildPopup(c, true);
+    placeFloat(box, t);
+    addPin(box, t);
+    box.focus({ preventScroll: true });   // the one last touched: Esc closes it
+    return;
+  }
   close();
   const box = buildPopup(c, pinned);
   let shade = null, mode = "float";
@@ -391,11 +451,103 @@ async function openFor(t, { pinned = false, focus = false } = {}) {
   if (focus || mode === "popin") box.focus({ preventScroll: true });
 }
 
+// Pin the open popup: among the pinned in tiers L and XL, or held open as
+// the one popup elsewhere.
 function pin() {
   if (!open) return;
+  if (multi() && (open.mode === "float" || open.mode === "fixed")) {
+    const o = open;
+    open = null;
+    addPin(o.box, o.trigger);
+    o.box.focus({ preventScroll: true });
+    return;
+  }
   open.pinned = true;
   open.box.setAttribute("role", "dialog");
   fill(open.trigger, true);
+}
+
+// POP-9, POP-10: a pinned popup is a non-modal dialog fixed in the window,
+// movable and resizable; the seventh closes the oldest.
+function addPin(box, trigger, { dock = false } = {}) {
+  box.classList.add("is-pinned");
+  box.setAttribute("role", "dialog");
+  const p = { box, trigger, docked: false };
+  pins.push(p);
+  stack.push(p);
+  if (!dock) {
+    const r = box.getBoundingClientRect();
+    Object.assign(box.style, { position: "fixed", left: `${r.left}px`, top: `${r.top}px`, maxHeight: "" });
+    clampBox(box);
+  }
+  trigger?.setAttribute?.("aria-expanded", "true");
+  fill(trigger, true);
+  while (pins.length > MAX_PINS) closePin(pins[0]);
+  if (dock) dockPin(p); else raise(p);
+  controls(box);
+  return p;
+}
+
+// Pin again: back to hover behaviour, closing when the pointer leaves it.
+function unpin(p) {
+  if (p.docked) undock(p);
+  pins.splice(pins.indexOf(p), 1);
+  stack.splice(stack.indexOf(p), 1);
+  close();
+  p.box.classList.remove("is-pinned");
+  p.box.style.zIndex = "";
+  p.box.setAttribute("role", "tooltip");
+  fill(p.trigger, false);
+  open = { box: p.box, trigger: p.trigger, pinned: false, mode: "fixed" };
+  controls(p.box);
+}
+
+function closePin(p, { returnFocus = false } = {}) {
+  const i = pins.indexOf(p);
+  if (i < 0) return;
+  pins.splice(i, 1);
+  stack.splice(stack.indexOf(p), 1);
+  p.box.remove();
+  if (!pinOf(p.trigger)) {
+    p.trigger?.setAttribute?.("aria-expanded", "false");
+    fill(p.trigger, false);
+  }
+  if (p.docked) layoutDock();
+  if (returnFocus) focusBack(p.trigger);
+}
+
+function closeAllPins() { for (const p of [...pins]) closePin(p); }
+
+// POP-9: focus goes back to the mark if the reader can see it; otherwise it
+// stays in the page.
+function focusBack(t) {
+  if (!t?.isConnected) return;
+  const r = t.getBoundingClientRect();
+  if (r.width && r.bottom > 0 && r.top < innerHeight) t.focus({ preventScroll: true });
+}
+
+// A popup, whichever kind it is.
+function closeBox(box, opts) {
+  const p = pinOfBox(box);
+  if (p) closePin(p, opts);
+  else if (open && open.box === box) close(opts);
+}
+
+// Last touched on top. The pinned stay under a hover popup (z 37) and the
+// expanded figure (39, 40); docked ones stack in the dock.
+function raise(p) {
+  const i = stack.indexOf(p);
+  if (i >= 0) { stack.splice(i, 1); stack.push(p); }
+  stack.forEach((q, n) => { q.box.style.zIndex = q.docked ? "" : String(30 + n); });
+}
+
+// Keep a popup inside the window (POP-10).
+function clampBox(box, x, y) {
+  const r = box.getBoundingClientRect();
+  const vw = root.clientWidth, vh = innerHeight;
+  x = x ?? r.left; y = y ?? r.top;
+  box.style.left = `${Math.max(0, Math.min(x, vw - r.width))}px`;
+  box.style.top = `${Math.max(0, Math.min(y, vh - Math.min(r.height, vh)))}px`;
 }
 
 function close({ returnFocus = false } = {}) {
@@ -407,16 +559,108 @@ function close({ returnFocus = false } = {}) {
   o.box.remove();
   o.shade?.remove();
   if (o.mode === "popin") root.style.overflow = "";
-  o.trigger.setAttribute?.("aria-expanded", "false");
-  fill(o.trigger, false);
+  if (!pinOf(o.trigger)) {
+    o.trigger.setAttribute?.("aria-expanded", "false");
+    fill(o.trigger, false);
+  }
   if (o.mode === "toc") bar?.classList.remove("toc-open");
-  if (returnFocus) o.trigger.focus?.();
+  if (returnFocus) o.mode === "popin" || o.mode === "toc" ? o.trigger.focus?.() : focusBack(o.trigger);
 }
 
 function scheduleClose() {
   clearTimeout(closeTimer);
   if (open && !open.pinned) closeTimer = setTimeout(close, 250);
 }
+
+// ── The dock (POP-11) ────────────────────────────────────────────────────
+// In tier XL, under the contents list, as wide as the contents and the left
+// margin together; sticky with the contents. Docked popups stack downward in
+// the order docked; when they no longer fit the window, the oldest closes.
+
+const dockEl = () => (tier() === "XL" ? article?.querySelector("nav.toc .dock") : null);
+
+function dockPin(p) {
+  const d = dockEl();
+  if (!d) return;
+  p.docked = true;
+  p.box.classList.add("is-docked");
+  for (const k of ["position", "left", "top", "width", "height", "maxHeight", "zIndex"]) p.box.style[k] = "";
+  d.append(p.box);
+  layoutDock(p);
+  controls(p.box);
+}
+
+function undock(p, at) {
+  const r = at || p.box.getBoundingClientRect();
+  p.docked = false;
+  p.box.classList.remove("is-docked");
+  mount().append(p.box);
+  Object.assign(p.box.style, { position: "fixed", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: "" });
+  clampBox(p.box);
+  raise(p);
+  controls(p.box);
+  layoutDock();
+}
+
+// Beyond the window's height, the oldest docked popup closes (never the one
+// just docked).
+function layoutDock(keep) {
+  const d = dockEl();
+  const inner = d?.parentElement;
+  if (!inner) return;
+  while (inner.scrollHeight > inner.clientHeight + 1) {
+    const oldest = [...d.children].map(pinOfBox).find((p) => p && p !== keep);
+    if (!oldest) break;
+    closePin(oldest);
+  }
+}
+
+// When the tier changes: the pinned close on dropping to M or S; leaving XL
+// for L takes the docked out of the dock, which L does not have.
+function pinsForTier() {
+  if (!multi()) { closeAllPins(); }
+  else if (tier() !== "XL") {
+    pins.filter((p) => p.docked).forEach((p, i) => undock(p, { left: 16, top: 16 + 32 * i, width: p.box.offsetWidth || 320 }));
+  }
+  for (const p of pins) { controls(p.box); if (!p.docked) clampBox(p.box); }
+  if (open) controls(open.box);
+}
+
+// POP-10: drag a pinned popup by its title bar; out of the dock undocks it.
+document.addEventListener("pointerdown", (e) => {
+  const box = e.target.closest?.(".popup");
+  const p = box && pinOfBox(box);
+  if (p) raise(p);
+  const handle = e.target.closest?.(".popup.is-pinned .popup-bar");
+  if (!p || !handle || e.button !== 0 || e.target.closest("a, button")) return;
+  e.preventDefault();
+  box.focus({ preventScroll: true });
+  const x0 = e.clientX, y0 = e.clientY;
+  let r = box.getBoundingClientRect(), moved = false;
+  const move = (ev) => {
+    const dx = ev.clientX - x0, dy = ev.clientY - y0;
+    if (!moved) {
+      if (Math.hypot(dx, dy) < 4) return;
+      moved = true;
+      if (p.docked) { undock(p, r); r = box.getBoundingClientRect(); }
+      box.classList.add("is-dragging");
+    }
+    clampBox(box, r.left + dx, r.top + dy);
+  };
+  const up = () => {
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+    document.removeEventListener("pointercancel", up);
+    box.classList.remove("is-dragging");
+  };
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", up);
+});
+document.addEventListener("focusin", (e) => {
+  const p = pinOfBox(e.target.closest?.(".popup"));
+  if (p) raise(p);
+});
 
 // POP-6, TERM-7: a circle inside a popup replaces its content; Back, in the
 // title bar, restores it.
@@ -493,7 +737,8 @@ function closeLightbox() {
   from?.focus?.({ preventScroll: true });
 }
 
-// ── The margin item: an aside or definition expanded in place (ASIDE-3) ────
+// ── The margin item: an aside expanded in place (ASIDE-3) ──────────────────
+// Definitions are popups at every tier (TERM-3, D7); only asides use the margin.
 
 let marginOpen = null;      // the pinned item: { stub, trigger }
 let marginPreview = null;   // the item hover is previewing (ASIDE-3): { stub, trigger }
@@ -507,8 +752,7 @@ function stubFor(t) {
 }
 
 // Grow a stub in place, or fold it again. A pinned item fills its circle; a
-// preview does not (ASIDE-2), and shows a definition's short text only:
-// More and see-also make sense once the reader has chosen to stay.
+// preview does not (ASIDE-2).
 function expandStub(stub, pinned) {
   const t = stub._trigger;
   stub.classList.add("is-open");
@@ -522,8 +766,6 @@ function foldStub(stub) {
   stub.classList.remove("is-open", "is-preview");
   stub.setAttribute("aria-expanded", "false");
   stub.scrollTop = 0;
-  for (const m of stub.querySelectorAll(".term-more")) m.hidden = true;     // More folds again
-  for (const l of stub.querySelectorAll(".stub-more-line")) l.hidden = false;
   t?.setAttribute("aria-expanded", "false");
   fill(t, false);
 }
@@ -607,7 +849,28 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-theme-toggle]")) { setTheme(THEMES[(THEMES.indexOf(theme()) + 1) % 3]); return; }
   if (e.target.closest(".size-down")) { setSize(size() - 1); return; }
   if (e.target.closest(".size-up")) { setSize(size() + 1); return; }
-  if (e.target.closest(".popup-close")) { close({ returnFocus: true }); return; }
+  if (e.target.closest(".popup-close")) { closeBox(e.target.closest(".popup"), { returnFocus: true }); return; }
+  const pinB = e.target.closest(".popup-pin");
+  if (pinB) {
+    const box = pinB.closest(".popup"), p = pinOfBox(box);
+    if (p) unpin(p);
+    else if (open && open.box === box) pin();
+    return;
+  }
+  const dockB = e.target.closest(".popup-dock");
+  if (dockB) {
+    const p = pinOfBox(dockB.closest(".popup"));
+    if (p) p.docked ? undock(p) : dockPin(p);
+    return;
+  }
+  const scratch = e.target.closest(".scratch-open");
+  if (scratch) {
+    e.preventDefault();
+    const m = scratch.closest(".site-menu");
+    if (m) m.open = false;
+    openPad(scratch);
+    return;
+  }
   if (e.target.closest(".bar-section")) { e.preventDefault(); toggleToc(); return; }
 
   const t = e.target.closest(TRIGGERS);
@@ -630,6 +893,8 @@ document.addEventListener("click", (e) => {
     e.preventDefault();
     const s = stubFor(t);
     if (s) { close(); toggleMargin(s, { focus: e.detail === 0 }); return; }
+    const p = pinOf(t);
+    if (p) { closePin(p); return; }   // a second click closes it, as for a margin item
     if (open && open.trigger === t && open.pinned) { close(); return; }
     openFor(t, { pinned: true, focus: e.detail === 0 });
     return;
@@ -659,7 +924,11 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (e.key === "Escape") {
-    if (open) { close({ returnFocus: true }); return; }
+    // POP-9: Esc closes the popup that has focus, and only that one. In
+    // tiers M and S and on touch there is only ever one, and Esc closes it.
+    const box = document.activeElement?.closest?.(".popup");
+    if (box) { e.preventDefault(); closeBox(box, { returnFocus: true }); return; }
+    if (open && (!multi() || open.pinned)) { close({ returnFocus: true }); return; }
     if (marginOpen) { collapseMargin({ returnFocus: true }); return; }
     if (marginPreview) { endPreview(); return; }
   }
@@ -685,6 +954,7 @@ document.addEventListener("pointerover", (e) => {
     if (kindOf(t) === "xref") fetchFragment(t.getAttribute("href"));   // prefetch
     clearTimeout(closeTimer);
     if (open && open.trigger === t) return;
+    if (pinOf(t)) return;   // already pinned
     clearTimeout(openTimer);
     openTimer = setTimeout(() => { if (!(open && open.pinned)) openFor(t); }, 300);
     return;
@@ -694,7 +964,11 @@ document.addEventListener("pointerover", (e) => {
     highlight(stub._trigger, true, stub);
     if (wide() && !stub.dataset.full) schedulePreview(stub);
   }
-  if (e.target.closest(".popup")) { clearTimeout(closeTimer); clearTimeout(previewCloseTimer); }
+  const over = e.target.closest(".popup");
+  if (over) {
+    if (open && open.box === over) clearTimeout(closeTimer);
+    clearTimeout(previewCloseTimer);
+  }
 });
 
 document.addEventListener("pointerout", (e) => {
@@ -729,7 +1003,7 @@ function highlight(trigger, on, stub) {
   stub?.classList.toggle("hl", on);
 }
 
-// ── The margin, tier L (POP-8, ASIDE-3/4, TERM-3, MNOTE-2/4, IMG-2) ────────
+// ── The margin, tiers L and XL (POP-8, ASIDE-3/4, MNOTE-2/4, IMG-2) ────────
 
 let currentTier = null;
 
@@ -738,37 +1012,6 @@ function circleFor(stub) {
   const id = "aside-" + stub.id.replace("aside-text-", "");
   // a circle, or a phrase aside with its circle (ASIDE-8)
   return [...article.querySelectorAll(".circle-link, a.aside-phrase[data-targets]")].find((c) => c.dataset.targets.split(" ").includes(id)) || null;
-}
-
-// TERM-3: a definition's stub, built from the Terms store: the headword and
-// the definition on one line; More and see-also below, shown when open.
-function defStub(t) {
-  const src = byId(t.dataset.targets);
-  if (!src) return null;
-  const c = clean(src);
-  const dfn = c.querySelector("dfn");
-  const head = dfn ? dfn.textContent : "";
-  if (dfn) {
-    const next = dfn.nextSibling;
-    dfn.remove();
-    if (next && next.nodeType === 3) next.textContent = next.textContent.replace(/^\.\s*/, "");
-  }
-  const def = c.querySelector(".definition");
-  const text = el("span", { class: "stub-text" }, el("span", { class: "stub-head" }, head), " ", ...(def ? def.childNodes : []));
-  const extra = el("span", { class: "stub-extra" });
-  const more = c.querySelector(".term-more");
-  if (more) {
-    more.hidden = true;
-    const btn = el("button", { type: "button", class: "popup-more" }, "More");
-    const line = el("span", { class: "stub-more-line" }, btn);
-    btn.addEventListener("click", (e) => { e.stopPropagation(); more.hidden = false; line.hidden = true; positionMargin(); });
-    extra.append(line, more);
-  }
-  const see = c.querySelector(".see-also");
-  if (see) extra.append(see);
-  const s = el("span", { class: "in-margin stub def-stub", tabindex: "0", role: "button", "aria-expanded": "false" }, text);
-  if (extra.childNodes.length) s.append(extra);
-  return s;
 }
 
 function setupMargin() {
@@ -797,18 +1040,6 @@ function setupMargin() {
       delete a.dataset.full;
       a.removeAttribute("style");
       if (t) t._stub = null;
-    }
-  }
-  // TERM-3: definitions in the text get stubs too (not those inside an aside)
-  for (const s of article.querySelectorAll(".def-stub")) { if (s._trigger) s._trigger._stub = null; s.remove(); }
-  if (L) {
-    for (const t of article.querySelectorAll("a.term[data-targets]")) {
-      if (t.closest(".aside, .endmatter, .in-margin, nav.toc, .exhibit-title, .exhibit-meta") || t.dataset.targets.includes(" ")) continue;
-      const s = defStub(t);
-      if (!s) continue;
-      t.after(s);
-      s._trigger = t;
-      t._stub = s;
     }
   }
   for (const m of article.querySelectorAll(".margin-note")) {
@@ -857,16 +1088,62 @@ function firstBaseline(e) {
   return y;
 }
 
-// LAYOUT-1a, TOC-2: in tier XL the "Contents" label sits on the title's
-// first baseline.
+// LAYOUT-1a: the header's second datum, the subtitle's baseline, or the
+// title's second line when there is no subtitle.
+function datum(header) {
+  const sub = header?.querySelector(".subtitle");
+  if (sub) return firstBaseline(sub);
+  const title = header?.querySelector("h1, .essay-title");
+  return title ? firstBaseline(title) + parseFloat(getComputedStyle(title).lineHeight) : null;
+}
+
+// LAYOUT-1a, TOC-2: in tier XL the "Contents" heading sits on the
+// subtitle's baseline. Measured while the heading reads "Contents", since
+// the title it becomes once stuck is set differently.
 function alignContents() {
   const toc = article?.querySelector("nav.toc");
   if (!toc) return;
   toc.style.top = "";
-  const title = article.querySelector(".essay-header:not(.sample) h1");
+  const header = article.querySelector(".essay-header:not(.sample)");
   const label = toc.querySelector(".toc-title");
-  if (tier() !== "XL" || !title || !label || getComputedStyle(toc).position !== "absolute") return;
-  toc.style.top = `${firstBaseline(title) - firstBaseline(label)}px`;
+  if (tier() !== "XL" || !header || !label || getComputedStyle(toc).position !== "absolute") return;
+  const stuck = label.classList.contains("is-title");
+  if (stuck) showTocHeading(false);
+  const y = datum(header);
+  if (y != null) toc.style.top = `${y - firstBaseline(label)}px`;
+  if (stuck) showTocHeading(true);
+}
+
+// TOC-2: the heading reads "Contents" until the list sticks under the menu
+// and the essay's title from then on, swapped at once, with no animation.
+// A one-pixel sentinel at the top of the column says when: once it has
+// passed above the line where the list sticks, the list is stuck.
+function showTocHeading(stuck) {
+  const label = article?.querySelector("nav.toc .toc-title");
+  if (!label) return;
+  label.classList.toggle("is-title", stuck);
+  label.textContent = stuck ? essayTitle : "Contents";
+}
+let tocSentinel = null;
+function setupTocHeading() {
+  const toc = article?.querySelector("nav.toc");
+  const inner = toc?.querySelector(".toc-inner");
+  if (!inner) return;
+  tocSentinel = el("div", { class: "toc-sentinel", "aria-hidden": "true" });
+  tocSentinel.style.cssText = "position:absolute;top:0;left:0;width:1px;height:1px;pointer-events:none";
+  toc.prepend(tocSentinel);
+  let io = null;
+  const watch = () => {
+    io?.disconnect();
+    // where the list sticks: its `top`, in pixels
+    const at = parseFloat(getComputedStyle(inner).top) || 0;
+    io = new IntersectionObserver(([e]) => {
+      showTocHeading(tier() === "XL" && !e.isIntersecting && e.boundingClientRect.top < at);
+    }, { rootMargin: `${-at}px 0px 0px 0px` });
+    io.observe(tocSentinel);
+  };
+  watch();
+  setupTocHeading.rewatch = watch;   // the line moves with the text size
 }
 
 // MNOTE-2/4/6: margin notes in the left margin, right-aligned against the
@@ -933,7 +1210,7 @@ function positionMargin() {
     if (st.classList.contains("is-open")) continue;
     st.classList.add("is-full");
     const lh = parseFloat(getComputedStyle(st).lineHeight);
-    if (st.offsetHeight <= 2 * lh + 1 && !st.querySelector(".stub-extra")) st.dataset.full = "1";
+    if (st.offsetHeight <= 2 * lh + 1) st.dataset.full = "1";
     else { delete st.dataset.full; st.classList.remove("is-full"); }
   }
   // Items: { els, top, h, fixed }. A caption block has no height of its own,
@@ -942,13 +1219,13 @@ function positionMargin() {
     const rs = els.flatMap((e) => [rect(e), ...[...e.children].map(rect)]).filter((r) => r.height);
     return rs.length ? [Math.min(...rs.map((r) => r.top)), Math.max(...rs.map((r) => r.bottom))] : [rect(els[0]).top, rect(els[0]).top];
   };
-  // LAYOUT-1a: the header's block has its first baseline on the title's
-  // first baseline, whatever their sizes; so, in tier XL, does the label of
-  // the contents at the window's edge.
+  // LAYOUT-1a: the header's block has its first baseline on the subtitle's
+  // baseline (the title's second line without one), whatever their sizes;
+  // so, in tier XL, does the heading of the contents.
   const headerItems = headers.map((m) => {
     const r = rect(m);
-    const title = m.closest(".essay-header")?.querySelector("h1, .essay-title");
-    const dy = title ? firstBaseline(title) - firstBaseline(m) : 0;
+    const y = datum(m.closest(".essay-header"));
+    const dy = y != null ? y - firstBaseline(m) : 0;
     return { els: [m], top: r.top + dy, h: r.height, fixed: true, header: true, natural: r.top };
   });
   alignContents();
@@ -1002,17 +1279,21 @@ let refreshToc = () => {};   // set by setupBar
 function scheduleLayout() {
   cancelAnimationFrame(layoutFrame);
   layoutFrame = requestAnimationFrame(() => {
+    restyle();
     const t = tier();
-    if (t !== currentTier) { setupMargin(); currentTier = t; }
+    if (t !== currentTier) { setupMargin(); currentTier = t; setupTocHeading.rewatch?.(); pinsForTier(); }
     positionMargin();
     placeBar();
     refreshToc();
     repin?.();
-    // an open popup follows its circle (after a size step or a resize)
+    // an open popup follows its circle (after a size step or a resize);
+    // pinned ones keep their place, inside the window (POP-9, POP-10)
     if (open && open.mode === "float" && open.trigger.isConnected) {
       open.box.style.maxHeight = "";
       placeFloat(open.box, open.trigger);
     }
+    for (const p of pins) if (!p.docked) clampBox(p.box);
+    layoutDock();
   });
 }
 
@@ -1024,35 +1305,48 @@ let headerVisible = true, lastY = scrollY, idle = 0;
 
 function showBar() { bar.classList.add("is-shown"); restartIdle(); }
 
-// BAR-1d: as wide as the text block (both margins and the column in tiers
-// L and XL, the column alone in M and S), so it never covers the contents
-// in XL; its contents start at the column's left edge and end at its right.
-// The bar is fixed to the viewport, so this is measured: CSS cannot know
-// where the text block landed.
+// BAR-1d: the bar spans the window, and so does its hairline; its section
+// name starts at the column's left edge and its controls end at the
+// column's right edge, so they line up with the text below. The menu is at
+// its left end: in tier XL the contents column's sticky menu, showing
+// through; elsewhere the bar's own copy, at the window's edge, with the
+// section name moved along to the column (or just past the menu, where
+// the column starts sooner). The bar is fixed to the viewport, so this is
+// measured: CSS cannot know where the text block landed.
 function placeBar() {
   if (!bar || !article) return;
   const a = article.getBoundingClientRect();
   const cs = getComputedStyle(article);
-  let colL, colR, blockL, blockR;
+  let colL, colR;
   if (wide()) {
     const fs = parseFloat(cs.fontSize);
-    const v = (name) => parseFloat(getComputedStyle(page).getPropertyValue(name)) * fs;
     colL = a.left;
-    colR = colL + v("--measure");
-    blockL = colL - v("--margin-gap") - parseFloat(cs.getPropertyValue("--left-margin"));
-    blockR = colR + v("--margin-gap") + parseFloat(cs.getPropertyValue("--margin"));
+    colR = colL + parseFloat(getComputedStyle(page).getPropertyValue("--measure")) * fs;
   } else {
-    blockL = colL = a.left + parseFloat(cs.paddingLeft);
-    blockR = colR = a.right - parseFloat(cs.paddingRight);
+    colL = a.left + parseFloat(cs.paddingLeft);
+    colR = a.right - parseFloat(cs.paddingRight);
   }
-  Object.assign(bar.style, {
-    left: `${blockL}px`, right: "auto", width: `${blockR - blockL}px`,
-    paddingLeft: `${colL - blockL}px`, paddingRight: `${blockR - colR}px`,
-  });
+  const vw = root.clientWidth;
+  const section = bar.querySelector(".bar-section");
+  const menuCopy = bar.querySelector(".bar-menu");
+  const edge = Math.min(colL, 1.25 * parseFloat(getComputedStyle(root).fontSize));
+  Object.assign(bar.style, { left: "0px", right: "0px", width: "auto",
+    paddingLeft: `${edge}px`, paddingRight: `${Math.max(0, vw - colR)}px` });
+  section.style.marginLeft = "0px";
+  const menuShown = menuCopy && getComputedStyle(menuCopy).display !== "none";
+  const after = menuShown ? menuCopy.getBoundingClientRect().right : edge;
+  const space = 0.75 * parseFloat(getComputedStyle(section).fontSize);
+  section.style.marginLeft = `${Math.max(menuShown ? space : 0, colL - after)}px`;
 }
-function hideBar() { if (!keepBar()) bar.classList.remove("is-shown"); }
+function hideBar() {
+  if (keepBar()) return;
+  bar.classList.remove("is-shown");
+  const m = bar.querySelector(".bar-menu");
+  if (m) m.open = false;
+}
 function keepBar() {
-  return bar.matches(":hover") || bar.contains(document.activeElement) || (open && open.mode === "toc");
+  return bar.matches(":hover") || bar.contains(document.activeElement) || (open && open.mode === "toc")
+    || !!bar.querySelector(".bar-menu[open]");
 }
 function restartIdle() { clearTimeout(idle); idle = setTimeout(hideBar, 2000); }
 
@@ -1087,7 +1381,7 @@ function setupBar() {
   // for the bar; both levels for the contents in the margin (TOC-2).
   const sections = [...document.querySelectorAll("article section.level-1")];
   const subsections = [...document.querySelectorAll("article section.level-1 > section.level-2")];
-  const tocLinks = [...document.querySelectorAll("nav.toc a[href^='#']")];
+  const tocLinks = [...document.querySelectorAll("nav.toc .toc-inner > ul a[href^='#']")];
   const tocList = document.querySelector("nav.toc .toc-inner > ul");
   const tocMark = tocList && el("span", { class: "toc-mark", "aria-hidden": "true", hidden: "" });
   if (tocMark) tocList.append(tocMark);
@@ -1147,7 +1441,7 @@ function setupTocTitles() {
   let tip = null;
   const hide = () => { tip?.remove(); tip = null; };
   const show = (e) => {
-    const a = e.target.closest?.("a");
+    const a = e.target.closest?.(".toc-inner > ul a");
     hide();
     if (!a || a.scrollWidth <= a.clientWidth) return;
     const r = a.getBoundingClientRect();
@@ -1168,7 +1462,7 @@ function setupTocTitles() {
 function tocContent() {
   const toc = document.querySelector("nav.toc");
   let list;
-  if (toc) list = clean(toc.querySelector("ul"));
+  if (toc) list = clean(toc.querySelector(".toc-inner > ul"));
   else {
     list = el("ul");
     for (const s of document.querySelectorAll("article section.level-1")) {
@@ -1188,7 +1482,7 @@ function toggleToc() {
   const button = bar.querySelector(".bar-section");
   if (open && open.mode === "toc") { close(); return; }
   close();
-  const box = buildPopup(tocContent(), true);
+  const box = buildPopup(tocContent(), true, { pinnable: false });
   box.classList.add("toc-popup");
   let shade = null;
   if (touch.matches) shade = placePopin(box);
@@ -1214,10 +1508,10 @@ function toggleToc() {
 
 // ── Site menu (NAV-1) ─────────────────────────────────────────────────────
 // A <details> element, so it opens without scripts; here it also closes on
-// a click elsewhere and on Escape.
+// a click elsewhere and on Escape. There are two: the page's, on its rail,
+// and the reading bar's copy (hidden in tier XL, where the rail's serves).
 
-const menu = document.querySelector(".site-menu");
-if (menu) {
+for (const menu of document.querySelectorAll(".site-menu")) {
   document.addEventListener("click", (e) => {
     if (menu.open && !menu.contains(e.target)) menu.open = false;
   });
@@ -1230,12 +1524,119 @@ if (menu) {
   });
 }
 
+// ── The scratch pad (POP-12) ─────────────────────────────────────────────
+// One pad for the site, in localStorage, capped at 64 KB; nothing leaves the
+// browser. Opened from the Scratch link at the foot of the contents and in
+// the menu: docked in tier XL, pinned in L, a popup or popin elsewhere.
+
+const PAD_KEY = "scratch", PAD_MAX = 64 * 1024;
+const padBox = () => document.querySelector(".popup.scratch");
+
+function savePad(ta) {
+  let v = ta.value;
+  const bytes = (x) => new TextEncoder().encode(x).length;
+  while (bytes(v) > PAD_MAX) v = v.slice(0, v.length - Math.max(1, Math.ceil((bytes(v) - PAD_MAX) / 4)));
+  if (v !== ta.value) ta.value = v;
+  store.set(PAD_KEY, v || null);
+}
+
+function padContent() {
+  const ta = el("textarea", { class: "scratch-text", "aria-label": "Scratch pad", rows: "8", maxlength: String(PAD_MAX) });
+  ta.value = store.get(PAD_KEY) || "";
+  let t = 0;
+  ta.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => savePad(ta), 250); });
+  ta.addEventListener("change", () => savePad(ta));
+  addEventListener("pagehide", () => { if (ta.isConnected) savePad(ta); });
+  const status = el("span", { class: "scratch-status", role: "status" });
+  const say = (msg) => { status.textContent = msg; setTimeout(() => { if (status.textContent === msg) status.textContent = ""; }, 2000); };
+  const copy = el("button", { type: "button", class: "scratch-copy" }, "Copy");
+  copy.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch (e) { ta.select(); document.execCommand?.("copy"); }
+    say("Copied");
+  });
+  // Clear, after a confirmation in place
+  const clear = el("button", { type: "button", class: "scratch-clear" }, "Clear");
+  const ask = el("span", { class: "scratch-ask", hidden: "" }, "Clear the pad? ",
+    el("button", { type: "button", class: "scratch-yes" }, "Clear"), " ",
+    el("button", { type: "button", class: "scratch-no" }, "Keep"));
+  const asking = (on) => { ask.hidden = !on; copy.hidden = clear.hidden = on; };
+  clear.addEventListener("click", () => { asking(true); ask.querySelector(".scratch-no").focus(); });
+  ask.querySelector(".scratch-no").addEventListener("click", () => { asking(false); clear.focus(); });
+  ask.querySelector(".scratch-yes").addEventListener("click", () => {
+    ta.value = "";
+    savePad(ta);
+    asking(false);
+    ta.focus();
+    say("Cleared");
+  });
+  const body = el("div", { class: "scratch-body" }, ta, el("div", { class: "scratch-controls" }, copy, clear, ask, status));
+  return { title: "Scratch", body };
+}
+
+function openPad(link) {
+  const existing = padBox();
+  if (existing) {
+    const p = pinOfBox(existing);
+    if (p) raise(p);
+    existing.querySelector("textarea")?.focus({ preventScroll: true });
+    return;
+  }
+  // the link the pad returns to: the one at the foot of the contents when
+  // it shows, else the menu's summary, since the menu closes
+  const foot = article?.querySelector(".toc-scratch .scratch-open");
+  const visible = (x) => x && x.getClientRects().length;
+  const trigger = visible(link) && !link.closest(".site-menu") ? link
+    : visible(foot) ? foot : link.closest(".site-menu")?.querySelector("summary") || link;
+  const c = padContent();
+  let box;
+  if (multi()) {
+    box = buildPopup(c, true);
+    box.classList.add("scratch");
+    if (dockEl()) { mount().append(box); addPin(box, trigger, { dock: true }); }
+    else { placeFloat(box, trigger); addPin(box, trigger); }
+  } else {
+    close();
+    box = buildPopup(c, true);
+    box.classList.add("scratch");
+    let shade = null, mode = "float";
+    if (touch.matches) { shade = placePopin(box); mode = "popin"; }
+    else placeFloat(box, trigger);
+    open = { box, trigger, pinned: true, mode, shade };
+    fill(trigger, true);
+  }
+  box.querySelector("textarea").focus({ preventScroll: true });
+}
+
+// Another tab wrote the pad: show it, unless the reader is typing here.
+addEventListener("storage", (e) => {
+  if (e.key !== PAD_KEY) return;
+  const ta = padBox()?.querySelector("textarea");
+  if (ta && document.activeElement !== ta) ta.value = e.newValue || "";
+});
+
+// TOC-2, POP-11, POP-12: the foot of the contents column, the Scratch link
+// and the dock under it; and the Scratch item in the menus. All need
+// scripts, so the script makes or shows them.
+function setupScratch() {
+  for (const li of document.querySelectorAll(".menu-scratch")) li.hidden = false;
+  const inner = article?.querySelector("nav.toc .toc-inner");
+  if (!inner) return;
+  inner.append(
+    el("p", { class: "toc-scratch" },
+      el("button", { type: "button", class: "scratch-open", "aria-label": "Scratch pad" },
+        "Scratch", el("span", { class: "circle", "aria-hidden": "true" }))),
+    el("div", { class: "dock", role: "region", "aria-label": "Docked popups" }));
+}
+
 // ── Start ────────────────────────────────────────────────────────────────
 
 showTheme();
 showSize();
 setupBar();
 setupTocTitles();
+setupTocHeading();
+setupScratch();
 setupExhibits();
 scheduleLayout();
 document.fonts?.ready.then(scheduleLayout);

@@ -14,8 +14,8 @@
 <body>
 <div class="frame◊(if (has-toc? doc) " has-toc" "")">
 <div class="◊(page-class metas)">
+<div class="menu-rail">◊(site-menu metas)</div>
 <header class="site-header">
-◊(site-menu metas)
 <button class="theme-toggle" type="button" data-theme-toggle aria-label="Theme" hidden>
 <svg class="icon-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4.5a7.5 7.5 0 0 0 0 15z" fill="currentColor"/></svg>
 <svg class="icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -23,6 +23,7 @@
 </button>
 </header>
 <div class="bar" id="bar" hidden>
+◊(site-menu metas #:bar #t)
 <button class="bar-section" type="button" aria-haspopup="dialog"><span class="vh">Contents. Current section: </span><span class="bar-title"></span></button>
 <div class="bar-controls">
 <button class="size-down" type="button" aria-label="Smaller text"><span aria-hidden="true">A</span></button>

@@ -1,0 +1,355 @@
+// Browser tests and screenshot scenarios for the interactive layer. IDs refer
+// to SPEC.md. Run by tools/browser_test.py in headless Chrome, which serves
+// this folder at /__test/ beside the built site, so the frame is same-origin
+// and the harness can reach into it.
+//
+//   harness.html?run=tests              run the tests; results are posted to /__results
+//   harness.html?show=<scenario>&theme=  set up a scenario for a screenshot
+
+const frame = document.getElementById("page");
+const params = new URLSearchParams(location.search);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let w, d;
+
+async function load(path = "/specimen", width, height) {
+  if (width) { frame.style.width = `${width}px`; frame.style.height = `${height}px`; }
+  await new Promise((r) => { frame.onload = r; frame.src = path; });
+  w = frame.contentWindow; d = w.document;
+  await d.fonts?.ready;
+  await settle();
+}
+async function settle(ms = 400) {
+  await new Promise((r) => w.requestAnimationFrame(() => w.requestAnimationFrame(r)));
+  await sleep(ms);
+}
+async function resize(width, height) {
+  frame.style.width = `${width}px`;
+  frame.style.height = `${height}px`;
+  await settle(500);
+}
+async function scroll(y) { w.scrollTo({ top: y, behavior: "instant" }); await settle(); }
+
+const tier = () => w.getComputedStyle(d.querySelector("article")).getPropertyValue("--tier").trim();
+const rect = (x) => x.getBoundingClientRect();
+const pinned = () => [...d.querySelectorAll(".popup.is-pinned")];
+const titles = (boxes) => boxes.map((b) => b.querySelector(".popup-title").textContent);
+// A trigger in the text (not in the end matter, an aside, the contents or a popup).
+const trig = (target) => [...d.querySelectorAll("article .circle-link, article a.term[data-targets], article a.aside-phrase[data-targets]")]
+  .find((a) => a.dataset.targets === target && !a.closest(".endmatter, .aside, nav, .popup"));
+const key = (k, on = d.activeElement || d.body) =>
+  on.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+const pointer = (type, on, x, y) =>
+  on.dispatchEvent(new w.PointerEvent(type, { bubbles: true, cancelable: true, pointerType: "mouse", clientX: x, clientY: y, button: 0, pointerId: 1 }));
+async function closeAll() {
+  for (const b of [...d.querySelectorAll(".popup")]) b.querySelector(".popup-close")?.click();
+  await settle(100);
+}
+
+// The baseline of an element's first line, measured as the site does.
+function baseline(e) {
+  const walk = d.createTreeWalker(e, w.NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walk.nextNode()) && !n.data.trim());
+  if (!n) return rect(e).top;
+  const probe = d.createElement("span");
+  probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+  n.before(probe);
+  const y = rect(probe).top;
+  probe.remove();
+  return y;
+}
+
+// ── Tests ────────────────────────────────────────────────────────────────
+
+const results = [];
+async function test(name, fn) {
+  try { await fn(); results.push({ name, ok: true }); }
+  catch (e) { results.push({ name, ok: false, detail: String(e?.message || e) }); }
+  try { await closeAll(); } catch (e) { /* the next test reloads */ }
+}
+function expect(ok, msg) { if (!ok) throw new Error(msg); }
+const near = (a, b, tol, what) => expect(Math.abs(a - b) <= tol, `${what}: ${a.toFixed(1)} vs ${b.toFixed(1)}`);
+
+async function tests() {
+  await load("/specimen", 2560, 1440);
+  const em = () => parseFloat(w.getComputedStyle(d.querySelector("article")).fontSize);
+  const v = (name) => parseFloat(w.getComputedStyle(d.querySelector(".page")).getPropertyValue(name)) * em();
+  const cssLen = (name) => parseFloat(w.getComputedStyle(d.querySelector("article")).getPropertyValue(name));
+
+  await test("LAYOUT-6a, TOC-2: at 2,560 px the contents, margins and column are one centred block, no gap", async () => {
+    expect(tier() === "XL", `tier ${tier()}`);
+    const a = rect(d.querySelector("article")), toc = rect(d.querySelector("nav.toc"));
+    const gap = v("--margin-gap"), lm = cssLen("--left-margin"), rm = cssLen("--margin");
+    near(toc.right + gap, a.left - gap - lm, 1, "contents' right edge + gap vs left margin's left edge");
+    const leftSpace = toc.left, rightSpace = d.documentElement.clientWidth - (a.left + v("--measure") + gap + rm);
+    near(leftSpace, rightSpace, 2, "space left vs right of the block");
+  });
+
+  await test("LAYOUT-1a: the Contents heading and Published sit on the subtitle's baseline", async () => {
+    const header = d.querySelector(".essay-header:not(.sample)");
+    const sub = baseline(header.querySelector(".subtitle"));
+    near(baseline(d.querySelector("nav.toc .toc-title")), sub, 1.5, "Contents");
+    near(baseline(header.querySelector(".header-meta")), sub, 1.5, "Published");
+  });
+
+  await test("TOC-2: the heading reads Contents, the title once stuck, Contents again when scrolled back", async () => {
+    const label = d.querySelector("nav.toc .toc-title");
+    expect(label.textContent === "Contents", `at the top: ${label.textContent}`);
+    await scroll(3000);
+    expect(label.textContent === "Specimen" && label.classList.contains("is-title"), `stuck: ${label.textContent}`);
+    const inner = d.querySelector("nav.toc .toc-inner");
+    near(rect(inner).top, parseFloat(w.getComputedStyle(inner).top), 1, "stuck below the menu");
+    await scroll(0);
+    expect(label.textContent === "Contents", `scrolled back: ${label.textContent}`);
+  });
+
+  await test("NAV-1: in XL the one menu tops the contents column and stays in the window", async () => {
+    const menu = d.querySelector(".menu-rail .site-menu");
+    expect(w.getComputedStyle(d.querySelector(".bar-menu")).display === "none", "the bar's copy shows in XL");
+    near(rect(menu).left, rect(d.querySelector("nav.toc")).left, 1, "menu vs contents, left edges");
+    await scroll(5000);
+    const r = rect(menu);
+    expect(r.top >= 0 && r.bottom <= 2.6 * 16 + 1, `menu at ${r.top}–${r.bottom} after scrolling`);
+    await scroll(0);
+  });
+
+  await test("BAR-1d: the bar spans the window; section name and controls line up with the column", async () => {
+    await scroll(4000);
+    await scroll(3800);   // scrolling up shows the bar (BAR-1a)
+    const bar = d.getElementById("bar");
+    expect(bar.classList.contains("is-shown"), "the bar did not show on scrolling up");
+    const b = rect(bar), a = rect(d.querySelector("article"));
+    near(b.left, 0, 0.5, "bar's left");
+    near(b.width, d.documentElement.clientWidth, 0.5, "bar's width");
+    near(rect(bar.querySelector(".bar-section")).left, a.left, 1.5, "section name vs the column's left");
+    near(rect(bar.querySelector(".bar-controls")).right, a.left + v("--measure"), 1.5, "controls vs the column's right");
+    await scroll(0);
+  });
+
+  await test("TERM-3: a definition opens a popup (no stub); More expands; see-also replaces it, with Back", async () => {
+    expect(!d.querySelector(".def-stub"), "a definition stub is in the margin");
+    trig("term-occurrent").click();
+    await settle(200);
+    const box = d.querySelector(".popup");
+    expect(box && box.querySelector(".popup-title").textContent === "occurrent", "no popup titled occurrent");
+    box.querySelector(".popup-more").click();
+    expect(!box.querySelector(".term-more").hidden, "More did not expand");
+    box.querySelector(".see-also a.term").click();
+    await settle(100);
+    expect(box.querySelector(".popup-title").textContent === "continuant", "see-also did not replace the content");
+    box.querySelector(".popup-back").click();
+    expect(box.querySelector(".popup-title").textContent === "occurrent", "Back did not restore it");
+  });
+
+  await test("ASIDE-3: resting on an aside previews it unfilled; a click pins it, filled", async () => {
+    const t = trig("aside-2");
+    t.scrollIntoView({ block: "center" });
+    await settle(200);
+    pointer("pointerover", t);
+    await sleep(450);
+    const stub = d.getElementById("aside-text-2");
+    expect(stub.classList.contains("is-open") && stub.classList.contains("is-preview"), "no preview");
+    expect(!t.querySelector(".circle").classList.contains("is-open"), "a preview filled its circle");
+    t.click();
+    await settle(100);
+    expect(stub.classList.contains("is-open") && !stub.classList.contains("is-preview"), "not pinned");
+    expect(t.querySelector(".circle").classList.contains("is-open"), "a pinned aside's circle is not filled");
+    key("Escape");
+    await scroll(0);
+  });
+
+  await test("POP-9: up to six pinned; the seventh closes the oldest", async () => {
+    const ids = ["note-1", "note-2", "note-3", "note-4", "note-5 note-6", "term-occurrent", "term-looping-effect"];
+    for (const id of ids) { trig(id).click(); await settle(80); }
+    const open = titles(pinned());
+    expect(open.length === 6, `${open.length} pinned: ${open}`);
+    expect(!open.includes("Note 1"), `the oldest stayed: ${open}`);
+    expect(trig("note-1").getAttribute("aria-expanded") === "false", "the closed one's mark still says expanded");
+    expect(pinned().every((b) => b.getAttribute("role") === "dialog" && !b.hasAttribute("aria-modal")), "not non-modal dialogs");
+  });
+
+  await test("POP-9: Esc closes the focused popup only; with none focused it does nothing", async () => {
+    for (const id of ["note-1", "note-2", "note-3"]) { trig(id).click(); await settle(80); }
+    const [a, b, c] = pinned();
+    b.focus();
+    key("Escape", b);
+    await settle(50);
+    expect(!b.isConnected, "the focused popup stayed");
+    expect(a.isConnected && c.isConnected, "Esc closed another popup too");
+    d.activeElement?.blur?.();
+    key("Escape", d.body);
+    await settle(50);
+    expect(pinned().length === 2, `${pinned().length} after Esc with nothing focused`);
+    c.focus();
+    expect(w.getComputedStyle(c).zIndex > w.getComputedStyle(a).zIndex, "the one last touched is not on top");
+  });
+
+  await test("POP-10: a pinned popup drags by its title bar and stays in the window; it resizes", async () => {
+    trig("note-1").click();
+    await settle(80);
+    const box = pinned()[0], bar = box.querySelector(".popup-bar"), r = rect(bar);
+    const x = r.left + 20, y = r.top + r.height / 2;
+    pointer("pointerdown", bar, x, y);
+    pointer("pointermove", d, x + 300, y + 200);
+    pointer("pointermove", d, x + 400, y + 250);
+    pointer("pointerup", d, x + 400, y + 250);
+    const moved = rect(box);
+    near(moved.left - r.left, 400, 1, "dragged across");
+    pointer("pointerdown", bar, moved.left + 20, moved.top + 5);
+    pointer("pointermove", d, -5000, -5000);
+    pointer("pointerup", d, -5000, -5000);
+    near(rect(box).left, 0, 0.5, "clamped left");
+    near(rect(box).top, 0, 0.5, "clamped top");
+    expect(w.getComputedStyle(box).resize === "both", "not resizable");
+  });
+
+  await test("POP-11: Dock in XL; the dock spans the contents and the left margin; dragging out undocks", async () => {
+    trig("note-2").click();
+    await settle(80);
+    const box = pinned()[0];
+    box.querySelector(".popup-dock").click();
+    await settle(80);
+    const dock = d.querySelector("nav.toc .dock");
+    expect(box.parentElement === dock && box.classList.contains("is-docked"), "not docked");
+    const want = rect(d.querySelector("nav.toc")).width + v("--margin-gap") + cssLen("--left-margin");
+    near(rect(box).width, want, 1.5, "docked width");
+    const bar = box.querySelector(".popup-bar"), r = rect(bar);
+    pointer("pointerdown", bar, r.left + 20, r.top + 5);
+    pointer("pointermove", d, r.left + 620, r.top + 105);
+    pointer("pointerup", d, r.left + 620, r.top + 105);
+    expect(!box.classList.contains("is-docked") && w.getComputedStyle(box).position === "fixed", "dragging out did not undock");
+  });
+
+  await test("POP-12: the scratch pad opens docked and keeps its text across a reload", async () => {
+    w.localStorage.removeItem("scratch");
+    expect(!d.querySelector(".site-menu .menu-scratch").hidden, "no Scratch in the menu");
+    d.querySelector(".toc-scratch .scratch-open").click();
+    await settle(100);
+    let pad = d.querySelector(".popup.scratch");
+    expect(pad?.classList.contains("is-docked"), "the pad did not open docked");
+    const ta = pad.querySelector("textarea");
+    expect(d.activeElement === ta, "the pad's text is not focused");
+    ta.value = "A note to self: Hacking 1996, p. 23.";
+    ta.dispatchEvent(new w.Event("input", { bubbles: true }));
+    await sleep(600);
+    await load("/specimen");
+    d.querySelector(".toc-scratch .scratch-open").click();
+    await settle(100);
+    pad = d.querySelector(".popup.scratch");
+    expect(pad.querySelector("textarea").value === "A note to self: Hacking 1996, p. 23.", "the text was lost");
+    w.localStorage.removeItem("scratch");
+  });
+
+  await test("Tier L: Pin, no Dock, contents in the bar; tier M: no Pin, one popup at a time, the pinned closed", async () => {
+    await resize(1400, 900);
+    expect(tier() === "L", `tier ${tier()} at 1,400`);
+    trig("note-1").click();
+    await settle(80);
+    const box = pinned()[0];
+    expect(box && !box.querySelector(".popup-pin").hidden && box.querySelector(".popup-dock").hidden, "Pin/Dock wrong in L");
+    expect(w.getComputedStyle(d.querySelector(".bar-menu")).display !== "none", "no menu in the bar in L");
+    await resize(900, 900);
+    expect(tier() === "M", `tier ${tier()} at 900`);
+    expect(pinned().length === 0, "pinned popups survived the drop to M");
+    trig("note-1").click(); await settle(80);
+    trig("note-2").click(); await settle(80);
+    const boxes = [...d.querySelectorAll(".popup")];
+    expect(boxes.length === 1 && boxes[0].querySelector(".popup-pin").hidden, `${boxes.length} popups in M, or a Pin button`);
+    key("Escape", d.body);
+    await settle(50);
+    expect(!d.querySelector(".popup"), "Esc did not close the one popup in M");
+  });
+
+  await test("Tier S: the bar's menu shows the shortened name", async () => {
+    await resize(390, 844);
+    expect(tier() === "S", `tier ${tier()} at 390`);
+    const short = d.querySelector(".bar-menu .site-name-short"), long = d.querySelector(".bar-menu .site-name");
+    expect(w.getComputedStyle(short).display !== "none" && w.getComputedStyle(long).display === "none", "the long name shows in S");
+  });
+
+  const out = document.getElementById("results");
+  out.textContent = JSON.stringify(results);
+  out.hidden = false;
+  await done(out.textContent);
+}
+
+// Release the page's load event, so Chrome dumps or captures it (browser_test.py).
+async function done(body = "") {
+  document.title = "done";
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  await fetch("/__results", { method: "POST", body });
+}
+
+// ── Screenshot scenarios ─────────────────────────────────────────────────
+
+const SCENARIOS = {
+  async top() {},
+  // the contents stuck under the menu, headed by the title
+  async stuck() { await scroll(d.getElementById("furniture").offsetTop + 200); },
+  // the bar shown by scrolling up, held by focus inside it
+  async bar() {
+    await scroll(d.getElementById("marks").offsetTop + 400);
+    await scroll(d.getElementById("marks").offsetTop + 200);
+    d.querySelector("#bar .bar-section").focus();
+    await settle(300);
+  },
+  // three pinned popups, one dragged, one docked
+  async pins() {
+    await scroll(d.getElementById("notes-asides").offsetTop - 160);
+    for (const id of ["note-1", "term-looping-effect", "note-2"]) { trig(id)?.click(); await settle(100); }
+    const boxes = [...d.querySelectorAll(".popup.is-pinned")];
+    boxes[0]?.querySelector(".popup-dock")?.click();
+    await settle(100);
+    const box = boxes[1], bar = box?.querySelector(".popup-bar");
+    if (bar) {
+      const r = bar.getBoundingClientRect();
+      pointer("pointerdown", bar, r.left + 20, r.top + 5);
+      pointer("pointermove", d, r.left + 260, r.top - 120);
+      pointer("pointerup", d, r.left + 260, r.top - 120);
+    }
+    boxes[2]?.focus();
+    await settle(200);
+  },
+  // the bar's contents, opened from the section name (in the sans)
+  async toc() {
+    await SCENARIOS.bar();
+    d.querySelector("#bar .bar-section").click();
+    await settle(200);
+  },
+  // the pad, with text in it
+  async pad() {
+    w.localStorage.setItem("scratch", "Ask about canalisation vs. constraint.\nCheck Hacking 1996, p. 23, against the lecture.\n\nOyama on the parity thesis: ch. 2?");
+    await scroll(d.getElementById("column").offsetTop);
+    (d.querySelector(".toc-scratch .scratch-open") || d.querySelector(".menu-scratch .scratch-open")).click();
+    await settle(200);
+    d.activeElement?.blur?.();
+    await settle(100);
+  },
+  // a definition, opened, with More
+  async def() {
+    const t = trig("term-occurrent");
+    t.scrollIntoView({ block: "start" });
+    w.scrollBy(0, -80);
+    await settle(200);
+    t.click();
+    await settle(200);
+    d.querySelector(".popup .popup-more")?.click();
+    await settle(100);
+  },
+};
+
+async function show(name, theme) {
+  if (params.get("w")) { frame.style.width = `${params.get("w")}px`; frame.style.height = `${params.get("h")}px`; }
+  await load("/specimen");
+  if (theme === "dark" || theme === "light") {
+    w.localStorage.setItem("theme", theme);
+    await load("/specimen");
+  }
+  await SCENARIOS[name]?.();
+  w.localStorage.removeItem("theme");
+  w.localStorage.removeItem("scratch");
+  await done();
+}
+
+if (params.get("run") === "tests") { document.body.classList.add("tests"); tests(); }
+else if (params.get("show")) show(params.get("show"), params.get("theme"));

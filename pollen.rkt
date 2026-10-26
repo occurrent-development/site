@@ -1120,7 +1120,10 @@
 ;; and Bibliography (BIB-4) join it when their pages are built, in Phase 3.
 (define menu-items '(("Home" "/") ("Essays" "/essays") ("Notebook" "/notebook")))
 
-(define (site-menu metas)
+;; NAV-1, BAR-1: BAR? makes the reading bar's copy, which on tier S shows a
+;; shortened name. The last item, Scratch (POP-12), needs scripts: it is
+;; hidden until the script shows it.
+(define (site-menu metas #:bar [bar? #f])
   (define here (select-from-metas 'here-path metas))
   (define rel (and here (path->string (path-replace-extension
                                        (find-relative-path (current-project-root) (string->path (format "~a" here)))
@@ -1129,8 +1132,9 @@
   ;; an essay marks Essays, an entry Notebook
   (define current (case (and rel (post-kind rel)) [(essay) "/essays"] [(entry) "/notebook"] [else url]))
   (->html
-   `(details ((class "site-menu"))
+   `(details ((class ,(if bar? "site-menu bar-menu" "site-menu")))
              (summary (span ((class "site-name")) "Occurrent Development")
+                      ,@(if bar? '((span ((class "site-name-short") (aria-hidden "true")) "Occurrent")) null)
                       (svg ((class "chevron") (viewBox "0 0 12 12") (aria-hidden "true"))
                            (path ((d "M2.5 4.5 6 8l3.5-3.5") (fill "none") (stroke "currentColor")
                                   (stroke-width "1.3") (stroke-linecap "round") (stroke-linejoin "round")))))
@@ -1138,7 +1142,10 @@
                   (ul ,@(for/list ([item (in-list menu-items)])
                           `(li (a ,(append `((href ,(cadr item)))
                                            (if (equal? current (cadr item)) '((aria-current "page")) null))
-                                  ,(car item)))))))))
+                                  ,(car item))))
+                      (li ((class "menu-scratch") (hidden ""))
+                          (button ((type "button") (class "scratch-open") (aria-label "Scratch pad"))
+                                  "Scratch" (span ((class "circle") (aria-hidden "true"))))))))))
 
 ;; KIND-1: the page wrapper's class, the only place CSS and scripts see a kind.
 (define (page-class metas)
@@ -1177,6 +1184,9 @@
    "}\n"))
 
 ;; TYPE-8/TYPE-10: faces from the subset manifest, then the stylesheet.
+;; §14: the stylesheet is inlined, so its comments are left out of the page
+;; (the critical CSS budget is 14 KB gzipped); the stylesheet has no "/*"
+;; inside a string.
 (define (site-css)
   (string-append
    (font-face "Libertinus Serif" 'serif-regular 400 "normal")
@@ -1184,7 +1194,10 @@
    (font-face "Libertinus Serif" 'serif-semibold 600 "normal")
    (font-face "Libertinus Mono" 'mono-regular 400 "normal")
    (mark-properties)
-   (file->string files:css)))
+   (strip-css-comments (file->string files:css))))
+
+(define (strip-css-comments css)
+  (regexp-replace* #px"[ \t]*/\\*.*?\\*/[ \t]*(\n(?=\n))?" css ""))
 
 (define (font-preloads)
   (string-join
@@ -1199,7 +1212,7 @@
   (format "/~a?v=~a" rel (substring (call-with-input-file f sha1) 0 10)))
 
 (define (specimen? metas) (and (select-from-metas 'specimen metas) #t))
-(define (specimen-css) (file->string files:specimen-css))
+(define (specimen-css) (strip-css-comments (file->string files:specimen-css)))
 
 (define (page-title metas)
   (define title (select-from-metas 'title metas))

@@ -10,6 +10,7 @@ Needs Racket with the `pollen` package; Python 3 with `fonttools`, `brotli` and 
 |---|---|
 | `make` | Runs the tests, subsets the fonts, renders every page and assembles `public/`. Works offline. |
 | `make test` | Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`). |
+| `make test-browser` | The interactive layer in headless Chrome against the built site (`tools/browser_test.py`, `tests/browser/`); part of `make`, skipped without Chrome. `--browser firefox` or `--browser safari` runs it elsewhere by hand; `--shots DIR` saves the specimen screenshots. |
 | `make serve` | Pollen's project server on http://localhost:8080 (pages at `/pages/<name>.html`). |
 | `make refresh` | Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, and classifies new figures for dark mode into `data/invert.json`. Run it after adding a citation or a figure; commit the changed files. |
 | `make clean` | Removes everything generated. |

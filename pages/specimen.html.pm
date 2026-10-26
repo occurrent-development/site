@@ -60,14 +60,17 @@ not whether the window is a certain number of pixels wide.
 There are four widths. Below 39◊code{em} the column narrows and its right
 edge is ragged (tier S). From 39◊code{em} it holds the full measure and is
 justified (tier M). From 66.5◊code{em} both margins appear (tier L): margin
-notes on the left, at least 8◊code{em} wide, and asides, definitions and the
-words of figures on the right, at least 13◊code{em}, with 2.5◊code{em}
-between each margin and the column and 2◊code{em} clear at either side. The
-right margin widens first, reaching 20◊code{em} at 73.5◊code{em}; then the
-left, reaching 13◊code{em} at 78.5◊code{em}. From 79◊code{em}, a page with
-contents also shows them at the window's left edge (tier XL). At the default
-size, where an ◊code{em} is 20 pixels, that is 780, 1330 and 1580 pixels; one
-size smaller, 718, 1224 and 1454; one larger, 858, 1463 and 1738.
+notes on the left, at least 8◊code{em} wide, and asides and the words of
+figures on the right, at least 13◊code{em}, with 2.5◊code{em} between each
+margin and the column and 2◊code{em} clear at either side. The right margin
+widens first, reaching 20◊code{em} at 73.5◊code{em}; then the left, reaching
+13◊code{em} at 78.5◊code{em}. From 80◊code{em}, a page with contents also
+shows them as the first column of the block, 11◊code{em} wide and
+2.5◊code{em} from the left margin, and the four columns are centred together
+(tier XL); the margins then widen in the same order, at 87 and 92◊code{em}.
+At the default size, where an ◊code{em} is 20 pixels, the tiers begin at 780,
+1330 and 1600 pixels; one size smaller, 718, 1224 and 1472; one larger, 858,
+1463 and 1760.
 
 ◊subsection[#:id "justification" #:short "Justification"]{Justification and hyphenation}
 
@@ -186,22 +189,23 @@ an essay.
 Nothing on a page is centred but the section break. The header at the top of
 this page shows the full form: title, subtitle and abstract in the column,
 closed by a short rule, and, on a wide screen, the facts about the page in the
-right margin beside the title, their first line on the title's first
-baseline. The dates come first, one to a line; then the tags, labelled; then
-links to the page's source and to its history; and last, after a gap, the
-epistemic status, the one line of prose among them, when there is one. Where
-the window is wide enough for the contents at its left edge, they start on
-the same baseline. On a narrower screen the same lines fall back between the
-subtitle and the abstract. An essay without an abstract looks like this,
+right margin beside the title, their first line on the subtitle's baseline.
+The dates come first, one to a line; then the tags, labelled; then links to
+the page's source and to its history; and last, after a gap, the epistemic
+status, the one line of prose among them, when there is one. Where the window
+is wide enough for the contents beside the left margin, their heading starts
+on the same baseline, with the menu above it. On a narrower screen the same
+lines fall back between the subtitle and the abstract. An essay without an abstract looks like this,
 closed by its rule after the subtitle:
 
 ◊header-sample[#:title "A sample header, with a title long enough to need two
 lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
 #:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. Its
-block starts on the line of the title's first baseline."]
+block starts on the subtitle's baseline."]
 
 A notebook entry has the same header with less in it: no epistemic status,
-so no gap, and no contents however many sections it has. Its tags lead to
+so no gap, and no contents however many sections it has. With no subtitle,
+its block starts on the line a second line of the title would take. Its tags lead to
 the notebook's index rather than the essays':
 
 ◊header-sample[#:kind "entry" #:title "A sample entry" #:published
@@ -276,15 +280,14 @@ definition, a note or an aside. The first time a defined word appears, such
 as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects},
 it carries a circle; later uses, like this second
 ◊term["occurrent"]{occurrent}, are plain text. ◊margin{A note at a sentence
-inside a paragraph} On a wide screen a definition
-also waits in the right margin as a single line beside its circle. Resting
-the pointer on either lets it grow there, in place, while the rest of the
-margin moves down to make room, and it folds again when the pointer leaves;
-clicking pins it open, its circle filled. More, inside a pinned definition,
-opens the longer discussion, and a defined word inside it opens over the
-page. On a narrower screen a definition
-opens over the text. Without scripts, a circle is a link to the end of the
-page, where definitions are collected under Terms.
+inside a paragraph} A definition opens over the
+page at every width, as a note does, with the word as its title and the short
+definition below it: resting the pointer on the word opens it, and clicking
+pins it, its circle filled. More opens the longer discussion in place, and a
+defined word inside it, such as those under See also, replaces the definition
+with its own, with Back to return. Definitions never sit in the margin, which
+is kept for commentary on the passage beside it. Without scripts, a circle is
+a link to the end of the page, where definitions are collected under Terms.
 
 ◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
 ◊summary{Circles for sources and digressions; the numbers stay with the notes.}
@@ -316,6 +319,19 @@ grow downward in place, and clicking pins it there. A short one is shown
 whole. Pin the first aside and then open the circle inside it: the note opens over the page, and the aside stays where
 it is. On a narrower screen both open over the text. Without scripts each
 aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
+
+On a wide screen with a pointer, several popups can be kept open at once.
+Clicking a circle pins its popup, and so does Pin in its title bar; up to
+six stay, and a seventh closes the oldest. Each can be dragged by its title
+bar, anywhere in the window, and resized from its corner, and the one last
+touched is on top. Escape closes the one that has focus and no other; each
+has its own close button. Where the contents show beside the margin, Dock
+sends a popup to the space beneath them, where it stays in view as the page
+scrolls; dragging it out sets it loose again. Pin two notes, drag one, and
+dock the definition of ◊term["continuant"]{continuant}
+to see all three. Beneath the contents, and at the foot of the menu, the
+scratch pad is a place to keep notes while reading: one pad for the whole
+site, kept in the browser and never sent anywhere.
 
 An aside that qualifies a particular phrase names it, and then the phrase and
 its circle are one link: hover over ◊aside["the phrase form"]{The phrase is
@@ -455,10 +471,13 @@ A table can also come from a file, and be set smaller:
 ◊summary{What later phases add to the site, and to this page.}
 
 Everything above works without scripts, and everything interactive is an
-addition to it: the circles and stubs, the margin, the bar that appears when
-you scroll back up (at the top of the window, or at the bottom on a touch
-screen), the text size and theme controls,
-and the sortable tables. What remains is around the essays rather than in
+addition to it: the circles and stubs, the margin, the pinned popups and
+their dock, the scratch pad, the bar that appears when you scroll back up
+(at the top of the window, or at the bottom on a touch screen, with the
+menu at its left end), the text size and theme controls, and the sortable
+tables. On the widest screens the contents scroll with the page until they
+reach the menu and then stay; once they stay, their heading becomes the
+title of the page. What remains is around the essays rather than in
 them: interactive figures, backlinks between essays, a changelog and a feed,
 a page for correspondence, and a stylesheet for print. Each will be checked
 here as it is built.

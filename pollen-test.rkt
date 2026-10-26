@@ -655,3 +655,9 @@
   (check-regexp-match #rx"href=\"/essays\" aria-current=\"page\"" (menu "essays/placeholder/placeholder.html.pm"))
   (check-regexp-match #rx"href=\"/notebook\" aria-current=\"page\"" (menu "notebook/a/a.html.pm"))
   (check-regexp-match #rx"href=\"/\" aria-current=\"page\"" (menu "pages/index.html.pm")))
+
+(test-case "NAV-1, POP-12: Scratch is the menu's last item, hidden until scripts show it; the bar's copy has a short name"
+  (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
+  (check-regexp-match #rx">Notebook<.*<li class=\"menu-scratch\" hidden=\"\"><button[^>]*aria-label=\"Scratch pad\"" (site-menu here))
+  (check-false (regexp-match? #rx"site-name-short" (site-menu here)))
+  (check-regexp-match #rx"class=\"site-menu bar-menu\".*site-name-short" (site-menu here #:bar #t)))

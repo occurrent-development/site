@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Browser tests</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  iframe { display: block; border: 0; width: 100vw; height: 100vh; }
+  body.tests iframe { width: 2560px; height: 1440px; }
+</style>
+</head>
+<body>
+<iframe id="page" title="Page under test"></iframe>
+<pre id="results" hidden></pre>
+<img src="/__wait" alt="" hidden>
+<script type="module" src="harness.js"></script>
+</body>
+</html>

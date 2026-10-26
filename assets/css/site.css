@@ -93,7 +93,7 @@ a:hover, a:focus-visible { color: var(--accent); }
      M   ≥ measure + 2 gutters      justified, no margins (39em)
      L   ≥ the text block + 2 × 2em justified; left margin for margin notes,
                                     right for stubs and figure words (66.5em)
-     XL  L + the contents at the window's edge (frame ≥ 79em; TOC-2, below)
+     XL  the contents, a gap and L, centred together (frame ≥ 80em; TOC-2, below)
    The text block is left margin + gap + column + gap + right margin.
    Query values must be literal; keep them in step with the variables. */
 .frame {
@@ -109,7 +109,6 @@ a:hover, a:focus-visible { color: var(--accent); }
   --left-margin: 8em;
   --edge: 2em;          /* kept clear at either side of the text block (LAYOUT-6c) */
   --toc: 11em;
-  --toc-edge: 1.5em;    /* the contents' gutter from the window's edge (TOC-2) */
   line-height: 1.5;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures contextual;
@@ -171,14 +170,17 @@ article { --tier: S; }
   }
 }
 
-/* XL: the contents at the window's edge (TOC-2). An outer container, .frame,
-   decides whether they fit: their gutter and column (1.5 + 11em) plus tier L
-   (66.5em) = 79em. When they do, their width is reserved at the left edge
-   and .page is narrowed by it, so the tiers above see only the width that is
-   left and centre the text block in it. As the window narrows the contents
-   go first (below 79em), then both margins together (below 66.5em). */
-@container frame (min-width: 79em) {
-  .has-toc > .page { padding-left: calc(var(--toc-edge) + var(--toc)); }
+/* XL: the contents are the first column of the text block (TOC-2,
+   LAYOUT-6a). An outer container, .frame, decides whether they fit: their
+   column and its gap (11 + 2.5em) plus tier L (66.5em) = 80em. When they do,
+   that width is reserved at the left of .page, so the tiers above see only
+   what is left and centre the text block in it; the contents then sit just
+   left of the left margin, and since the space reserved and the space left
+   over are the same on both sides, contents, margins and column are centred
+   together. As the window narrows the contents go first (below 80em), then
+   both margins together (below 66.5em). */
+@container frame (min-width: 80em) {
+  .has-toc > .page { padding-left: calc(var(--toc) + var(--margin-gap)); }
   .has-toc article { position: relative; --tier: XL; }
 }
 
@@ -252,15 +254,46 @@ blockquote.epigraph footer::before { content: "— "; }
 /* ── Essay header (LAYOUT-1) ───────────────────────────────────────────── */
 .site-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
+  min-height: 2.25rem;
   color: var(--text-muted);
   margin-bottom: 2.5em;
 }
-.site-name { font-size: 0.85em; font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
+.site-name, .site-name-short { font-size: 0.85em; font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
+.site-name-short { display: none; }
+
+/* NAV-1: one menu, on the rail. The rail takes no height: in tiers L, M and
+   S the menu sits on the header's line, at the column's left edge, opposite
+   the theme control. In tier XL the rail moves to the contents column and
+   is sticky, so the menu never leaves the window; it is placed so that,
+   stuck, it is centred in the reading bar's strip and the bar's hairline
+   runs beneath it (BAR-1d). No background: the bar's shows through. */
+.page > .menu-rail {
+  position: relative;
+  z-index: 21;                        /* over the reading bar */
+  height: 0;
+  color: var(--text-muted);
+}
+.menu-rail .site-menu { height: 2.25rem; display: flex; align-items: center; width: max-content; }
+@container frame (min-width: 80em) {
+  .has-toc > .page > .menu-rail {
+    position: sticky;
+    top: calc((2.6rem - 2.25rem) / 2);
+    width: var(--toc);
+    padding: 0;
+    margin-left: calc(var(--lead) - var(--left-margin) - 2 * var(--margin-gap) - var(--toc));
+  }
+}
 
 /* NAV-1: the site menu, a <details> so it works without scripts */
 .site-menu { position: relative; }
+.menu-scratch button {
+  appearance: none; border: 0; background: none; font: inherit; color: var(--text);
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  padding: 0.25em 0.75em; font-size: 0.9em;
+}
+.menu-scratch button:hover, .menu-scratch button:focus-visible { color: var(--accent); }
 .site-menu summary {
   list-style: none;
   cursor: pointer;
@@ -441,8 +474,9 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 
 /* ── Table of contents (TOC-1/2) ─────────────────────────────────────────
    In the text only without scripts; with them it opens from the reading bar,
-   and in tier XL it sits at the window's edge, outside the text block,
-   staying in view. */
+   and in tier XL it is the first column of the text block, beside the left
+   margin: it scrolls with the page until its heading reaches the menu, then
+   sticks there. */
 .js .toc { display: none; }
 .toc {
   font-size: 0.85em;
@@ -463,16 +497,17 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
 .toc li { margin: 0.15em 0; }
 .toc + p, .toc + .intro { text-indent: 0; }
 
-@container frame (min-width: 79em) {
+@container frame (min-width: 80em) {
   .has-toc .toc, .js .has-toc .toc {
     display: block;
     position: absolute;
-    top: 0;
+    top: 0;                     /* the script puts the heading on the subtitle's baseline (LAYOUT-1a) */
     bottom: 0;
-    left: calc(-1 * (var(--lead) + var(--toc)));   /* from the column back to the edge's gutter */
+    left: calc(-1 * (var(--left-margin) + 2 * var(--margin-gap) + var(--toc)));   /* from the column back past the left margin */
     width: var(--toc);
     margin: 0;
     font-size: 1em;             /* so the widths above are in the page's em */
+    z-index: 3;                 /* docked popups cover margin notes (POP-11) */
   }
   .toc-inner {
     font-family: var(--sans);
@@ -480,29 +515,43 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     font-size: 0.7em;
     line-height: 1.35;
     position: sticky;
-    top: 1.5rem;
-    max-height: calc(100vh - 3rem);
-    display: flex;              /* the title stays; the list scrolls when too tall */
+    top: 2.6rem;                /* below the menu, which sits in the bar's strip (NAV-1) */
+    padding-top: 0.9rem;
+    max-height: calc(100vh - 2.6rem);
+    display: flex;              /* the heading stays; the list scrolls when too tall */
     flex-direction: column;
   }
   .toc-inner > ul {
     position: relative;         /* offsets for scrolling to the current section */
-    min-height: 0;
+    flex: 0 1 auto;
+    min-height: 3em;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
   }
   .toc-title {
+    flex: none;
     font-variant-caps: normal;
     text-transform: uppercase;
     font-size: 0.85em;
     letter-spacing: 0.08em;
     margin-bottom: 0.6em;
   }
-  .toc li { margin: 0.3em 0; }
-  .toc ul ul { padding-left: 0.9em; }
-  .toc ul ul li { margin: 0.2em 0; }
-  .toc a {
+  /* once stuck, the heading is the essay's title, the running head (TOC-2) */
+  .toc-title.is-title {
+    font-family: "Libertinus Serif", "Libertinus Fallback", Georgia, serif;
+    text-transform: none;
+    font-variant-caps: small-caps;
+    font-variant-numeric: oldstyle-nums;
+    font-size: calc(0.85em / 0.7);    /* margin size, in the page's em */
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  .toc-inner > ul li { margin: 0.3em 0; }
+  .toc-inner > ul ul { padding-left: 0.9em; }
+  .toc-inner > ul ul li { margin: 0.2em 0; }
+  .toc-inner > ul a {
     display: block;
     color: var(--text-muted);
     text-decoration: none;
@@ -510,8 +559,8 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .toc a:hover, .toc a:focus-visible { color: var(--accent); }
-  .toc a[aria-current] { color: var(--text); }
+  .toc-inner > ul a:hover, .toc-inner > ul a:focus-visible { color: var(--accent); }
+  .toc-inner > ul a[aria-current] { color: var(--text); }
   /* the deepest current entry also gets a hairline in the gutter (TOC-2) */
   .toc-inner > ul { padding-left: 0.7em; }
   .toc-mark {
@@ -522,7 +571,15 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     background: var(--rule);
     transition: top 0.2s ease;
   }
+  /* POP-12: the scratch pad's link, at the foot of the list */
+  .toc-inner > .toc-scratch { display: block; flex: none; margin: 0.9em 0 0 0.7em; }
 }
+.toc-scratch { display: none; }
+.toc-scratch button {
+  appearance: none; border: 0; background: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--text-muted);
+}
+.toc-scratch button:hover, .toc-scratch button:focus-visible { color: var(--accent); }
 
 /* ── Intro paragraph (LAYOUT-3): first line in small caps, narrow tiers only ── */
 .intro::first-line { font-variant-caps: small-caps; letter-spacing: 0.03em; }
@@ -940,20 +997,37 @@ p + ul.latest { margin-top: 0.5em; }
   color: var(--accent);
 }
 
-/* The contents, opened from the reading bar */
-.toc-list { list-style: none; margin: 0; padding: 0; }
-.toc-list ul { list-style: none; margin: 0; padding-left: 1.2em; }
-.toc-list li { margin: 0.2em 0; }
-.toc-list a[aria-current] { color: var(--accent); }
-.toc-list a[aria-current]::before { content: "▸ "; }
+/* The contents, opened from the reading bar: the same component as the
+   contents column, in the system sans (BAR-1, LAYOUT-2a) */
+.toc-popup .popup-body {
+  font-family: var(--sans);
+  font-variant-numeric: lining-nums;
+  font-size: 0.85em;
+  line-height: 1.35;
+}
+.toc-list { list-style: none; margin: 0; padding: 0 0 0 0.7em; }
+.toc-list ul { list-style: none; margin: 0; padding-left: 0.9em; }
+.toc-list li { margin: 0.3em 0; }
+.toc-list ul li { margin: 0.2em 0; }
+.toc-list a { color: var(--text-muted); position: relative; }
+.toc-list a:hover, .toc-list a:focus-visible { color: var(--accent); }
+.toc-list a[aria-current] { color: var(--text); }
+.toc-list a[aria-current]::before {      /* the hairline beside the current entry (TOC-2) */
+  content: ""; position: absolute; left: -0.7em; top: 0.2em; bottom: 0.2em;
+  border-left: 1px solid var(--rule);
+}
 
 /* ── With JS (CITE-10): Terms and Asides are for readers without scripts ── */
 .js #terms, .js #asides { display: none; }
 
 /* ── Reading bar (BAR-1) ───────────────────────────────────────────────
    Fixed, overlaying the page: it never moves content. Shown on scroll-up.
-   The script sets its left edge, width and padding from the text block
-   (BAR-1d), so the column rules for the page's children do not apply. */
+   It spans the window, and so does its hairline (BAR-1d); the script sets
+   its padding so that the section name starts at the column's left edge and
+   the controls end at its right, so the column rules for the page's
+   children do not apply. At its left end, the menu: in tier XL the sticky
+   menu of the contents column shows through the bar; elsewhere the bar
+   carries a copy (NAV-1). */
 .page > .bar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -961,11 +1035,11 @@ p + ul.latest { margin-top: 0.5em; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1em;
+  gap: 0;
   width: auto;
   max-width: none;
   margin: 0;
-  padding-inline: 0;
+  padding-inline: 1.25rem;
   height: 2.6rem;
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
@@ -1003,7 +1077,17 @@ p + ul.latest { margin-top: 0.5em; }
   letter-spacing: 0.05em;
   text-align: left;
 }
-.bar-controls { display: flex; align-items: center; gap: 0.15rem; flex: none; }
+.bar-controls { display: flex; align-items: center; gap: 0.15rem; flex: none; margin-left: auto; }
+.bar-menu { flex: none; color: var(--text-muted); }
+.bar-menu summary { padding: 0.25rem 0; }
+@container frame (min-width: 80em) { .has-toc .bar-menu { display: none; } }
+@container page (width < 39em) {        /* tier S: the chevron and a shortened name */
+  .bar-menu .site-name { display: none; }
+  .bar-menu .site-name-short { display: inline; }
+}
+@media (hover: none) {                  /* the bar is at the bottom: the menu opens upward */
+  .bar-menu nav { top: auto; bottom: 100%; margin: 0 0 0.35em; }
+}
 .size-down span { font-size: 0.8em; }
 .size-up span { font-size: 1.15em; }
 .bar .theme-toggle { width: 2rem; height: 2rem; margin: 0; padding: 0.4rem; }
@@ -1011,7 +1095,7 @@ p + ul.latest { margin-top: 0.5em; }
 /* ── Popups and popins (§11) ───────────────────────────────────────────── */
 .popup {
   position: absolute;
-  z-index: 30;
+  z-index: 37;                      /* over the pinned (30–35), which the script stacks */
   width: min(22em, calc(100vw - 2rem));   /* in the page's em since THEME-5b */
   max-height: min(70vh, 32em);
   display: flex;
@@ -1072,6 +1156,78 @@ p + ul.latest { margin-top: 0.5em; }
 .card-facts { color: var(--text-muted); margin: 0.2em 0 0.6em; }
 .card-note { margin-top: 0.5em; }
 .popup:focus { outline: none; }
+
+/* POP-9, POP-10: pinned popups are fixed in the window, dragged by the title
+   bar, resized from the corner; nothing about them is remembered. */
+.popup-pin[aria-pressed="true"], .popup-dock[aria-pressed="true"] { color: var(--accent); }
+.popup.is-pinned {
+  overflow: hidden;                 /* `resize` needs it; the body scrolls */
+  resize: both;
+  min-width: 14em;
+  min-height: 6em;
+  max-width: calc(100vw - 1rem);
+  max-height: calc(100vh - 1rem);
+}
+.popup.is-pinned .popup-bar { cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; }
+.popup.is-pinned .popup-bar :is(a, button) { cursor: pointer; }
+.popup.is-dragging { box-shadow: 0 0.6em 2em rgb(0 0 0 / 0.2); }
+
+/* POP-11: the dock, under the contents list in tier XL, as wide as the
+   contents and the left margin; docked popups stack downward in it. It is
+   set back in the page's own size and face (the contents are smaller, in
+   the sans). */
+.dock { display: none; }
+@container frame (min-width: 80em) {
+  .toc-inner > .dock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    flex: none;
+    margin-top: 0.6em;
+    font-size: calc(1em / 0.7);
+    width: calc(var(--toc) + var(--margin-gap) + var(--left-margin));
+    font-family: "Libertinus Serif", "Libertinus Fallback", Georgia, serif;
+    font-variant-numeric: oldstyle-nums proportional-nums;
+    line-height: 1.5;
+  }
+  .toc-inner > .dock:empty { margin: 0; }
+}
+.popup.is-docked {
+  position: relative;
+  left: auto; top: auto;
+  width: auto;
+  max-width: none;
+  max-height: 45vh;
+  min-height: 4em;
+  resize: vertical;
+  box-shadow: 0 0.2em 0.8em rgb(0 0 0 / 0.08);
+}
+
+/* POP-12: the scratch pad */
+.scratch .popup-body { display: flex; flex-direction: column; flex: 1; padding-bottom: 0.6em; }
+.scratch-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.scratch-text {
+  flex: 1;
+  width: 100%;
+  min-height: 8em;
+  resize: none;                    /* the popup resizes */
+  font: inherit;                   /* the text face, at aside size */
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--popup-border);
+  border-radius: 3px;
+  padding: 0.4em 0.5em;
+  hyphens: manual;
+}
+.scratch-text:focus { outline: none; border-color: var(--accent); }
+.scratch-controls { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3em 1em; margin-top: 0.5em; color: var(--text-muted); }
+.scratch-controls button {
+  appearance: none; border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
+}
+.scratch-controls button:hover, .scratch-controls button:focus-visible { color: var(--accent); }
+.scratch-controls .scratch-yes { color: var(--accent); }
+.scratch-status { margin-left: auto; font-style: italic; }
 
 /* POP-5: on touch devices, a sheet anchored to the bottom. */
 .popup.is-popin {
@@ -1199,9 +1355,10 @@ p + ul.latest { margin-top: 0.5em; }
     color: var(--text-muted);
   }
 }
-/* ASIDE-3, TERM-3: asides and definitions start as one margin line with a
-   hairline rule on the right edge of the margin; opening one grows the same
-   text downward in place, and the rule with it. No box, no background. */
+/* ASIDE-3: asides start as one margin line with a hairline rule on the
+   right edge of the margin; opening one grows the same text downward in
+   place, and the rule with it. No box, no background. Definitions are
+   popups (TERM-3). */
 .stub {
   display: inline-block;   /* blockified once absolute; inline so it starts on its circle's line */
   box-sizing: border-box;
@@ -1218,12 +1375,6 @@ p + ul.latest { margin-top: 0.5em; }
 .stub:hover, .stub.hl, .stub:focus-visible { color: var(--accent); }
 .stub.is-open { color: var(--text); max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
 .stub:focus-visible { outline-offset: 3px; }
-.stub-head { font-variant-caps: all-small-caps; letter-spacing: 0.04em; }
-.stub-extra { display: none; }
-.stub.is-open:not(.is-preview) .stub-extra { display: block; }   /* a preview shows the short text only */
-.stub-extra .term-more, .stub-extra .see-also, .stub-more-line { display: block; margin: 0.4em 0 0; }
-.stub-extra .term-more p { margin: 0 0 0.4em; text-indent: 0; }
-.stub-extra .see-also { color: var(--text-muted); }
 
 /* ── Headings in sans (LAYOUT-2a, chosen 2026-10-15) ──────────────────────
    Level-2 and level-3 headings, figure and table titles, table column
