@@ -1099,7 +1099,25 @@ p + ul.latest { margin-top: 0.5em; }
 /* NAV-1: on touch devices the bar's menu is three bars, opening upward */
 .bar-menu .menu-icon { display: none; width: 1.35rem; height: 1.35rem; }
 @media (hover: none) {
-  .bar-menu nav { top: auto; bottom: 100%; margin: 0 0 0.35em; }
+  /* flush with the screen's left edge, just above the bar; in the sans, at
+     a size a thumb can read and hit (seen on a phone, 2026-10-26) */
+  .bar-menu nav {
+    position: fixed;
+    top: auto;
+    left: 0;
+    bottom: calc(3.4rem + env(safe-area-inset-bottom));
+    margin: 0;
+    min-width: 12rem;
+    border-left: 0;
+    border-bottom: 0;
+    border-radius: 0 4px 0 0;
+    padding: 0.4rem 0;
+  }
+  .bar-menu a, .bar-menu .menu-scratch button {
+    font-family: var(--sans);
+    font-size: 1.0625rem;
+    padding: 0.7rem 1.25rem;
+  }
   .bar-menu .site-name, .bar-menu .site-name-short, .bar-menu .chevron { display: none; }
   .bar-menu .menu-icon { display: block; }
   .bar-menu summary { justify-content: flex-start; }

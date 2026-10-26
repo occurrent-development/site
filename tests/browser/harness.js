@@ -305,13 +305,18 @@ async function touchTests() {
     const controls = [...bar.querySelectorAll("button, summary")].filter((b) => b.getClientRects().length);
     expect(controls.every((b) => rect(b).height >= 44 && rect(b).width >= 44), "a control smaller than 44 × 44 px");
   });
-  await test("NAV-1: the bar's menu is three bars, named, and opens upward", async () => {
+  await test("NAV-1: the bar's menu is three bars, named, and opens upward, flush left, in the sans", async () => {
     const m = d.querySelector(".bar-menu");
     const shown = (sel) => w.getComputedStyle(m.querySelector(sel)).display !== "none";
     expect(shown(".menu-icon") && !shown(".site-name") && !shown(".site-name-short"), "the name shows, or the icon does not");
     expect(m.querySelector("summary").getAttribute("aria-label") === "Site menu", "no accessible name");
     m.open = true;
     expect(rect(m.querySelector("nav")).bottom <= rect(m).top + 1, "the menu does not open upward");
+    const nav = rect(m.querySelector("nav")), link = m.querySelector("nav a");
+    near(nav.left, 0, 0.5, "the menu's left edge vs the screen's");
+    near(nav.bottom, rect(d.getElementById("bar")).top, 1, "the menu's foot vs the bar's top");
+    expect(/system-ui/.test(w.getComputedStyle(link).fontFamily), "the menu is not in the sans");
+    expect(parseFloat(w.getComputedStyle(link).fontSize) >= 16, `menu text ${w.getComputedStyle(link).fontSize}`);
     m.open = false;
   });
   await test("POP-12: no scratch pad on touch devices", async () => {
@@ -365,6 +370,12 @@ const SCENARIOS = {
     await SCENARIOS.bar();
     d.querySelector("#bar .bar-section").click();
     await settle(200);
+  },
+  // the bar's menu, open (on a touch device, at the bottom)
+  async menu() {
+    await scroll(d.getElementById("lists").offsetTop - 200);
+    d.querySelector(".bar-menu").open = true;
+    await settle(100);
   },
   // the pad, with text in it
   async pad() {
