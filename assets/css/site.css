@@ -1071,6 +1071,21 @@ p + ul.latest { margin-top: 0.5em; }
   .bar .bar-section { justify-content: flex-start; display: block; line-height: 44px; }
   .page { padding-bottom: calc(4em + 3.4rem + env(safe-area-inset-bottom)); }
 }
+/* iOS Safari 26: as its toolbar grows on scrolling up, a fixed element at
+   the bottom sits ~10 pt too low and the toolbar covers the foot of the bar
+   (seen on an iPhone, 2026-10-26; WebKit bug 297779). Some room below the
+   controls keeps them clear in both states. -webkit-touch-callout is
+   supported only by iOS, so other touch devices are unchanged. */
+@supports (-webkit-touch-callout: none) {
+  @media (hover: none) {
+    .page > .bar {
+      height: calc(3.4rem + max(env(safe-area-inset-bottom), 14px));
+      padding-bottom: max(env(safe-area-inset-bottom), 14px);
+    }
+    .bar-menu nav { bottom: calc(3.4rem + max(env(safe-area-inset-bottom), 14px)); }
+    .page { padding-bottom: calc(4em + 3.4rem + max(env(safe-area-inset-bottom), 14px)); }
+  }
+}
 .page > .bar.is-shown { transform: none; }
 .bar > * { font-size: 0.8em; }   /* not on .bar itself: its width is set in em (.page > *) */
 .bar button {
