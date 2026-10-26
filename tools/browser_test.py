@@ -115,10 +115,18 @@ def serve():
     return srv, f"http://127.0.0.1:{srv.server_address[1]}"
 
 
+# A runner with no mouse makes headless Chrome report `(hover: none)`, and
+# the page then takes the touch path (popins, no pinning: POP-5, POP-9), as
+# GitHub's Linux runners did on 2026-10-26. The tests are for a pointer
+# device, so the browser is told it has one: hover = 2 (hover),
+# pointer = 4 (fine), Blink's own values.
+POINTER = "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4"
+
+
 def run_chrome(binary, profile, args, url, timeout=180):
     cmd = [binary, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
            "--no-default-browser-check", "--disable-extensions", f"--user-data-dir={profile}",
-           *args, url]
+           POINTER, *args, url]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
 

@@ -76,6 +76,10 @@ async function tests() {
   const v = (name) => parseFloat(w.getComputedStyle(d.querySelector(".page")).getPropertyValue(name)) * em();
   const cssLen = (name) => parseFloat(w.getComputedStyle(d.querySelector("article")).getPropertyValue(name));
 
+  await test("The browser has a pointer that hovers (the rest assume one)", async () => {
+    expect(w.matchMedia("(hover: hover)").matches, "the page sees (hover: none) and takes the touch path; see POINTER in browser_test.py");
+  });
+
   await test("LAYOUT-6a, TOC-2: at 2,560 px the contents, margins and column are one centred block, no gap", async () => {
     expect(tier() === "XL", `tier ${tier()}`);
     const a = rect(d.querySelector("article")), toc = rect(d.querySelector("nav.toc"));
