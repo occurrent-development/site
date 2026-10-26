@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Occurrent Development monogram: O top left, D bottom right, interlocked. Libertinus Serif Semibold outlines embedded, so no font is needed. The O passes behind the D above the diagonal and in front of it below; each letter is cut away around the other where the other is in front. Palette: site accent #8A3A26, parchment #EFE7D4. -->
+<defs>
+<clipPath id="upper"><polygon points="0,0 64,0 64,64"/></clipPath>
+<clipPath id="lower"><polygon points="0,0 0,64 64,64"/></clipPath>
+<mask id="o-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><g clip-path="url(#upper)"><path transform="translate(17.833 60.000) scale(0.06192 -0.06192)" d="M24 0H338C487 0 681 63 681 309C681 494 523 646 320 646H24L22 644V621C22 616 26 613 30 613H44C84 613 99 601 99 569V77C99 45 84 33 44 33H30C26 33 22 30 22 24V2ZM221 75V571C221 603 247 606 283 606C480 606 549 435 549 284C549 88 436 40 308 40C230 40 221 46 221 75Z" fill="none" stroke="#000" stroke-width="46" stroke-linejoin="round"/></g></mask>
+<mask id="d-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><g clip-path="url(#lower)"><path transform="translate(1.709 44.743) scale(0.06192 -0.06192)" d="M694 329C694 528 540 658 363 658C173 658 37 507 37 311C37 113 182 -10 364 -10C566 -10 694 129 694 329ZM351 617C464 617 562 513 562 310C562 136 485 31 384 31C266 31 168 140 168 328C168 532 266 617 351 617Z" fill="none" stroke="#000" stroke-width="46" stroke-linejoin="round"/></g></mask>
+</defs>
+<rect width="64" height="64" rx="6" fill="#8A3A26"/>
+<g fill="#EFE7D4">
+<g mask="url(#o-mask)"><path transform="translate(1.709 44.743) scale(0.06192 -0.06192)" d="M694 329C694 528 540 658 363 658C173 658 37 507 37 311C37 113 182 -10 364 -10C566 -10 694 129 694 329ZM351 617C464 617 562 513 562 310C562 136 485 31 384 31C266 31 168 140 168 328C168 532 266 617 351 617Z"/></g>
+<g mask="url(#d-mask)"><path transform="translate(17.833 60.000) scale(0.06192 -0.06192)" d="M24 0H338C487 0 681 63 681 309C681 494 523 646 320 646H24L22 644V621C22 616 26 613 30 613H44C84 613 99 601 99 569V77C99 45 84 33 44 33H30C26 33 22 30 22 24V2ZM221 75V571C221 603 247 606 283 606C480 606 549 435 549 284C549 88 436 40 308 40C230 40 221 46 221 75Z"/></g>
+</g>
+</svg>

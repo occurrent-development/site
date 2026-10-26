@@ -1096,8 +1096,9 @@ p + ul.latest { margin-top: 0.5em; }
   .bar-menu .site-name { display: none; }
   .bar-menu .site-name-short { display: inline; }
 }
-/* NAV-1: on touch devices the bar's menu is three bars, opening upward */
-.bar-menu .menu-icon { display: none; width: 1.35rem; height: 1.35rem; }
+/* NAV-1: on touch devices the bar's menu is the site's monogram (BRAND-1),
+   opening upward. A background, not an <img>: only touch devices fetch it. */
+.bar-menu .menu-icon { display: none; width: 1.75rem; height: 1.75rem; }
 @media (hover: none) {
   /* flush with the screen's left edge, just above the bar; in the sans, at
      a size a thumb can read and hit (seen on a phone, 2026-10-26) */
@@ -1119,7 +1120,7 @@ p + ul.latest { margin-top: 0.5em; }
     padding: 0.7rem 1.25rem;
   }
   .bar-menu .site-name, .bar-menu .site-name-short, .bar-menu .chevron { display: none; }
-  .bar-menu .menu-icon { display: block; }
+  .bar-menu .menu-icon { display: block; background: url(/assets/brand/logo.svg) center / contain no-repeat; }
   .bar-menu summary { justify-content: flex-start; }
   .menu-scratch, .toc-scratch { display: none !important; }   /* POP-12: no scratch pad on touch */
 }

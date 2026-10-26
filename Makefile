@@ -74,6 +74,8 @@ publish: render
 	while read src dest; do mkdir -p "public/$$(dirname "$$dest")"; cp "$$src" "public/$$dest"; done < data/publish.txt
 	cp assets/fonts/*.woff2 public/assets/fonts/
 	cp assets/icons/*.svg public/assets/icons/
+	mkdir -p public/assets/brand && cp assets/brand/* public/assets/brand/
+	cp assets/brand/favicon.ico public/favicon.ico
 	cp assets/js/site.js assets/js/tables.js public/assets/js/
 	find assets/img -type f ! -name images.json -exec cp {} public/assets/img/ \;
 	cp data/anchors.json public/data/

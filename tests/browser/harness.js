@@ -80,6 +80,17 @@ async function tests() {
     expect(w.matchMedia("(hover: hover)").matches, "the page sees (hover: none) and takes the touch path; see POINTER in browser_test.py");
   });
 
+  await test("BRAND-2: the page links the SVG icon, favicon.ico and the touch icon, and each is served", async () => {
+    const want = [["icon", "/assets/brand/logo.svg"], ["icon", "/favicon.ico"], ["apple-touch-icon", "/assets/brand/apple-touch-icon.png"]];
+    for (const [rel, href] of want) {
+      const link = d.querySelector(`link[rel="${rel}"][href="${href}"]`);
+      expect(link, `no <link rel="${rel}" href="${href}">`);
+      const r = await w.fetch(href);
+      expect(r.ok && (await r.blob()).size > 0, `${href}: ${r.status}`);
+    }
+    expect(d.querySelector('link[href="/assets/brand/logo.svg"]').type === "image/svg+xml", "the SVG icon has no type");
+  });
+
   await test("LAYOUT-6a, TOC-2: at 2,560 px the contents, margins and column are one centred block, no gap", async () => {
     expect(tier() === "XL", `tier ${tier()}`);
     const a = rect(d.querySelector("article")), toc = rect(d.querySelector("nav.toc"));
@@ -305,11 +316,16 @@ async function touchTests() {
     const controls = [...bar.querySelectorAll("button, summary")].filter((b) => b.getClientRects().length);
     expect(controls.every((b) => rect(b).height >= 44 && rect(b).width >= 44), "a control smaller than 44 × 44 px");
   });
-  await test("NAV-1: the bar's menu is three bars, named, and opens upward, flush left, in the sans", async () => {
+  await test("NAV-1, BRAND-1: the bar's menu is the monogram, named, and opens upward, flush left, in the sans", async () => {
     const m = d.querySelector(".bar-menu");
     const shown = (sel) => w.getComputedStyle(m.querySelector(sel)).display !== "none";
     expect(shown(".menu-icon") && !shown(".site-name") && !shown(".site-name-short"), "the name shows, or the icon does not");
     expect(m.querySelector("summary").getAttribute("aria-label") === "Site menu", "no accessible name");
+    const bg = w.getComputedStyle(m.querySelector(".menu-icon")).backgroundImage;
+    expect(/\/assets\/brand\/logo\.svg/.test(bg), `the icon is ${bg}`);
+    const img = new w.Image();
+    await new Promise((r) => { img.onload = img.onerror = r; img.src = "/assets/brand/logo.svg"; });
+    expect(img.naturalWidth > 0, "the monogram does not load");
     m.open = true;
     expect(rect(m.querySelector("nav")).bottom <= rect(m).top + 1, "the menu does not open upward");
     const nav = rect(m.querySelector("nav")), link = m.querySelector("nav a");
