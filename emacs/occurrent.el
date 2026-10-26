@@ -1,5 +1,7 @@
 ;;; occurrent.el --- Writing occurrentdevelopment.com in Pollen  -*- lexical-binding: t; -*-
 
+;;; Commentary:
+
 ;; Commands for SPEC.md §16. Every picker uses plain `completing-read', so
 ;; it works with Vertico, Ivy, Helm or the default UI.
 ;;
@@ -35,7 +37,7 @@ When nil, read ZOTERO_BIB from the repository's local.mk."
 (defcustom od-site-directory nil
   "The site repository, used when the current buffer is not inside it.
 With it set, `C-c o N' and the other global keys work from anywhere,
-dired included."
+Dired included."
   :type '(choice (const nil) directory))
 
 (defcustom od-preview-port 8080
@@ -62,9 +64,11 @@ Found above the current file or directory, or else `od-site-directory'."
       (user-error "Not inside the site repository, and `od-site-directory' is not set")))
 
 (defun od--file (&rest parts)
+  "Return the path of PARTS, joined by slashes, under the site root (MODE-4)."
   (expand-file-name (string-join parts "/") (od-root)))
 
 (defun od--region-text ()
+  "Return the active region's text without properties, or nil (EMACS-2)."
   (when (use-region-p)
     (buffer-substring-no-properties (region-beginning) (region-end))))
 
@@ -88,6 +92,7 @@ Leave point after AFTER, or inside when there was nothing to wrap."
     (string-trim s "-" "-")))
 
 (defun od--valid-id-p (id)
+  "Return non-nil if ID is a permanent id: lowercase words and hyphens (SRC-1)."
   (string-match-p "\\`[a-z0-9]+\\(-[a-z0-9]+\\)*\\'" id))
 
 ;;; The lozenge (EMACS-1) ---------------------------------------------------
@@ -104,6 +109,8 @@ Leave point after AFTER, or inside when there was nothing to wrap."
 ;;; Citations ----------------------------------------------------------------
 
 (defun od--zotero-bib ()
+  "Return the Zotero export (BUILD-3).
+That is `od-zotero-bib', or ZOTERO_BIB in the site's local.mk."
   (or od-zotero-bib
       (let ((mk (od--file "local.mk")))
         (when (file-exists-p mk)
@@ -145,6 +152,8 @@ Leave point after AFTER, or inside when there was nothing to wrap."
 (defvar citar-bibliography)
 
 (defun od--select-key ()
+  "Ask for a citation key, through citar when it is installed (BIB-2).
+Without citar, the keys are read from the Zotero export."
   (if (fboundp 'citar-select-ref)
       (let ((citar-bibliography (list (od--zotero-bib))))
         (citar-select-ref))
@@ -165,12 +174,15 @@ Leave point after AFTER, or inside when there was nothing to wrap."
 (defvar od--terms-cache nil "(DIR-MTIME . TERMS); TERMS is a list of (ID HEADWORD ALIASES).")
 
 (defun od--meta (name)
+  "Return the value of meta NAME in this buffer, trimmed, or nil (VOCAB-4)."
   (save-excursion
     (goto-char (point-min))
     (when (re-search-forward (format "◊define-meta\\[%s\\]{\\([^}]*\\)}" name) nil t)
       (string-trim (match-string 1)))))
 
 (defun od--terms ()
+  "Return the glossary's terms, each (ID HEADWORD ALIASES) (EMACS-3).
+They are read from glossary/ and cached until a file there changes."
   (let* ((dir (od--file "glossary"))
          (files (and (file-directory-p dir) (directory-files dir t "\\.pm\\'")))
          (stamp (mapcar (lambda (f) (file-attribute-modification-time (file-attributes f))) files)))
@@ -244,7 +256,8 @@ Return the id."
 ;;; Sections (§8) and links ---------------------------------------------------
 
 (defconst od--heading-re
-  "^◊\\(section\\|subsection\\|subsubsection\\)\\[#:id \"\\([^\"]+\\)\"[^]]*\\]{\\([^}]*\\)}")
+  "^◊\\(section\\|subsection\\|subsubsection\\)\\[#:id \"\\([^\"]+\\)\"[^]]*\\]{\\([^}]*\\)}"
+  "A heading line: tag (group 1), #:id (group 2) and title (group 3) (FL-3).")
 
 (defun od--sections ()
   "(LEVEL ID TITLE POS) for each heading in this buffer."
@@ -258,6 +271,8 @@ Return the id."
       (nreverse out))))
 
 (defun od--section-candidates ()
+  "Return this buffer's headings as completion candidates (EMACS-4).
+Each is indented by its level and paired with its section."
   (mapcar (lambda (s)
             (cons (format "%s%s  #%s" (make-string (* 2 (1- (nth 0 s))) ?\s) (nth 2 s) (nth 1 s)) s))
           (od--sections)))
@@ -278,8 +293,8 @@ Return the id."
     (od--wrap (format "◊link[\"#%s\"]{" (cdr (assoc choice cands))) "}")))
 
 (defun od--url-group (url)
-  "Which group a page's URL belongs to in the picker: essays, then pages, then
-the notebook (KIND-6)."
+  "Return the picker's group for URL, a page of the site (KIND-6).
+Essays come first, then pages, then the notebook."
   (cond ((string-prefix-p "/notebook/" url) "Notebook")
         ((member url '("/" "/essays" "/notebook" "/specimen" "/colophon")) "Pages")
         (t "Essays")))
@@ -293,9 +308,9 @@ the notebook (KIND-6)."
       (complete-with-action action cands string pred))))
 
 (defun od-insert-link-essay ()
-  "Insert ◊link[\"/slug#id\"]{…}, choosing from data/anchors.json (built by `make').
-Essays come first, then the site's pages, then notebook entries under their
-own heading (KIND-6)."
+  "Insert ◊link[\"/slug#id\"]{…}, chosen from data/anchors.json.
+The file is built by `make'. Essays come first, then the site's pages,
+then notebook entries under their own heading (KIND-6)."
   (interactive)
   (let* ((file (od--file "data" "anchors.json"))
          (_ (unless (file-exists-p file) (user-error "No data/anchors.json yet; run make")))
@@ -327,6 +342,7 @@ own heading (KIND-6)."
                 (directory-files-recursively (od-root) "\\.pm\\'")))
 
 (defun od--used-urls ()
+  "Return the external URLs linked anywhere on the site, to complete (EDIT-3)."
   (let (urls)
     (dolist (f (od--site-pm-files))
       (with-temp-buffer
@@ -345,6 +361,7 @@ own heading (KIND-6)."
               "}")))
 
 (defun od--current-level ()
+  "Return the level of the last heading before point, or 1 (SECT-5)."
   (let ((here (point)) (level 1))
     (dolist (s (od--sections) level)
       (when (< (nth 3 s) here) (setq level (nth 0 s))))))
@@ -409,8 +426,8 @@ start instead, after a list marker (EDIT-8)."
     (insert "\n")))
 
 (defun od--insert-block (open close &optional body)
-  "Insert a block tag on its own lines: OPEN, BODY (or the region), CLOSE,
-with a blank line before and after; leave point where the writing goes."
+  "Insert a block tag on its own lines: OPEN, BODY (or the region), CLOSE.
+Leave a blank line before and after, and point where the writing goes."
   (let ((text (or (od--region-text) body "")))
     (when (use-region-p) (delete-region (region-beginning) (region-end)))
     (od--open-line-for-block)
@@ -591,8 +608,8 @@ With a prefix argument NUMBERED, the markers are numbers."
   (unless (od--tag-get 'embed :built) (user-error "◊embed is not built yet (VOCAB-2)")))
 
 (defun od-insert-tag (name)
-  "Insert any tag of the vocabulary by NAME, with its required arguments as
-blanks to fill: the way in for tags with no command of their own."
+  "Insert any tag of the vocabulary by NAME, its required arguments blank.
+This is the way in for tags with no command of their own (VOCAB-5)."
   (interactive
    (list (completing-read "Tag: "
                           (cl-loop with kind = (od--kind)
@@ -744,6 +761,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
   (assq (if (stringp name) (intern name) name) od-vocabulary))
 
 (defun od--tag-get (name prop)
+  "Return property PROP of the vocabulary entry for tag NAME (VOCAB-1)."
   (plist-get (cdr (od--tag name)) prop))
 
 ;; VOCAB-4: meta keys by kind of file. A post's kind is never a meta: the
@@ -797,12 +815,14 @@ post's support/ folder."
   "A tag: the lozenge and a name (group 1).")
 
 (defun od--put-syntax (pos syntax)
+  "Give the character at POS the syntax descriptor SYNTAX (SYN-2)."
   (put-text-property pos (1+ pos) 'syntax-table (string-to-syntax syntax)))
 
 (defun od--scan-args (open limit)
-  "Mark the argument group whose `[' is at OPEN; return the position after its `]'.
-Inside the group, `\"' delimits strings (which may span lines and hold `\\\"'),
-`[' `]' nest, and a tag is marked as a tag. Return nil if the group is not closed before LIMIT."
+  "Mark the argument group whose `[' is at OPEN; return the position after `]'.
+Inside the group, `\"' delimits strings (which may span lines and hold
+`\\\"'), `[' `]' nest, and a tag is marked as a tag. Return nil if the
+group is not closed before LIMIT."
   (save-excursion
     (goto-char (1+ open))
     (let ((depth 1) (in-string nil) close)
@@ -826,9 +846,9 @@ Inside the group, `\"' delimits strings (which may span lines and hold `\\\"'),
       close)))
 
 (defun od--scan-body (open limit)
-  "Mark the body whose `{' is at OPEN, with every brace inside it, and every tag
-inside it; return the position after its `}', or nil if it is not closed
-before LIMIT (Pollen requires braces to balance inside bodies)."
+  "Mark the body whose `{' is at OPEN, with every brace and tag inside it.
+Return the position after its `}', or nil if it is not closed before
+LIMIT (Pollen requires braces to balance inside bodies)."
   (save-excursion
     (goto-char (1+ open))
     (let ((depth 1) close)
@@ -850,7 +870,8 @@ before LIMIT (Pollen requires braces to balance inside bodies)."
       close)))
 
 (defun od--scan-comment (start limit)
-  "Mark the comment at START (`◊;' to end of line, or `◊;{…}'); return its end."
+  "Mark the comment at START, `◊;' to the line's end or `◊;{…}'; return its end.
+The search for a closing brace stops at LIMIT."
   (save-excursion
     (goto-char start)
     (od--put-syntax start "!")                 ; generic comment fence
@@ -862,8 +883,9 @@ before LIMIT (Pollen requires braces to balance inside bodies)."
         (min limit (1+ eol))))))
 
 (defun od--scan-tag (start limit)
-  "Mark the tag whose lozenge is at START: its name as a symbol, its argument
-group, its body. Return the position after the tag."
+  "Mark the tag whose lozenge is at START, scanning no further than LIMIT.
+Its name is marked as a symbol, then its argument group and its body.
+Return the position after the tag."
   (save-excursion
     (goto-char start)
     (looking-at od--name-re)
@@ -879,8 +901,9 @@ group, its body. Return the position after the tag."
       p)))
 
 (defun od-syntax-propertize (start end)
-  "SYN-2: give brackets, braces and quotes their syntax where a tag owns them.
-Anything else (\"quoted words\", [sic], a stray brace) stays punctuation."
+  "Give brackets, braces and quotes their syntax where a tag owns them (SYN-2).
+This is done from START to END. Anything else (\"quoted words\", [sic],
+a stray brace) stays punctuation."
   (goto-char start)
   (let ((limit (point-max)))
     ;; a tag scanned whole may end beyond END: stop there
@@ -894,8 +917,9 @@ Anything else (\"quoted words\", [sic], a stray brace) stays punctuation."
           (goto-char (or (od--scan-body (point) limit) (1+ (point))))))))))
 
 (defun od--syntax-extend-region (start end)
-  "Start propertizing at the tag enclosing START, so a body that began above is
-scanned from its lozenge. Return (START . END) when the region changed."
+  "Start propertizing at the tag enclosing START, so its body is scanned whole.
+A body that began above START is scanned from its lozenge. Return
+\(START . END) when the region changed."
   (let* ((ppss (save-excursion (syntax-ppss start)))
          (outer (car (nth 9 ppss))))
     (when outer
@@ -1182,7 +1206,7 @@ Each is (KIND TEXT BEG END), KIND being `string', `keyword' or `token'."
     (when (eq (char-before) ?◊) (1- (point)))))
 
 (defun od--enclosing-tag (&optional pos)
-  "The parse of the innermost tag whose `[...]' or `{...}' contains POS."
+  "Return the parse of the innermost tag around POS, in its `[...]' or `{...}'."
   (let* ((pos (or pos (point)))
          (open (nth 1 (syntax-ppss pos)))
          (start (and open (od--paren-tag-start open))))
@@ -1248,10 +1272,11 @@ KIND is `heading', `figure', `table' or `anchor'."
   "Running text that ends a sentence, perhaps with closing quotes or brackets.")
 
 (defun od--margin-block (pos)
-  "The block holding POS, for MNOTE-6: (START END CONTAINER), or a string
-naming why no margin note can stand there. START is where the block's
-text begins (after a list marker), END where it ends: a blank line, the
-next list item, or the end of the enclosing body."
+  "Return the block holding POS, for MNOTE-6, as (START END CONTAINER).
+Return instead a string naming why no margin note can stand there.
+START is where the block's text begins (after a list marker), END where
+it ends: a blank line, the next list item, or the end of the enclosing
+body."
   (save-excursion
     (syntax-propertize (point-max))
     (let* ((ppss (syntax-ppss pos))
@@ -1286,9 +1311,9 @@ next list item, or the end of the enclosing body."
           (list start end container)))))))
 
 (defun od--running-text (beg end)
-  "The text a reader sees between BEG and END: an aside's body, cites and
-margin notes print nothing, other tags print their text; ◊br{} is a line
-break, written as a newline."
+  "Return the text a reader sees between BEG and END.
+An aside's body, cites and margin notes print nothing, other tags print
+their text; ◊br{} is a line break, written as a newline."
   (let ((out '()) (p beg))
     (save-excursion
       (while (< p end)
@@ -1357,10 +1382,12 @@ break, written as a newline."
     (put-text-property beg end 'help-echo message)))
 
 (defun od--kind ()
+  "Return this file's kind for highlighting (VOCAB-4).
+That is `od-file-kind-override' when set, else `od-file-kind'."
   (or od-file-kind-override (ignore-errors (od-file-kind))))
 
 (defun od--fontify (limit)
-  "Font-lock matcher: highlight every tag from point to LIMIT. Returns nil."
+  "Font-lock matcher: highlight every tag from point to LIMIT; return nil."
   (syntax-propertize (point-max))
   (let ((kind (od--kind)) (ids (od--ids)))
     (while (re-search-forward "◊" limit t)
@@ -1373,6 +1400,8 @@ break, written as a newline."
   nil)
 
 (defun od--fontify-tag (at kind ids)
+  "Highlight the tag at AT and check it (FL-1, FL-6).
+KIND is the file's kind and IDS the ids it defines, for the checks."
   (let* ((tag (od--tag-parse at))
          (name (plist-get tag :name))
          (name-end (plist-get tag :name-end))
@@ -1411,6 +1440,9 @@ break, written as a newline."
     (goto-char name-end)))
 
 (defun od--fontify-args (name at name-end args kind ids)
+  "Highlight the arguments ARGS of tag NAME; flag what is not allowed (FL-6).
+The tag starts at AT and its name ends at NAME-END; KIND is the
+file's kind and IDS the ids it defines."
   (let ((seen '()))
     (when args
       (od--face (car args) (1+ (car args)) 'od-markup-face)
@@ -1464,7 +1496,8 @@ break, written as a newline."
         (od--error at name-end (format "◊%s needs #:%s" name r))))))
 
 (defun od--check-target (name pos ids)
-  "FL-6: a same-page ◊link to a missing id; a ◊ref to a non-exhibit."
+  "Flag tag NAME's target at POS if it is not among IDS (FL-6).
+That is a same-page ◊link to a missing id, or a ◊ref to a non-exhibit."
   (let ((v (nth 1 pos)))
     (pcase name
       ("link"
@@ -1481,7 +1514,7 @@ break, written as a newline."
                            (format "#%s is a %s: ◊ref is for figures and tables; use ◊link" v (nth 1 e))))))))))
 
 (defun od--fontify-meta-key (pos kind)
-  "FL-4: the key of ◊define-meta, checked against the keys of this kind of file."
+  "Highlight the key of ◊define-meta at POS, checked against KIND (FL-4)."
   (let* ((key (intern (nth 1 pos)))
          (table (pcase kind
                   ('glossary (alist-get 'glossary od-meta-keys))
@@ -1493,6 +1526,8 @@ break, written as a newline."
       (od--face (nth 2 pos) (nth 3 pos) 'od-meta-key-face))))
 
 (defun od--fontify-body (name at name-end body _kind)
+  "Highlight the BODY of tag NAME; flag one missing or not allowed (FL-6).
+The tag starts at AT and its name ends at NAME-END."
   (let ((needs (od--tag-get name :body)))
     (cond
      ((null body)
@@ -1519,7 +1554,8 @@ break, written as a newline."
           ("define-meta" (od--fontify-meta-value at (car body) (cdr body)))))))))
 
 (defun od--fontify-meta-value (at open close)
-  "FL-4: a meta value stays on one line; status is one of `od-statuses'."
+  "Check the meta value from OPEN to CLOSE, for the tag at AT (FL-4).
+A value stays on one line, and status is one of `od-statuses'."
   (if (> close (save-excursion (goto-char open) (line-end-position 1)))
       (od--error at close "a ◊define-meta value must stay on one line (SRC-4)")
     (let ((key (save-excursion (goto-char at)
@@ -1532,7 +1568,8 @@ break, written as a newline."
                           (format "status is one of %s" (string-join od-statuses ", ")))))))))
 
 (defun od--fontify-list (ib ie)
-  "FL-5, LIST-7: markers, and items indented to their parent's text column."
+  "Highlight list markers between IB and IE; check indentation (FL-5, LIST-7).
+Items are indented to their parent's text column."
   (save-excursion
     (goto-char ib)
     (forward-line 1)
@@ -1562,7 +1599,7 @@ break, written as a newline."
         (forward-line 1)))))
 
 (defun od--fontify-pipes (ib ie)
-  "FL-5: the pipes of a table, quiet."
+  "Set the pipes of a table between IB and IE in the quiet face (FL-5)."
   (save-excursion
     (goto-char ib)
     (while (re-search-forward "|\\|^[ \t]*|?[-+:|]+$" ie t)
@@ -1579,7 +1616,8 @@ break, written as a newline."
       t)))
 
 (defun od--syntactic-face (state)
-  "Strings in argument groups are quiet; comments look like comments."
+  "Return the face for the syntactic STATE (FL-1).
+Strings in argument groups are quiet; comments look like comments."
   (if (nth 3 state) 'od-string-face 'font-lock-comment-face))
 
 (defconst od--font-lock-keywords
@@ -1604,17 +1642,20 @@ break, written as a newline."
           "\\|◊\\(define-meta\\|section\\|subsection\\|subsubsection\\|summary\\|break\\|table-csv\\|index\\|latest\\)\\_>.*$"
           "\\|[ \t]*}[ \t]*$"
           "\\|[ \t]*|.*$"
-          "\\|#lang .*$"))
+          "\\|#lang .*$")
+  "Lines that are paragraphs of their own, never filled into others (EDIT-1).")
 
 (defconst od--paragraph-start
   (concat od--paragraph-separate
           "\\|" od--block-tags-re
-          "\\|[ \t]*\\(-\\|[0-9]+\\.\\) "))
+          "\\|[ \t]*\\(-\\|[0-9]+\\.\\) ")
+  "Lines that start a paragraph: separators, block tags, list items (EDIT-1).")
 
 (defcustom od-soft-wrap t
-  "Non-nil when essays are written one line per paragraph and shown wrapped
-\(with `visual-line-mode', and `olivetti-mode' for the width). Then `M-q'
-joins a paragraph onto one line instead of breaking it (EDIT-1a)."
+  "Non-nil when essays are written one line per paragraph (EDIT-1a).
+They are shown wrapped, with `visual-line-mode', and `olivetti-mode' for
+the width. Then `M-q' joins a paragraph onto one line instead of
+breaking it."
   :type 'boolean)
 
 (defun od-fill-paragraph (&optional justify)
@@ -1626,7 +1667,7 @@ JUSTIFY is passed on to `fill-paragraph'."
     (fill-paragraph justify t)))
 
 (defun od--adaptive-fill ()
-  "EDIT-1: a wrapped list item keeps its level: continue under its text."
+  "Return the fill prefix for a list item, so it wraps under its text (EDIT-1)."
   (when (looking-at "\\([ \t]*\\(-\\|[0-9]+\\.\\) \\)")
     (make-string (length (match-string 1)) ?\s)))
 
@@ -1638,7 +1679,7 @@ JUSTIFY is passed on to `fill-paragraph'."
 
 ;; EDIT-2
 (defun od--enclosing-body-tag ()
-  "The innermost tag whose body {…} holds point, or nil."
+  "Return the innermost tag with point in its body {…}, or nil."
   (let ((ppss (syntax-ppss)) found)
     (dolist (open (reverse (nth 9 ppss)))
       (when (and (not found) (eq (char-after open) ?\{))
@@ -1732,6 +1773,7 @@ JUSTIFY is passed on to `fill-paragraph'."
 
 ;; EDIT-5
 (defun od--shift-heading (delta)
+  "Move the heading on this line by DELTA levels, keeping its #:id (EDIT-5)."
   (save-excursion
     (beginning-of-line)
     (unless (looking-at "◊\\(\\(?:sub\\)*\\)section\\[") (user-error "Not on a heading line"))
@@ -1750,9 +1792,12 @@ JUSTIFY is passed on to `fill-paragraph'."
 
 ;; EDIT-6
 (defun od--exclude-file ()
+  "Return the path of this repository's .git/info/exclude (DRAFT-E1)."
   (expand-file-name (od--git "rev-parse" "--git-path" "info/exclude") (od-root)))
 
 (defun od--exclude-line (slug &optional folder)
+  "Return the exclude pattern for draft SLUG in FOLDER (DRAFT-E1).
+FOLDER is essays by default."
   (format "/%s/%s/" (or folder "essays") slug))
 
 (defun od--exclude (slug add &optional folder)
@@ -1779,8 +1824,9 @@ FOLDER is essays (the default) or notebook."
 
 ;;;###autoload
 (defun od-new-essay (&optional entry)
-  "Start an essay or a notebook entry: a folder with the .pm file, img/ and
-support/ (EDIT-6), under essays/ or notebook/ (KIND-1, KIND-6). It asks
+  "Start an essay or a notebook entry, as a draft (EDIT-6, KIND-6).
+It makes a folder with the .pm file, img/ and support/, under essays/
+or notebook/ (KIND-1). It asks
 which; with a prefix argument ENTRY it goes straight to an entry. An entry's
 template has no epistemic status and no abstract (KIND-2). The new post is a
 draft and is kept out of git until `od-publish' (DRAFT-E1)."
@@ -1832,7 +1878,9 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
     (when (assoc id (od--ids)) (user-error "#%s is already used in this file" id))
     id))
 
-(defun od--quote (s) (replace-regexp-in-string "\"" "\\\\\"" s))
+(defun od--quote (s)
+  "Return S with its double quotes escaped, for a Pollen string (EDIT-7)."
+  (replace-regexp-in-string "\"" "\\\\\"" s))
 
 (defun od-insert-figure ()
   "Insert a complete ◊figure: image, title, id, alt text and licence (EDIT-7)."
@@ -1882,8 +1930,9 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
   "How `od-check' and the publishing commands run a command (a seam for tests).")
 
 (defun od--run-compile (command callback &optional buffer-name)
-  "Run COMMAND from the repository root in a compilation buffer.
-When it ends, call CALLBACK with t if it succeeded."
+  "Run COMMAND from the repository root in a compilation buffer (CHECK-1).
+The buffer is BUFFER-NAME, or *od-check*. When it ends, call CALLBACK
+with t if it succeeded."
   (let* ((default-directory (od-root))
          (buf (compilation-start command 'od-check-mode
                                  (lambda (_) (or buffer-name "*od-check*")))))
@@ -1895,11 +1944,13 @@ When it ends, call CALLBACK with t if it succeeded."
     buf))
 
 (defun od--run (command &optional callback buffer-name)
+  "Run shell COMMAND in BUFFER-NAME through `od--run-function' (CHECK-1).
+CALLBACK, when given, is called with non-nil if it succeeded."
   (funcall od--run-function command callback buffer-name))
 
 ;;;###autoload
 (defun od-check (&optional full)
-  "Run the tests, render this file and validate the site (CHECK-1).
+  "Run `make test', render this file and validate the site (CHECK-1).
 With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
   (interactive "P")
   (let* ((root (od-root))
@@ -1932,14 +1983,17 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
         (string-trim (buffer-string))))))
 
 (defun od--git-ok (&rest args)
+  "Return non-nil if git with ARGS succeeds in the site root (PUB-4)."
   (let ((default-directory (od-root)))
     (eq 0 (apply #'process-file "git" nil nil nil args))))
 
 (defun od--require-magit ()
+  "Load Magit, or stop with a message: publishing needs it (LOAD-3)."
   (unless (require 'magit nil t)
     (user-error "Publishing works through Magit, which is not installed")))
 
 (defun od--check-identity ()
+  "Stop unless this repository's git email is `od-email' (PUB-1)."
   (let ((email (od--git "config" "user.email")))
     (unless (equal email od-email)
       (user-error "This repository's git email is %s, not %s" email od-email))))
@@ -1957,6 +2011,7 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
                     behind (if (= behind 1) "" "s"))))))
 
 (defun od--slug ()
+  "Return this post's slug, the name of its folder (KIND-1)."
   (file-name-nondirectory (directory-file-name (file-name-directory buffer-file-name))))
 
 (defun od--folder ()
@@ -1964,7 +2019,7 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
   (if (eq (od-file-kind) 'entry) "notebook" "essays"))
 
 (defun od--post-url (slug &optional folder)
-  "Where a published post is served: /<slug>, or /notebook/<slug> (D14)."
+  "Return the URL of post SLUG in FOLDER: /<slug> or /notebook/<slug> (D14)."
   (concat od-site-url (if (equal folder "notebook") "notebook/" "") slug))
 
 (defun od--set-meta (key value)
@@ -2026,7 +2081,7 @@ FOLDER is essays (the default) or notebook."
   (od--git-ok "ls-files" "--error-unmatch" "--" (file-relative-name buffer-file-name (od-root))))
 
 (defun od-publish (&optional commit-and-push)
-  "Put this file's changes on the site: the one command for every kind of file.
+  "Publish this file: the one command for every kind of file (PUB-1).
 
 A draft essay or notebook entry (one git cannot see yet, DRAFT-E1) is
 published (PUB-1, KIND-1): it becomes visible to git, its status published,
@@ -2053,7 +2108,7 @@ history."
     (od-commit commit-and-push)))
 
 (defun od--publish-draft (commit-and-push)
-  "Publish a draft post (PUB-1); see `od-publish'."
+  "Publish a draft post (PUB-1); see `od-publish' for COMMIT-AND-PUSH."
   (when (buffer-modified-p) (user-error "Save the post first"))
   (let ((title (od--meta "title")) (slug (od--slug)) (folder (od--folder)) (today (format-time-string "%Y-%m-%d")))
     (unless (and title (not (string-empty-p title))) (user-error "The post has no title"))
@@ -2079,6 +2134,10 @@ history."
                    (with-current-buffer buf (od--publish-stage slug title commit-and-push folder))))))))
 
 (defun od--publish-stage (slug title commit-and-push &optional folder)
+  "Stage post SLUG in FOLDER with the index and caches (PUB-1, PUB-2).
+Refuse files that must not be published (BUILD-3a). With
+COMMIT-AND-PUSH, commit as TITLE and push after asking; otherwise
+open Magit with the message proposed."
   (let* ((folder (or folder "essays"))
          (dir (format "%s/%s" folder slug))
          (listing (od--git "status" "--porcelain" "--untracked-files=all" "--" dir)))
@@ -2239,6 +2298,7 @@ changed, then commit and push after one confirmation."
 (fset 'od-global-map od-global-map)
 
 (defun od--outline-level ()
+  "Return the outline level of the heading at point: 1, 2 or 3 (EDIT-5)."
   (save-excursion
     (beginning-of-line)
     (cond ((looking-at "◊section\\[") 1)
@@ -2306,4 +2366,11 @@ table keys work (TAB aligns, M-arrows move rows and columns).
 (add-to-list 'auto-mode-alist '("\\.pm\\'" . occurrent-mode))
 
 (provide 'occurrent)
+
+;; Sentences here end with one space, as in the site's prose; this tells
+;; checkdoc so.
+;; Local Variables:
+;; sentence-end-double-space: nil
+;; End:
+
 ;;; occurrent.el ends here
