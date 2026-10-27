@@ -98,7 +98,7 @@ async function tests() {
                text: r("article"), menuTop: Math.round(rect(d.querySelector(".menu-rail .site-menu")).top) };
     };
     const want = geometry();
-    for (const path of ["/", "/essays", "/notebook", "/colophon", "/placeholder"]) {
+    for (const path of ["/", "/essays", "/notebook", "/correspondence", "/placeholder"]) {
       await load(path);
       const got = geometry();
       for (const k of Object.keys(want)) expect(got[k] === want[k], `${path}: ${k} ${got[k]}, the specimen's ${want[k]}`);
