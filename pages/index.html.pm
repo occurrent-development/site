@@ -3,9 +3,9 @@
 ◊define-meta[title]{About}
 
 ◊section[#:id "me"]{Me}
-I'm a paediatrician in Sydney, Australia. My clinical work focuses almost exclusively on the kinds of problems conventionally called "developmental" or "behavioural", categories that vastly oversimplify what is actually going on.
+I'm a paediatrician in Sydney, Australia. My clinical work focuses almost exclusively on the kinds of problems conventionally called ◊em{developmental} or ◊em{behavioural}, categories that vastly oversimplify what is actually going on.
 
-That broad critique is the motivation for the essays collected here. My contention is that "developmental paediatrics", as typically practised, is organised around a paradigm that is fundamentally misaligned with both what we as clinicians claim to be doing and what families are really looking for when they seek us out. 
+That broad critique is the motivation for the essays collected here. My contention is that ◊em{developmental paediatrics}, as typically practised, is organised around a paradigm that is fundamentally misaligned with both what we as clinicians claim to be doing and what families are really looking for when they seek us out. 
 
 ◊section[#:id "the-essays"]{The Essays}
 These essays exist because I derive value from writing them. Broadly:
