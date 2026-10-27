@@ -272,7 +272,7 @@ away from where they are reading, and points the way it goes: to another
 site, such as ◊link["https://plato.stanford.edu/entries/process-philosophy/"
 #:note "Standard overview; good on Whitehead's debt to Bergson."]{the
 ◊em{Stanford Encyclopedia} entry on process philosophy}; to another page of
-this site, such as the ◊link["/colophon#type"]{colophon's note on type}; or
+this site; or
 within this page, back to ◊link["#measure"]{the section on measure} or on to
 ◊link["#lists"]{the section on lists}. The text itself keeps the colour of
 the words around it, and takes the accent only on hover or focus.
