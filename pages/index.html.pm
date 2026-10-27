@@ -5,24 +5,24 @@
 ◊section[#:id "me"]{Me}
 I'm a paediatrician in Sydney, Australia. My clinical work focuses almost exclusively on the kinds of problems conventionally called "developmental" or "behavioural", categories that vastly oversimplify what is actually going on.
 
-That broad critique is the motivation for the essays collected here. My contention is that "developmental paediatrics", as typically practised, is organised around a paradigm that is fundamentally misaligned with both what we claim to be doing and what families are really looking for when they seek us out. 
+That broad critique is the motivation for the essays collected here. My contention is that "developmental paediatrics", as typically practised, is organised around a paradigm that is fundamentally misaligned with both what we as clinicians claim to be doing and what families are really looking for when they seek us out. 
 
 ◊section[#:id "the-essays"]{The Essays}
-The essays collected here are not for you; they are for me. I find writing immensely helpful, because:
+These essays exist because I derive value from writing them. Broadly:
 
 ◊list{
-1. ◊margin{Why I write}Getting a thought properly expressed outside my head allows my mind to move on to one of the thousands of other thoughts vying for limited cognitive resources.
+1. ◊margin{Why I write}Getting a thought properly expressed outside my head lets me move on to the next of thousands of thoughts vying for limited cognitive resources.
 2. Seeing the thought in text helps me to step into a different frame, to better see the weaknesses in my reasoning. Sometimes that takes weeks or months, perhaps for any entanglement with my ego to have softened.
-3. Having a documentary record of my thinking helps me to stabilise what would otherwise be a frenetic mess as I try out new modes of analysis. It also preserves the product of my (almost compulsive) analytic labour for future me, who may not have thought about the thing for years.
+3. Having a documentary record of my thinking helps me to stabilise what would otherwise be a frenetic mess as I try out new modes of analysis. It also preserves the product of my analytic labour for my future self, who may not have thought about the thing for years.
 4. It's a creative outlet.
 }
 
 So why publish the essays here? A few reasons:
 
 ◊list{
-1. ◊margin{Why I publish}The prospect of a ◊aside["finalised product"]{Finalised in the sense of being publication ready. That does not imply that the essay is now an immutable artefact---quite the opposite: essays can be revised as my thinking evolves. While the essay rendered on the website will always be the most recent version, every essay's full revision history is available as readable source code in a public repository on GitHub, the link to which can be found at the top of each essay.} provides the motivation to actually finish the essay. Often the weaknesses only become apparent when I'm trying to pull the final threads together.
-2. The next reason (imposing constraints).
-3. for feedback.
+1. ◊margin{Why I publish}The prospect of a ◊aside["finalised product"]{Finalised in the sense of being publication ready. That doesn't imply that the essay is finished---quite the opposite: essays will be revised as my thinking evolves. While the essay rendered on the website will always be the most recent version, every essay's full revision history is available as readable source code in a public repository on GitHub, the link to which can be found at the top of each essay.} provides the motivation to actually finish an essay. Often the weaknesses only become apparent when I'm trying to pull the final threads together---so it really matters to see it through.
+2. I have the great luxury of not being employed in an academic role and not having to care at all about my ◊link["https://en.wikipedia.org/wiki/H-index" #:note "h-index"]{◊em{h}-index}. I have no real incentive to engage with the likes of Wiley or Elsevier to publish something that almost no-one will ever read---and if no-one reads it, I would rather it were here. These essays aren't peer reviewed, but publishing openly under my own name imposes its own high standard: that I act in good faith; that I do due diligence in research; that I assert my claims clearly and respectfully; that I correct mistakes where readers can see them. I am writing about the ethics and philosophy of helping vulnerable children live good lives. My name is at the top of every essay.
+3. For feedback on my thinking. I have no interest in hosting unfiltered commentary on this site, but I welcome correspondence.
 4. I enjoy the process.
 }
 
