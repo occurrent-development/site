@@ -39,7 +39,7 @@ ZOTERO_BIB = ~/path/to/Zotero-Library.bib
 (require 'occurrent)
 ```
 
-`make test-emacs` runs its tests. `HANDOVER-EMACS.md` specifies it. Only cited entries reach the public repository, without abstracts, notes or file paths.
+`make test-emacs` runs its tests. `HANDOVERS.md` (HANDOVER-EMACS) specifies it. Only cited entries reach the public repository, without abstracts, notes or file paths.
 
 ## Deploying
 

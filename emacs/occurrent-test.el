@@ -1,6 +1,6 @@
 ;;; occurrent-test.el --- Tests for occurrent.el  -*- lexical-binding: t; -*-
 
-;; Run with `make test-emacs' (TEST-1, TEST-3 in HANDOVER-EMACS.md).
+;; Run with `make test-emacs' (TEST-1, TEST-3 in HANDOVERS.md, HANDOVER-EMACS).
 
 ;;; Code:
 

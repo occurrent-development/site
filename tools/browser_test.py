@@ -42,7 +42,7 @@ CHROMES = [
     "google-chrome", "google-chrome-stable", "chromium", "chromium-browser",
 ]
 
-# The screenshots the report asks for (HANDOVER-PHASE2C §7), as harness
+# The screenshots the report asks for (HANDOVERS.md, HANDOVER-PHASE2C §7), as harness
 # scenarios: name, window width and height, scenario, theme.
 SHOTS = [
     ("xl-2560-top", 2560, 1440, "top", "light"),

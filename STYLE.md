@@ -288,7 +288,7 @@ The general filename pattern is `YYYY[-MM[-DD]]-SURNAME1[-SURNAME2...][-TOOL[-TO
 ## 9. Repository documents
 
 - **Markdown (`.md`) is the format for every document in the repository that is not a page**: `README.md`, `SPEC.md`, `BACKLOG.md`, the handovers, this manual, reports. GitHub renders it, the claude.ai Project mirrors it, and Claude Code reads it natively. `.org` is for Ryan's own notes outside the repository; nothing in `site/` is `.org`.
-- **One file per subject**, named in capitals at the root (`SPEC`, `BACKLOG`, `STYLE`, `HANDOVER-<PHASE>`), with a status line under the title: `Status: … · Owner: … · Last revised: YYYY-MM-DD`.
+- **One file per subject**, named in capitals at the root (`SPEC`, `BACKLOG`, `STYLE`, `COMPAT`, `HANDOVERS`, which holds every phase's handover as a section), with a status line under the title: `Status: … · Owner: … · Last revised: YYYY-MM-DD`.
 - **Rules carry ids** where they are enforced (`SPEC`) and plain headings where they are judgement (here). Cross-reference by id, never by page or section number, which move.
 - **Revision notes** inline in italics, as `SPEC.md` does: *Revised 2026-10-26: …*. A document is a living document like an essay; its history is git's.
 - **Markdown style**: ATX headings; one blank line between blocks; tables for anything with two dimensions; em dashes without surrounding spaces; code spans for every identifier, path, tag and key; no HTML except where Markdown cannot do it.

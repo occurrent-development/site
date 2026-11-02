@@ -88,7 +88,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 
 *Deferred; v1 has the pickers that matter.*
 
-- ~~`od-promote` / `od-demote` for heading levels.~~ *Moved to v1 2026-10-15 (HANDOVER-EMACS.md, EDIT-5).*
+- ~~`od-promote` / `od-demote` for heading levels.~~ *Moved to v1 2026-10-15 (HANDOVERS.md, HANDOVER-EMACS EDIT-5).*
 - `od-term-backlinks`: a grep/xref buffer of every use of a term across essays.
 - A lint for essays that use a term's headword or alias without marking it up (probably noise; decide by trying it once).
 

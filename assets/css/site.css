@@ -268,6 +268,15 @@ blockquote.epigraph footer::before { content: "— "; }
 @container page (min-width: 66.5em) {
   .page > .site-header { width: auto; margin-inline: 0; padding-inline: 0 1.25rem; }
 }
+/* NAV-1, THEME-6, BAR-1 (2026-11-03): on touch devices the bar at the foot
+   of the screen already carries the menu, the size and the theme, so the
+   header row is not shown and the page begins with the title; the header
+   keeps its ordinary top (not the rise of LAYOUT-1, which cancels the row's
+   height). Without scripts there is no bar, and the row stays. */
+@media (hover: none) {
+  .js .page > .site-header, .js .page > .menu-rail { display: none; }
+  .js article > .essay-header:not(.sample) { margin-top: 1.5rem; }
+}
 /* NAV-1: the menu's handle is the monogram (BRAND-1) with the chevron, at
    every tier; 2rem in the header, a little smaller in the bar. A background,
    not an <img>, so it is one fetch shared with the favicon. */
