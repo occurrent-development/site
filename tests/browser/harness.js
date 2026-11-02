@@ -386,6 +386,45 @@ async function tests() {
     await load("/specimen", 2560, 1440);
   });
 
+  await test("IMG-9: panels in a row at L, letters above their corners; Expand keeps the grid; stacked at S", async () => {
+    await resize(1400, 900);
+    const fig = d.getElementById("canalisation-panels");
+    fig.scrollIntoView({ block: "center" });
+    await settle(200);
+    const panels = [...fig.querySelectorAll(".panel")];
+    expect(panels.map((p) => p.querySelector(".panel-letter").textContent).join("") === "ABC", "letters are not A, B, C");
+    const imgs = panels.map((p) => rect(p.querySelector(".panel-image")));
+    near(imgs[1].top, imgs[0].top, 1, "B's top against A's");
+    near(imgs[2].top, imgs[0].top, 1, "C's top against A's");
+    near(imgs[0].width, imgs[1].width, 1, "A's width against B's");
+    expect(imgs[0].right < imgs[1].left && imgs[1].right < imgs[2].left, "the panels overlap");
+    for (const p of panels) {
+      const l = rect(p.querySelector(".panel-letter")), i = rect(p.querySelector(".panel-image"));
+      expect(l.bottom <= i.top + 0.5, `${p.textContent.trim()[0]}: the letter overlaps the image`);
+      near(l.left, i.left, 0.5, "the letter's left against the image's");
+    }
+    const sum = imgs.reduce((a, r) => a + r.width, 0);
+    near(rect(fig.querySelector(".panels")).width, rect(fig.querySelector(".exhibit-body")).width, 1, "the grid against the column");
+    expect(sum > rect(fig.querySelector(".panels")).width * 0.9, "the panels leave too much gap");
+    fig.querySelector(".expand").click();
+    await settle(200);
+    const stage = d.querySelector(".lb-stage"), grid = stage?.querySelector(".panels");
+    expect(grid, "Expand shows no grid");
+    const tops = [...grid.querySelectorAll(".panel-image")].map((x) => rect(x).top);
+    expect(tops.length === 3 && Math.abs(tops[0] - tops[2]) < 1, "the expanded panels are not in a row");
+    expect(rect(grid).width > rect(fig.querySelector(".panels")).width * 1.3, "the expanded grid is no wider than the column's");
+    key("Escape", d.body);
+    await settle(100);
+    await resize(390, 844);
+    fig.scrollIntoView({ block: "start" });
+    await settle(200);
+    const stacked = panels.map((p) => rect(p.querySelector(".panel-image")));
+    near(stacked[1].left, stacked[0].left, 1, "B's left against A's at S");
+    expect(stacked[0].bottom < stacked[1].top && stacked[1].bottom < stacked[2].top, "the panels do not stack at S");
+    expect(panels.every((p) => w.getComputedStyle(p.querySelector(".panel-letter")).display !== "none"), "letters lost at S");
+    await load("/specimen", 2560, 1440);
+  });
+
   await test("Tier L: Pin, no Dock, contents in the bar; tier M: no Pin, one popup at a time, the pinned closed", async () => {
     await resize(1400, 900);
     expect(tier() === "L", `tier ${tier()} at 1,400`);
@@ -596,6 +635,19 @@ const SCENARIOS = {
     const s = d.getElementById("cited-in");
     w.scrollTo({ top: s.offsetTop - 40, behavior: "instant" });
     await settle(300);
+  },
+  // IMG-9: the specimen's panels, every image loaded; `expand` opens them
+  async panels() {
+    const f = d.getElementById("canalisation-panels");
+    for (const img of f.querySelectorAll("img")) { img.loading = "eager"; await img.decode().catch(() => {}); }
+    f.scrollIntoView({ block: "center" });
+    await settle(300);
+    if (params.get("expand")) {
+      f.querySelector(".expand").click();
+      await settle(200);
+      for (const img of d.querySelectorAll(".lightbox img")) await img.decode().catch(() => {});
+      await settle(300);
+    }
   },
   // a page from its top, with every image loaded (a work's cover)
   async loaded() {

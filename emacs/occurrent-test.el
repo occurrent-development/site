@@ -47,8 +47,12 @@
   (let* ((e (od--tag name))
          (pos (pcase (plist-get (cdr e) :pos)
                 ('nil nil) ('key (if (eq name 'define-meta) "title" "\"k\"")) (_ "\"x\""))))
-    (if (eq name 'sense)
-        "A ◊term[\"occurrent\"]{word ◊sense{some text}} here.\n"   ; TERM-9: only inside a term
+    (cond
+     ((eq name 'sense)
+      "A ◊term[\"occurrent\"]{word ◊sense{some text}} here.\n")   ; TERM-9: only inside a term
+     ((eq name 'panel)                                            ; IMG-9: only inside ◊panels
+      "◊panels[#:id \"x\" #:title \"T\" #:licence \"own\"]{\n◊panel[\"a.png\" #:alt \"a\"]{Sub}\n◊panel[\"b.png\" #:alt \"b\"]{Sub}\nCaption.}\n")
+     (t
     (concat (when (eq name 'ref)
               "◊figure[\"a.png\" #:id \"x\" #:title \"T\" #:alt \"a\" #:licence \"own\"]{c}\n\n")
             "◊" (symbol-name name)
@@ -62,7 +66,7 @@
                   (t "{some\ntext over\nthree lines}"))
             ;; a margin note must gloss something (MNOTE-6)
             (if (eq name 'margin) "Text it glosses." "")
-            "\n"))))
+            "\n")))))
 
 (ert-deftest od-test-every-tag ()
   "Every tag fontifies its name as markup, or as an error when not built."
@@ -71,7 +75,7 @@
       (od-test-with (od-test-sample name)
         (setq od-file-kind-override (or (plist-get (cdr entry) :only) 'essay))
         (font-lock-flush) (font-lock-ensure)
-        (let ((faces (od-test-faces-at (concat "◊" (symbol-name name)) (if (eq name 'ref) 1 1))))
+        (let ((faces (od-test-faces-at (concat "◊" (symbol-name name)) (if (eq name 'panel) 2 1))))
           (if (plist-get (cdr entry) :built)
               (progn
                 (should (memq 'od-markup-face faces))
@@ -137,6 +141,14 @@
   (od-test-errors-are "A ◊term[\"occurrent\"]{occurrent ◊sense{what it means here}} word." nil)
   (od-test-errors-are "A ◊sense{loose} word." '("◊sense"))
   (od-test-errors-are "◊more{Longer text.}" '("◊more")))
+
+(ert-deftest od-test-panel-inside-panels ()
+  "IMG-9: ◊panel inside ◊panels is clean, and ◊ref may name the figure; a loose ◊panel is an error."
+  (od-test-errors-are (concat "See ◊ref[\"p\" #:panel \"b\"].\n\n"
+                              "◊panels[#:id \"p\" #:title \"T\" #:licence \"own\"]{\n"
+                              "◊panel[\"a.png\" #:alt \"a\"]{One}\n◊panel[\"b.png\" #:alt \"b\"]{Two}\nCaption.}")
+                      nil)
+  (od-test-errors-are "Text.\n\n◊panel[\"a.png\" #:alt \"a\"]{One}\n" '("◊panel")))
 
 (ert-deftest od-test-insert-term-sense ()
   "TERM-9: with a prefix, od-insert-term writes ◊sense{} and leaves point in it."

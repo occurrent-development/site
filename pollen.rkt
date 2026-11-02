@@ -41,7 +41,7 @@
          ;; the essay header's text (LAYOUT-1, SRC-4a)
          abstract epistemic
          ;; lists, tables, figures (§3.4, §9)
-         (rename-out [od-list list]) table table-csv sort-key figure ref
+         (rename-out [od-list list]) table table-csv sort-key figure panels panel ref
          ;; the home page (§13a); the specimen's sample header (THEME-7)
          index recent header-sample
          ;; revisions (REV-3) and the pages built from the link graph (Phase 3):
@@ -322,11 +322,34 @@
                #:alt (norm alt) #:licence licence #:credit (norm credit)
                #:width width #:invert invert))
 
+;; IMG-9: a figure of lettered panels. ◊panel elements in the body are lifted
+;; out in source order and the rest is the caption; the root pass letters them.
+(define (panels #:id [id #f] #:title [title #f] #:licence [licence #f] #:credit [credit #f]
+                #:columns [columns #f] . body)
+  (make-panels body #:id id #:title (and title (list (norm title)))
+               #:licence licence #:credit (norm credit) #:columns columns))
+
+(define (panel [src #f] #:alt [alt #f] #:licence [licence #f] #:credit [credit #f] #:invert [invert 'auto]
+               . sub-caption)
+  (unless (string? src)
+    (build-error "◊panel needs a source, as in ◊panel[\"img/….png\" #:alt \"…\"]{Sub-caption} (IMG-9)"))
+  (unless (string? alt)
+    (build-error "panel ~s needs #:alt: every panel is described on its own (IMG-9, IMG-3)" src))
+  (txexpr 'od-panel
+          (filter values (list (list 'src src) (list 'alt (norm alt))
+                               (and licence (list 'licence (format "~a" licence)))
+                               (and credit (list 'credit (norm credit)))
+                               (case invert [(#t) '(invert "yes")] [(#f) '(invert "no")] [else #f])))
+          sub-caption))
+
 ;; IMG-7: ◊ref[id] prints the label of a figure or table on this page
 ;; ("Figure 2"), as a same-page link; the root pass fills in the number.
-(define (ref id)
+(define (ref id #:panel [panel #f])
   (check-id id 'ref)
-  (txexpr 'od-ref `((target ,id)) null))
+  ;; IMG-9: #:panel "b" prints "Figure 2B"; the root pass checks the letter
+  (when (and panel (not (and (string? panel) (regexp-match? #px"^[A-Fa-f]$" panel))))
+    (build-error "◊ref ~s: #:panel takes one letter, a to f, as in ◊ref[~s #:panel \"b\"] (IMG-9)" id id))
+  (txexpr 'od-ref `((target ,id) ,@(if panel `((panel ,(string-downcase panel))) null)) null))
 
 ;; ---------------------------------------------------------------------------
 ;; Headings are markers (SECT-2); the root pass wraps them into sections.
@@ -481,6 +504,10 @@
 
 ;; Paragraphs, line breaks, then the typography rules (steps 2–3).
 (define (prepare elems)
+  ;; IMG-9: ◊panels lifts its panels, so any ◊panel left is outside one
+  (for ([p (in-list (find-all elems (tag? 'od-panel)))])
+    (build-error "◊panel ~s stands outside a ◊panels: a panel belongs to a figure of panels (IMG-9)"
+                 (attr-ref p 'src)))
   (get-elements (close-up-refs (typeset (newlines->spaces (txexpr 'root null (paragraphs elems)))))))
 
 (define (find-all x pred)
@@ -1060,14 +1087,37 @@
 
 ;; IMG-7: figures and tables are numbered in document order, each kind on
 ;; its own ("Figure 1", "Table 1"); ◊ref becomes a link carrying the label.
+;; IMG-9: a figure's panels are lettered in the same walk, A, B, C… in
+;; source order, and its credit line's letters filled in from them.
 (define (number-exhibits elems)
   (define counts (make-hash))
   (define labels (make-hash))
+  (define panel-counts (make-hash))   ; figure id → number of panels
+  (define (letter i) (string (integer->char (+ 65 i))))
   (define (fill x label)
-    (let walk ([x x])
+    (define id (attr-ref x 'id))
+    (define n 0)
+    (define filled
+     (let walk ([x x])
       (cond [(has-class? x "exhibit-label") (txexpr (get-tag x) (get-attrs x) (list label))]
+            [(has-class? x "panel")
+             (define l (letter n))
+             (define lid (format "~a-~a" id (string-downcase l)))
+             (set! n (add1 n))
+             (txexpr (get-tag x) (append (get-attrs x) `((aria-labelledby ,lid)))
+                     (for/list ([e (in-list (get-elements x))])
+                       (if (has-class? e "panel-letter")
+                           (txexpr (get-tag e) (append (get-attrs e) `((id ,lid))) (list l))
+                           (walk e))))]
+            [(has-class? x "panel-keys")
+             (txexpr (get-tag x) (get-attrs x)
+                     (list (string-join (for/list ([i (in-list (string-split (attr-ref x 'data-panels)))])
+                                          (letter (string->number i)))
+                                        ", ")))]
             [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
             [else x])))
+    (when (> n 0) (hash-set! panel-counts id n))
+    filled)
   (define numbered
     (for/list ([e (in-list elems)])
       (let walk ([x e])
@@ -1087,7 +1137,19 @@
         [((tag? 'od-ref) x)
          (define id (attr-ref x 'target))
          (define label (hash-ref labels id (λ () (build-error "◊ref ~s: no figure or table with that id on this page" id))))
-         (link (string-append "#" id) `(span ((class "exhibit-ref")) ,label))]
+         ;; IMG-9: "Figure 2B", the letter upper-case, no space, a link to the figure
+         (define panel (and (attrs-have-key? x 'panel) (attr-ref x 'panel)))
+         (define letter
+           (cond [(not panel) ""]
+                 [else
+                  (define n (hash-ref panel-counts id 0))
+                  (define i (- (char->integer (string-ref panel 0)) 97))
+                  (unless (< i n)
+                    (build-error "◊ref ~s #:panel ~s: ~a (IMG-9)" id panel
+                                 (if (= n 0) "that figure has no panels"
+                                     (format "that figure's panels are A to ~a" (string (integer->char (+ 64 n)))))))
+                  (string-upcase panel)]))
+         (link (string-append "#" id) `(span ((class "exhibit-ref")) ,(string-append label letter)))]
         [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
         [else x]))))
 

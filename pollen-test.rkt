@@ -358,6 +358,59 @@
   (check-true (and (regexp-match? #rx"Table\u00A02" (text-of (car links))) #t))
   (check-true (fails? (λ () (root "See " (ref "nowhere") ".")))))
 
+;; IMG-9: tests/panels/, read by Pollen itself
+(test-case "IMG-9: one exhibit; panels lifted in order, lettered by the build; the rest is the caption"
+  (define doc (fixture "panels/panels.html.pm"))
+  (check-equal? (length (find-all doc (λ (x) (has-class* x "exhibit")))) 1)
+  (define fig (by-id doc "p"))
+  (check-equal? (text-of (car (find-all fig (λ (x) (has-class* x "exhibit-label"))))) "Figure 1")
+  (define panels (find-all fig (λ (x) (has-class* x "panel"))))
+  (check-equal? (map (λ (p) (text-of (car (find-all p (λ (x) (has-class* x "panel-letter")))))) panels)
+                '("A" "B" "C"))
+  (check-equal? (map (λ (p) (attr-ref p 'aria-labelledby)) panels) '("p-a" "p-b" "p-c"))
+  ;; each its own image, alt and data-invert: a photograph, a drawing forced
+  ;; to invert, an SVG (never classified, IMG-4); none on the figure itself
+  (check-equal? (map (λ (p) (attr-ref p 'data-invert)) panels) '("auto" "yes" "auto"))
+  (check-false (attrs-have-key? fig 'data-invert))
+  (check-equal? (length (find-all (car panels) (tag? 'picture))) 1)
+  (check-equal? (length (find-all (caddr panels) (λ (x) (has-class* x "figure-svg")))) 1)
+  (check-equal? (attr-ref (car (find-all (car panels) (tag? 'img))) 'alt) "A ball.")
+  (check-equal? (attr-ref (car (find-all (caddr panels) (λ (x) (has-class* x "figure-svg")))) 'aria-label)
+                "Branching paths.")
+  (check-equal? (map (λ (p) (text-of (car (find-all p (λ (x) (has-class* x "panel-caption")))))) panels)
+                '("Ball" "Valleys" "Paths"))
+  (check-true (pair? (find-all (car panels) (λ (x) (has-class* x "credit")))))   ; IMG-3a
+  ;; the caption is what is left, trimmed; the credit line groups by letter
+  (check-equal? (text-of (car (find-all fig (λ (x) (has-class* x "exhibit-caption")))))
+                "The caption, which mentions A and C.")
+  (check-equal? (text-of (car (find-all fig (λ (x) (and ((tag? 'span) x) (equal? (attr-ref x 'class #f) "credit"))))))
+                "A, C: own · B: After Waddington (1957)")
+  ;; ◊ref's #:panel: "Figure 1B", one link to the figure
+  (define refs (find-all doc (λ (x) (has-class* x "exhibit-ref"))))
+  (check-equal? (map text-of refs) '("Figure 1B" "Figure 1"))
+  (check-equal? (map (λ (a) (attr-ref a 'href)) (find-all doc (λ (x) (and ((tag? 'a) x) (has-class* x "same")))))
+                '("#p" "#p")))
+
+(test-case "IMG-9: the build errors VAL-1 lists, and the rights IMG-6 adds"
+  (for ([f (in-list '("outside" "one" "seven" "no-alt" "bad-letter" "no-licence"))])
+    (check-true (fails? (λ () (fixture (format "panels/~a.html.pm" f)))) f))
+  ;; a #:panel on a figure with no panels; a letter outside a to f
+  (check-true (fails? (λ () (root "See " (ref "f" #:panel "a") "." "\n\n"
+                                  (figure "pages/img/landscape.jpg" #:id "f" #:title "T" #:alt "a" #:licence "own" "c")))))
+  (check-true (fails? (λ () (ref "p" #:panel "g"))))
+  (check-true (fails? (λ () (ref "p" #:panel "ab"))))
+  ;; a panel under another's licence needs a credit, on itself or the figure;
+  ;; a panel may not claim the cover licence (BIB-7)
+  (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "cc-by-4.0"
+                                    (panel "pages/img/landscape.jpg" #:alt "a")
+                                    (panel "pages/img/landscape.jpg" #:alt "b")))))
+  (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "own"
+                                    (panel "pages/img/landscape.jpg" #:alt "a" #:licence "cover")
+                                    (panel "pages/img/landscape.jpg" #:alt "b")))))
+  (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "own" #:columns 4
+                                    (panel "pages/img/landscape.jpg" #:alt "a")
+                                    (panel "pages/img/landscape.jpg" #:alt "b"))))))
+
 (test-case "EDIT-10: Org's table separators: |---+---| under the header, others ignored"
   (define t (table #:id "o" #:title "T" "| a | b |" "\n" "|---+---|" "\n" "| 1 | 2 |" "\n" "|---+---|" "\n" "| 3 | 4 |" "\n"))
   (check-equal? (length (find-all t (tag? 'th))) 2)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Classify figures for dark mode with InvertOrNot (IMG-4). Part of `make refresh`.
+"""Classify figures, and each panel of a ◊panels (IMG-9), for dark mode with
+InvertOrNot (IMG-4). Part of `make refresh`.
 
 Each raster figure is looked up once by SHA-1 (nothing uploaded); if the
 service does not know it, the file is uploaded, unless its licence is
@@ -23,6 +24,8 @@ CACHE = ROOT / "data" / "invert.json"
 API = "https://invertornot.com/api"
 SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "tests", "support"}  # BUILD-3a: an essay's support/ is never read
 FIGURE = re.compile(r'◊figure\[\s*"([^"]+)"([^\]]*)\]', re.S)
+PANELS = re.compile(r'◊panels\[([^\]]*)\]')                    # IMG-9: the figure, which has no source
+PANEL = re.compile(r'◊panel\[\s*"([^"]+)"([^\]]*)\]', re.S)     # one panel, classified on its own
 TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".pdf": "application/pdf"}
 LICENCE = re.compile(r'#:licence\s+"([^"]+)"')
 
@@ -31,11 +34,17 @@ def figures():
     for pm in sorted(ROOT.glob("**/*.pm")):
         if SKIP_DIRS & set(pm.relative_to(ROOT).parts):
             continue
-        for src, rest in FIGURE.findall(pm.read_text(encoding="utf-8")):
+        text = pm.read_text(encoding="utf-8")
+        found = [(src, LICENCE.search(rest)) for src, rest in FIGURE.findall(text)]
+        # IMG-9: a panel without a #:licence of its own has its ◊panels' licence
+        heads = [(m.start(), LICENCE.search(m.group(1))) for m in PANELS.finditer(text)]
+        for m in PANEL.finditer(text):
+            outer = next((lic for start, lic in reversed(heads) if start < m.start()), None)
+            found.append((m.group(1), LICENCE.search(m.group(2)) or outer))
+        for src, m in found:
             path = (pm.parent / src).resolve()
             if path.suffix.lower() in (".svg",) or not path.exists():
                 continue
-            m = LICENCE.search(rest)
             yield path, (m.group(1) if m else None)
 
 

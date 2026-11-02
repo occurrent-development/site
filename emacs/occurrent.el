@@ -771,7 +771,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (strong        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (code          :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-anchor)
-    (ref           :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-ref)
+    (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-ref)
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-break)
     (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-latex)
@@ -782,6 +782,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
     (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
     (figure        :pos src    :kw (id title alt licence credit invert)                  :req (id title alt licence) :body t  :block t   :built t :command od-insert-figure)
+    (panels        :pos nil    :kw (id title licence credit columns)                     :req (id title licence)    :body t   :block t   :built t :command od-insert-tag)
+    (panel         :pos src    :kw (alt licence credit invert)                           :req (alt)                 :body t   :block t   :built t :command od-insert-tag :inside panels)
     (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
     (recent        :pos count  :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-tag :only home)
     (header-sample :pos nil    :kw (title subtitle published revised tags epistemic author kind) :req (title)       :body t   :block t   :built t :command od-insert-tag :only specimen)
@@ -1261,7 +1263,7 @@ Each is (KIND TEXT BEG END), KIND being `string', `keyword' or `token'."
 
 (defun od--ids ()
   "Ids defined in this buffer, in order: a list of (ID KIND POS TITLE).
-KIND is `heading', `figure', `table' or `anchor'."
+KIND is `heading', `figure' (a ◊panels too, IMG-9), `table' or `anchor'."
   (if (eq (car od--ids-cache) (buffer-chars-modified-tick))
       (cdr od--ids-cache)
     (let (out)
@@ -1269,14 +1271,14 @@ KIND is `heading', `figure', `table' or `anchor'."
         (save-match-data
           (syntax-propertize (point-max))
           (goto-char (point-min))
-          (while (re-search-forward "◊\\(section\\|subsection\\|subsubsection\\|figure\\|table-csv\\|table\\|anchor\\)\\[" nil t)
+          (while (re-search-forward "◊\\(section\\|subsection\\|subsubsection\\|figure\\|panels\\|table-csv\\|table\\|anchor\\)\\[" nil t)
             (let* ((start (match-beginning 0))
                    (name (match-string-no-properties 1))
                    (tag (od--tag-parse start))
                    (args (plist-get tag :args))
                    (split (and (cdr args) (od--args-split (od--args (car args) (cdr args)))))
                    (kw (lambda (k) (let ((e (assq k (cdr split)))) (and e (nth 2 e) (nth 1 (nth 2 e))))))
-                   (kind (pcase name ("figure" 'figure) ((or "table" "table-csv") 'table) ("anchor" 'anchor) (_ 'heading)))
+                   (kind (pcase name ((or "figure" "panels") 'figure) ((or "table" "table-csv") 'table) ("anchor" 'anchor) (_ 'heading)))
                    (id (if (eq kind 'anchor) (and (car split) (nth 1 (car split))) (funcall kw 'id)))
                    (body (plist-get tag :body))
                    (title (pcase kind
@@ -1472,7 +1474,8 @@ KIND is the file's kind and IDS the ids it defines, for the checks."
                                             ('index "/essays or /blog") ('specimen "the specimen") (_ only)))))
      ((and (od--tag-get name :inside)
            (not (equal (od--enclosing-tag-name at) (symbol-name (od--tag-get name :inside)))))
-      (od--error at name-end (format "◊%s belongs inside ◊%s (TERM-9)" name (od--tag-get name :inside))))
+      (od--error at name-end (format "◊%s belongs inside ◊%s (%s)" name (od--tag-get name :inside)
+                                     (if (eq (od--tag-get name :inside) 'panels) "IMG-9" "TERM-9"))))
      ((and kind (memq kind (od--tag-get name :not)))
       (od--error at name-end (format "◊%s is not allowed in a blog entry: entries are dated and fixed (KIND-2)" name)))
      (t (od--face at name-end 'od-markup-face)))

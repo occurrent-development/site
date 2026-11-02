@@ -427,6 +427,21 @@ it descends, so that a ball rolling down it ends in one of three places. The
 line below is a credit, set apart from the caption as every credit is, and as
 a table's source is.}
 
+Several images that make one point are one figure, its panels lettered by the
+build. ◊ref["canalisation-panels"] sets a photograph, a line drawing and a
+diagram side by side; on a phone they stack. Each panel is treated as a figure
+of its own would be: the photograph is dimmed in the dark theme, the drawing
+inverted, and the diagram drawn in the text colour. The valley's
+cross-sections are ◊ref["canalisation-panels" #:panel "b"].
+
+◊panels[#:id "canalisation-panels" #:title "One valley, three ways" #:licence "own"]{
+◊panel["img/2026-11-02-lucas-pillow-specimen-ball-a.jpg" #:alt "A red ball resting on a sandy floor under a pale sky, its shadow beneath it."]{The ball}
+◊panel["img/2026-11-02-lucas-pillow-specimen-valleys-b.png" #:alt "Three cross-sections of a valley, one above another: one trough, then two, then three." #:invert #t #:credit "After C. H. Waddington (1957)"]{The valley}
+◊panel["img/2026-11-02-lucas-specimen-branching-c.svg" #:alt "A path that divides in two, one branch of which divides again, ending in three points."]{The paths}
+The ball in A comes to rest where the valley floor in B is lowest; as the
+valley descends it divides, and the paths in C are the ways the ball can go.
+Rendered and drawn for this page.}
+
 ◊section[#:id "tables" #:short "Tables"]{Tables}
 ◊summary{Rules above and below, lining figures, numbers aligned right.}
 

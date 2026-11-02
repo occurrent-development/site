@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="currentColor">
+  <!-- Drawn for this site. Strokes use currentColor so the panel follows the theme. -->
+  <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- one path from the top that divides, then divides again -->
+    <path d="M200 24V96"/>
+    <path d="M200 96C200 132 120 132 120 168M200 96C200 132 280 132 280 168"/>
+    <path d="M120 168C120 204 72 204 72 261M120 168C120 204 168 204 168 261"/>
+    <path d="M280 168V261"/>
+  </g>
+  <g>
+    <circle cx="200" cy="24" r="7"/>
+    <circle cx="72" cy="268" r="7"/>
+    <circle cx="168" cy="268" r="7"/>
+    <circle cx="280" cy="268" r="7"/>
+  </g>
+</svg>

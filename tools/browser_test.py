@@ -67,6 +67,13 @@ SHOTS = [
     ("changelog", 1680, 1050, "top", "light", "/changelog"),
     ("backlinks", 1680, 1050, "backlinks", "light"),
     ("reference-s-390", 390, 844, "loaded", "light", "/references/pirsigZenArtMotorcycle1991"),
+    # IMG-9: the specimen's panels at tiers L and S, both themes, and expanded
+    ("panels-l-1400", 1400, 900, "panels", "light"),
+    ("panels-l-1400", 1400, 900, "panels", "dark"),
+    ("panels-s-390", 390, 1500, "panels", "light"),
+    ("panels-s-390", 390, 1500, "panels", "dark"),
+    ("panels-expanded", 1680, 1050, "panels", "light", "/specimen&expand=1"),
+    ("panels-expanded", 1680, 1050, "panels", "dark", "/specimen&expand=1"),
 ]
 
 
