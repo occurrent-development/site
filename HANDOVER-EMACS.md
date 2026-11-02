@@ -18,7 +18,7 @@ When this is built, fold the new IDs into `SPEC.md` §16 and point it here for d
 | Deploy | Push to `main` on `github.com/occurrent-development/site` → GitHub Actions builds and deploys to the Cloudflare Worker. Other branches build but do not deploy. Nothing generated is committed. |
 | Drafts | SPEC DRAFT-1 says: private repo or a never-pushed branch. A private `drafts` repo exists on GitHub but has **no local clone**; the current draft material lives outside git in `../Essays/` as Markdown, LaTeX and Word files. DRAFT-2 (the build publishes only `status` ≠ `draft`) is built and tested. |
 | Commit identity | Per-repo `Ryan Lucas <ryan@occurrentdevelopment.com>`. Never commit another address (HANDOVER §7). |
-| Tags actually provided by `pollen.rkt` | `section subsection subsubsection summary em strong sc code blockquote epigraph br anchor break link cite term aside margin more list table table-csv sort-key figure ref` plus `define-meta` (Pollen's own), and `latex` once HANDOVER-PHASE2 Job A lands (SPEC TYPE-17). **`embed`, `changelog` and `m` are in SPEC §3.3 but not yet built**; using them is a build error today. |
+| Tags actually provided by `pollen.rkt` | `section subsection subsubsection summary em strong sc code blockquote epigraph br anchor break link cite term aside margin more list table table-csv sort-key figure ref` plus `define-meta` (Pollen's own), and `latex` once HANDOVER-PHASE2 Job A lands (SPEC TYPE-17). **`embed`, `changelog`, `m` and `q` are in SPEC §3.3 but not yet built**; using them is a build error today. |
 | Figures and tables (IMG-7, IMG-2, 2026-10-15) | `◊figure`, `◊table` and `◊table-csv` **require `#:id` and `#:title`**; the build numbers them (Figure 1, Table 1) and `◊ref[id]` prints the label as a same-page link. **`#:width` is a build error** (every figure and table is column width; the reader has an Expand button). The exhibit frame lives in `lib/exhibits.rkt`. |
 | Error format | `build error: <path relative to root>: <message>` on stderr (`lib/util.rkt`); no line numbers. `tools/validate.rkt` prints the same prefix for site-wide checks. |
 
@@ -49,13 +49,14 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `summary` | — | — | yes | yes |
 | `link` | target | `#:note` `#:title` `#:author` `#:date` | yes | no |
 | `cite` | key | `#:loc` `#:note` | no | no |
+| `q` | key | `#:loc` (BIB-9; Phase 3) | yes | no |
 | `term` | id | `#:mark` | yes | no |
 | `aside` `margin` `sc` `em` `strong` `code` | — | — | yes | no |
 | `anchor` | id | — | no | no |
 | `ref` | id of a figure or table in this file | — | no | no |
 | `br` `break` `latex` | — | — | no | `break` yes |
-| `blockquote` | — | `#:italic` (LAYOUT-4b) | yes | yes |
-| `epigraph` | — | `#:source` `#:italic` (LAYOUT-4a) | yes | yes |
+| `blockquote` | — | `#:source` `#:italic` (LAYOUT-4b) `#:cite` `#:loc` (BIB-9; Phase 3) | yes | yes |
+| `epigraph` | — | `#:source` `#:italic` (LAYOUT-4a) `#:cite` `#:loc` (BIB-9; Phase 3) | yes | yes |
 | `list` | — | `#:start` `#:columns` | yes | yes |
 | `table` | — | `#:id` (required) `#:title` (required) `#:caption` `#:source` `#:size` `#:sortable` `#:align` `#:row-headers` | yes | yes |
 | `table-csv` | path | as `table` | no | yes |
@@ -173,7 +174,7 @@ then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored f
 **EDIT-7 (MUST) Figures and tables.** `od-insert-figure` (`C-c o F`): picks an image from the essay's `img/` folder (or any path), asks for a title, proposes an id from it (checked against the file's ids), asks for alt text and a licence (`own`, `public-domain`, a CC licence, `permission`, completing), and inserts a complete `◊figure` with all four required keywords so the build cannot reject it for a missing one. `od-insert-table` (`C-c o B`): asks for title and id and inserts `◊table[#:id "…" #:title "…"]{` with an empty pipe-table skeleton (header row, rule row, one body row) and point in the first cell. `od-insert-ref` stays as built.
 
 **EDIT-8 (MUST) The rest of the vocabulary.** On 2026-10-20 the `C-c o` menu had no command for `epigraph`, `blockquote`, `break`, `list`, `summary`, `anchor`, `more`, the inline tags, or the two unbuilt tags. SPEC §16 now lists one for each, with its key; SPEC EMACS-6 makes the rule, and VOCAB-5 wires it into the table. Details that the SPEC table leaves to this file:
-- `od-insert-epigraph` (`C-c o Q`) prompts for the attribution with `completing-read` over the `#:source` strings already in the file (free entry allowed); an empty answer omits `#:source`. `C-u` adds `#:italic #f`. `od-insert-blockquote` (`C-c o q`) takes `C-u` for `#:italic #t`. Both are block tags: inserted on their own lines, blank line before and after, the region (if any) as the body, point inside.
+- `od-insert-epigraph` (`C-c o Q`) prompts for the attribution with `completing-read` over the `#:source` strings already in the file (free entry allowed); an empty answer omits `#:source`. `C-u` adds `#:italic #f`. `od-insert-blockquote` (`C-c o q`) takes `C-u` for `#:italic #t`. Both are block tags: inserted on their own lines, blank line before and after, the region (if any) as the body, point inside. From Phase 3 (SPEC BIB-9) both then prompt for a cited key (empty for none, picked as `od-insert-cite` picks) and a locator, written as `#:cite` and `#:loc`.
 - `od-toggle-italic` (`C-c o o`) finds the enclosing `◊epigraph` or `◊blockquote` (`user-error` otherwise), reads any `#:italic`, and sets the opposite of the current effective style; when the result equals the tag's default (italic for an epigraph, roman for a block quotation) it removes the keyword rather than writing it. Reports the new state in the echo area.
 - `od-wrap` (`C-c o w`) reads one of `em strong sc code` with `completing-read`, defaulting to the last choice, and wraps the region or the word at point. There is no separate key per inline tag; four keys for four two-letter tags would crowd the menu.
 - `od-insert-break` (`C-c o b`) inserts `◊break{}` on its own line with a blank line either side, and refuses with a `user-error` when the next non-blank line is a heading that already follows one (§17 "Section breaks").
@@ -267,7 +268,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-3 (MUST)** Dependencies: Emacs 29+, Magit (soft: the `od-publish` family is defined only when `magit` is loadable, and says so if not), `citar` (soft, as now). No `pollen-mode`, no `company`.
 
-**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. The full map, as of 2026-10-20:
+**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. Added 2026-11-02 (SPEC BIB-9, Phase 3): `C-c o "` `od-insert-q`, a `user-error` until the tag is built. The full map, as of 2026-11-02:
 
 | Key | Command | Key | Command |
 |---|---|---|---|
@@ -288,7 +289,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 | `p` | `od-preview` | `W` | `od-insert-embed` |
 | `q` | `od-insert-blockquote` | `<` | `od-promote` |
 | `r` | `od-insert-ref` | `>` | `od-demote` |
-| `s` | `od-insert-section` | | |
+| `s` | `od-insert-section` | `"` | `od-insert-q` |
 | `t` | `od-insert-term` | | |
 | `u` | `od-unwrap` | | |
 | `w` | `od-wrap` | | |
