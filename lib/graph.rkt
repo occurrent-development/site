@@ -7,8 +7,9 @@
 ;; The shape of links.json:
 ;;   posts    url → {title, kind ("essay"|"entry"|"page"), published, sections: {id → title}}
 ;;   links    target url → [{from, section, id, context}]        (Backlinks)
-;;   cites    key → [{from, section, mark, note, context}]      (Cited in)
-;;   quotes   key → [{from, section, mark, note, text, loc}]    (Quoted, BIB-9)
+;;   cites    key → [{from, section, mark, note, loc, para, context, text, block}]  (Cited in)
+;;            text is the quoted words of a ◊cite with a body (BIB-9), else
+;;            null; para numbers the paragraph on its page, for grouping
 ;;   terms    url → [term id, …]                                (Used in, TERM-8)
 ;;   changes  [{from, date, text}]                              (/changelog, REV-3)
 ;; A context is an X-expression in JSON (["p", {…}, …]), as in the citation
@@ -27,7 +28,7 @@
          txexpr
          "util.rkt")
 
-(provide graph current-graph graph-posts post-info backlinks-to cites-of quotes-of term-users changes
+(provide graph current-graph graph-posts post-info backlinks-to cites-of term-users changes
          json->txexpr index-order preview?)
 
 (define (preview?) (equal? (getenv "OD_PREVIEW") "1"))
@@ -71,7 +72,6 @@
              #:unless (equal? (hash-ref l 'from) url))   ; same-page links are not backlinks (VAL-4)
     l))
 (define (cites-of key) (hash-ref (part 'cites) (string->symbol key) null))
-(define (quotes-of key) (hash-ref (part 'quotes) (string->symbol key) null))
 (define (term-users id)
   (index-order (for/list ([(url ids) (in-hash (part 'terms))] #:when (member id ids)) (symbol->string url))))
 (define (changes) (hash-ref (graph) 'changes null))

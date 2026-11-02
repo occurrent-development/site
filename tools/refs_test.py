@@ -41,16 +41,16 @@ class Covers(unittest.TestCase):
         self.assertTrue(copy.exists())
         with Image.open(copy) as img:
             self.assertEqual(img.format, "JPEG")
-            self.assertEqual(img.size, (100, 150))   # never enlarged; the longest side stops at 800
+            self.assertEqual(img.size, (100, 150))   # never enlarged; the longest side stops at 1200
 
-    def test_downsizes_to_800(self):
+    def test_downsizes_to_1200(self):
         from PIL import Image
         big = self.out / "cover.jpg"
-        Image.new("RGB", (1200, 1800), (10, 20, 30)).save(big)
+        Image.new("RGB", (1600, 2400), (10, 20, 30)).save(big)
         dest = self.out / "small.jpg"
         refs.write_cover(big, dest)
         with Image.open(dest) as img:
-            self.assertEqual(img.size, (533, 800))
+            self.assertEqual(img.size, (800, 1200))
 
     def test_no_image_attachment_no_cover_no_error(self):
         refs.refresh_covers(self.entries, ["noImage2002"], [])
@@ -84,16 +84,32 @@ class Covers(unittest.TestCase):
 
 
 class Facts(unittest.TestCase):
-    def test_facts(self):
-        e = fixture_entries()
-        self.assertEqual(refs.facts(e["withCover2001"]),
+    """BIB-10: one parse, pandoc's CSL record, with the titles as stored."""
+
+    def setUp(self):
+        self.csl = refs.csl_records(fixture_entries())
+
+    def test_facts_from_the_csl_record(self):
+        self.assertEqual(refs.facts(self.csl["withCover2001"]),
                          {"title": "A Book with a Cover", "authors": ["Author"], "year": "2001", "type": "Book"})
-        self.assertEqual(refs.facts(e["noImage2002"])["authors"], ["Writer", "Other"])
+        self.assertEqual(refs.facts(self.csl["noImage2002"])["authors"], ["Writer", "Other"])
+        self.assertEqual(refs.facts(self.csl["aChapter2005"])["type"], "Chapter")
+
+    def test_titles_keep_their_case(self):
+        # pandoc would sentence-case these
+        self.assertEqual(self.csl["withCover2001"]["title"], "A Book with a Cover")
+        self.assertEqual(self.csl["aChapter2005"]["container-title"], "The Collected Book")
+
+    def test_the_racket_fixture_is_this_record(self):
+        # tests/refs/fixture-csl.json feeds the RackUnit test of the BIB-10 fields
+        import json
+        fixture = json.loads((FIXTURES / "fixture-csl.json").read_text(encoding="utf-8"))
+        self.assertEqual(fixture, self.csl)
 
     def test_quotations_are_citations(self):
-        text = '◊q["a" #:loc "p. 3"]{x} ◊blockquote[#:source "S" #:cite "b" #:loc "p. 9"]{y}'
-        found = refs.CITE.findall(text) + [(refs.BLOCK_KEY.search(r).group(1), r) for r in refs.BLOCK.findall(text)]
-        self.assertEqual([(k, refs.LOC.search(r).group(1)) for k, r in found], [("a", "p. 3"), ("b", "p. 9")])
+        text = '◊cite["a" #:loc "p. 3"]{x} ◊cite["b" #:block #t #:loc "p. 9"]{y} ◊cite["c"]'
+        self.assertEqual([(k, (refs.LOC.search(r) or [None, ""])[1]) for k, r in refs.CITE.findall(text)],
+                         [("a", "p. 3"), ("b", "p. 9"), ("c", "")])
 
 
 if __name__ == "__main__":

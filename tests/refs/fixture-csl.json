@@ -1,0 +1,136 @@
+{
+ "aChapter2005": {
+  "DOI": "10.1000/xyz123",
+  "author": [
+   {
+    "family": "Contributor",
+    "given": "Cal"
+   }
+  ],
+  "container-title": "The Collected Book",
+  "editor": [
+   {
+    "family": "Editor",
+    "given": "Eda"
+   },
+   {
+    "family": "Second",
+    "given": "Sam"
+   }
+  ],
+  "id": "aChapter2005",
+  "issued": {
+   "date-parts": [
+    [
+     2005
+    ]
+   ]
+  },
+  "page": "11-29",
+  "publisher": "University Press",
+  "publisher-place": "Oxford",
+  "title": "A Chapter in a Book",
+  "type": "chapter"
+ },
+ "anArticle2010": {
+  "DOI": "10.2000/abc",
+  "author": [
+   {
+    "family": "Writer",
+    "given": "Wes"
+   }
+  ],
+  "container-title": "Journal of Things",
+  "id": "anArticle2010",
+  "issue": "3",
+  "issued": {
+   "date-parts": [
+    [
+     2010
+    ]
+   ]
+  },
+  "page": "100-120",
+  "title": "An Article",
+  "type": "article-journal",
+  "volume": "12"
+ },
+ "heic2004": {
+  "author": [
+   {
+    "family": "Phone",
+    "given": "Eve"
+   }
+  ],
+  "id": "heic2004",
+  "issued": {
+   "date-parts": [
+    [
+     2004
+    ]
+   ]
+  },
+  "title": "From the Phone",
+  "type": "book"
+ },
+ "noImage2002": {
+  "author": [
+   {
+    "family": "Writer",
+    "given": "Bea"
+   },
+   {
+    "family": "Other",
+    "given": "Cy"
+   }
+  ],
+  "container-title": "Journal",
+  "id": "noImage2002",
+  "issued": {
+   "date-parts": [
+    [
+     2002
+    ]
+   ]
+  },
+  "title": "An Article with Only a PDF",
+  "type": "article-journal"
+ },
+ "twoImages2003": {
+  "author": [
+   {
+    "family": "Snap",
+    "given": "Dee"
+   }
+  ],
+  "id": "twoImages2003",
+  "issued": {
+   "date-parts": [
+    [
+     2003
+    ]
+   ]
+  },
+  "title": "Two Pictures, Neither the Cover",
+  "type": "book"
+ },
+ "withCover2001": {
+  "author": [
+   {
+    "family": "Author",
+    "given": "Ann"
+   }
+  ],
+  "id": "withCover2001",
+  "issued": {
+   "date-parts": [
+    [
+     2001
+    ]
+   ]
+  },
+  "publisher": "Press",
+  "title": "A Book with a Cover",
+  "type": "book"
+ }
+}

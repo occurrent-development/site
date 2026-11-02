@@ -198,17 +198,21 @@ function termItem(target) {
   return { title, head: title, body };
 }
 
-// BIB-8: the work's card, the head of its page, fetched as a cross-page
-// extract is (on pointerenter, once). Under a full note it omits the entry,
-// which the note already is.
+// BIB-8: a citation's popup is the work's card, fetched as a cross-page
+// extract is (on pointerenter, once), with the citation's own locator and
+// remark set under the title. If the card cannot be fetched, the popup is
+// the References entry, as before Phase 3.
 const refUrl = (key) => `/references/${key}`;
-async function cardFor(key, full) {
+async function cardFor(key, src) {
   const html = await fetchFragment(refUrl(key));
   if (!html) return null;
   const t = document.createElement("template");
   t.innerHTML = html;
   const card = t.content.firstElementChild;
-  if (full) card?.querySelector(".ref-entry")?.remove();
+  const title = card?.querySelector(".ref-title");
+  if (!title) return card;
+  const loc = src.dataset.loc, note = src.dataset.note;
+  title.after(...[loc && el("p", { class: "ref-loc" }, loc), note && el("p", { class: "ref-remark" }, el("em", {}, note))].filter(Boolean));
   return card;
 }
 const noteKeys = (t) => (t.dataset.targets || "").split(" ").filter((x) => x.startsWith("note-"))
@@ -220,16 +224,16 @@ async function item(target) {
   if (target.startsWith("note-")) {
     const n = target.slice(5);
     const key = src.dataset.bib?.slice(4);
-    const full = src.dataset.form !== "short";
-    const note = clean(src);
-    for (const a of note.querySelectorAll(".to-ref")) a.remove();
-    const body = el("div", {}, el("p", {}, ...note.childNodes));
-    // POP-7, BIB-8: a hairline, then the card; a short note's card carries the
-    // full entry. Without the card, a short note still gets the entry.
-    const card = key && await cardFor(key, full);
-    const bib = !card && !full && byId(src.dataset.bib);
-    if (card) body.append(el("hr", { class: "popup-sep" }), card);
-    else if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
+    const card = key && await cardFor(key, src);
+    let body = card;
+    if (!card) {
+      const note = clean(src);
+      for (const a of note.querySelectorAll(".to-ref")) a.remove();
+      body = el("div", {}, el("p", {}, ...note.childNodes));
+      // a full note is already the reference; a short one gets the entry (POP-7)
+      const bib = src.dataset.form === "short" && byId(src.dataset.bib);
+      if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
+    }
     return { title: `Reference ${n}`, head: `Reference ${n}`, body, ref: key && refUrl(key) };
   }
   if (target.startsWith("bib-")) {

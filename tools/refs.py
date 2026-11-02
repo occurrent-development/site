@@ -41,17 +41,15 @@ PRIVATE_FIELDS = {
     "abstract", "file", "keywords", "annotation", "annote", "note", "copyright",
     "urldate", "ids", "mendeley-tags", "groups", "owner", "timestamp",
 }
-# A citation is ◊cite["key" …], ◊q["key" …]{…} (BIB-9), or #:cite "key" on a
-# block quotation or epigraph, each with an optional #:loc.
-CITE = re.compile(r'◊(?:cite|q)\[\s*"([^"]+)"([^\]]*)\]', re.S)
-BLOCK = re.compile(r'◊(?:blockquote|epigraph)\[([^\]]*#:cite[^\]]*)\]', re.S)
-BLOCK_KEY = re.compile(r'#:cite\s+"([^"]+)"')
+# A citation is ◊cite["key" …], with or without a body (a quotation, BIB-9),
+# with an optional #:loc.
+CITE = re.compile(r'◊cite\[\s*"([^"]+)"([^\]]*)\]', re.S)
 LOC = re.compile(r'#:loc\s+"([^"]*)"')
 COVERS = ROOT / "refs" / "covers"
 # Covers of works only drafts cite stay local too, as their entries do (CITE-5a).
 LOCAL_COVERS = ROOT / "refs" / "covers.local"
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic", ".heif"}
-COVER_SIDE = 800
+COVER_SIDE = 1200   # a 14em cover on a 3× phone (BIB-7)
 
 
 def norm_loc(loc):
@@ -71,8 +69,7 @@ def cited():
             continue
         text = path.read_text(encoding="utf-8")
         draft = bool(DRAFT.search(text))
-        blocks = [(m.group(1), rest) for rest in BLOCK.findall(text) for m in [BLOCK_KEY.search(rest)] if m]
-        for key, rest in CITE.findall(text) + blocks:
+        for key, rest in CITE.findall(text):
             m = LOC.search(rest)
             loc = norm_loc(m.group(1) if m else "")
             locs = found.setdefault(key, [])
@@ -363,22 +360,43 @@ def plain(tex):
     return re.sub(r"\s+", " ", s).strip()
 
 
-TYPES = {"book": "Book", "article": "Article", "incollection": "Chapter", "inbook": "Chapter",
-         "inproceedings": "Paper", "thesis": "Thesis", "phdthesis": "Thesis", "mastersthesis": "Thesis",
-         "report": "Report", "techreport": "Report", "online": "Web page", "misc": "Other",
-         "collection": "Book", "unpublished": "Manuscript"}
+TYPES = {"book": "Book", "article-journal": "Article", "article-magazine": "Article",
+         "article-newspaper": "Article", "chapter": "Chapter", "paper-conference": "Paper",
+         "thesis": "Thesis", "report": "Report", "webpage": "Web page", "post-weblog": "Web page",
+         "manuscript": "Manuscript"}
 
 
-def facts(entry):
-    """What /bibliography shows and sorts by (BIB-4): the title, the authors'
-    (or editors') family names, the year and the type of work."""
-    kind = parse_entry(entry)[0].lower()
-    people = field(entry, "author") or field(entry, "editor") or ""
-    families = [plain(p.split(",")[0]) if "," in p else plain(p).split(" ")[-1]
-                for p in re.split(r"\s+and\s+", people) if p.strip()]
-    year = field(entry, "year") or (field(entry, "date") or "")[:4]
-    return {"title": plain(field(entry, "title")), "authors": families,
-            "year": plain(year), "type": TYPES.get(kind, kind.capitalize())}
+def csl_records(entries):
+    """BIB-10: the CSL JSON record of each entry, from pandoc, which knows
+    BibTeX's names, braces and escapes. Pandoc sentence-cases English titles;
+    the spec keeps titles as stored in Zotero, so the title fields are put
+    back from the entry itself."""
+    if not entries:
+        return {}
+    out = subprocess.run(["pandoc", "-f", "bibtex", "-t", "csljson"], input="\n\n".join(entries.values()),
+                         capture_output=True, text=True, check=True)
+    records = {r["id"]: r for r in json.loads(out.stdout)}
+    for key, entry in entries.items():
+        r = records.get(key)
+        if r is None:
+            sys.exit(f"refs: pandoc made no CSL record for {key}")
+        for var, names in (("title", ("title",)), ("title-short", ("shorttitle",)),
+                           ("container-title", ("booktitle", "journaltitle", "journal"))):
+            raw = next((field(entry, n) for n in names if field(entry, n)), None)
+            if raw:
+                r[var] = plain(raw)
+    return records
+
+
+def facts(csl):
+    """What /bibliography shows and sorts by (BIB-4), from the CSL record:
+    the title, the authors' (or editors') family names, the year, the type."""
+    people = csl.get("author") or csl.get("editor") or []
+    year = (csl.get("issued", {}).get("date-parts") or [[""]])[0][0]
+    kind = csl.get("type", "")
+    return {"title": csl.get("title", ""),
+            "authors": [p.get("family") or p.get("literal", "") for p in people],
+            "year": str(year), "type": TYPES.get(kind, kind.replace("-", " ").capitalize())}
 
 
 def main():
@@ -399,6 +417,7 @@ def main():
     raw = split_entries(BIB.read_text(encoding="utf-8"))
     if LOCAL_BIB.exists():
         raw.update(split_entries(LOCAL_BIB.read_text(encoding="utf-8")))
+    csl = csl_records(raw)
     order = {k: i for i, (k, _) in enumerate(bib_entries)}
     entries = dict(bib_entries)
 
@@ -411,7 +430,8 @@ def main():
             "order": order[k],
             "doi": doi,
             "url": f"https://doi.org/{doi}" if doi else field(raw[k], "url"),
-            **facts(raw[k]),
+            "csl": csl[k],
+            **facts(csl[k]),
         }
 
     # committed: only the forms published pages use; the rest stay local

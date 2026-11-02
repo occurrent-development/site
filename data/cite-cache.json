@@ -44,6 +44,30 @@
   "order": 1,
   "doi": "10.1093/acprof:oso/9780198524021.003.0012",
   "url": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012",
+  "csl": {
+   "DOI": "10.1093/acprof:oso/9780198524021.003.0012",
+   "ISBN": "978-0-19-852402-1",
+   "author": [
+    {
+     "family": "Hacking",
+     "given": "Ian"
+    }
+   ],
+   "container-title": "Causal Cognition",
+   "id": "hackingLoopingEffectsHuman1996",
+   "issued": {
+    "date-parts": [
+     [
+      1996,
+      7
+     ]
+    ]
+   },
+   "page": "351-383",
+   "publisher": "Oxford University Press",
+   "title": "The Looping Effects of Human Kinds",
+   "type": "chapter"
+  },
   "title": "The Looping Effects of Human Kinds",
   "authors": [
    "Hacking"
@@ -53,6 +77,15 @@
  },
  "pirsigZenArtMotorcycle1991": {
   "full": {
+   "ch. 1": [
+    "Robert M. Pirsig, ",
+    [
+     "em",
+     {},
+     "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values"
+    ],
+    " (Vintage, 1991), ch. 1."
+   ],
    "": [
     "Robert M. Pirsig, ",
     [
@@ -64,6 +97,15 @@
    ]
   },
   "short": {
+   "ch. 1": [
+    "Pirsig, ",
+    [
+     "em",
+     {},
+     "Zen and the Art of Motorcycle Maintenance"
+    ],
+    ", ch. 1."
+   ],
    "": [
     "Pirsig, ",
     [
@@ -86,6 +128,29 @@
   "order": 4,
   "doi": null,
   "url": null,
+  "csl": {
+   "ISBN": "978-0-09-978640-5",
+   "author": [
+    {
+     "family": "Pirsig",
+     "given": "Robert M."
+    }
+   ],
+   "id": "pirsigZenArtMotorcycle1991",
+   "issued": {
+    "date-parts": [
+     [
+      1991
+     ]
+    ]
+   },
+   "language": "en-US",
+   "publisher": "Vintage",
+   "publisher-place": "London",
+   "title": "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values",
+   "title-short": "Zen and the Art of Motorcycle Maintenance",
+   "type": "book"
+  },
   "title": "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values",
   "authors": [
    "Pirsig"
@@ -146,6 +211,29 @@
   "order": 0,
   "doi": null,
   "url": null,
+  "csl": {
+   "ISSN": "0260-9592",
+   "author": [
+    {
+     "family": "Hacking",
+     "given": "Ian"
+    }
+   ],
+   "container-title": "London Review of Books",
+   "id": "hackingMakingPeople2006",
+   "issue": "16",
+   "issued": {
+    "date-parts": [
+     [
+      2006,
+      8
+     ]
+    ]
+   },
+   "title": "Making Up People",
+   "type": "article-journal",
+   "volume": "28"
+  },
   "title": "Making Up People",
   "authors": [
    "Hacking"
@@ -188,6 +276,28 @@
   "order": 2,
   "doi": null,
   "url": null,
+  "csl": {
+   "ISBN": "0-674-81200-X",
+   "author": [
+    {
+     "family": "Hacking",
+     "given": "Ian"
+    }
+   ],
+   "id": "hackingSocialConstructionWhat2000",
+   "issued": {
+    "date-parts": [
+     [
+      2000
+     ]
+    ]
+   },
+   "language": "en-US",
+   "publisher": "Harvard University Press",
+   "publisher-place": "Cambridge, Massachusetts",
+   "title": "The Social Construction of What?",
+   "type": "book"
+  },
   "title": "The Social Construction of What?",
   "authors": [
    "Hacking"

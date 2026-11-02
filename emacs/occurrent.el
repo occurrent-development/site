@@ -162,12 +162,42 @@ Without citar, the keys are read from the Zotero export."
       (cdr (assoc choice cands)))))
 
 (defun od-insert-cite ()
-  "Insert ◊cite[\"key\"] from the Zotero library, asking for a locator."
+  "Insert a citation from the Zotero library (§16, BIB-9).
+Pick the key (pinned keys only, BIB-2), then answer, each skipped with
+Enter: the locator; the kind, a reference, a quotation or a block
+quotation (a quotation when a region is active, else a reference); a
+remark; and for a block, italic or roman.  A reference is ◊cite[\"key\"]
+at point; a quotation wraps the region as its body, or leaves point in
+empty braces; a block quotation stands on its own lines with blank lines
+either side.  A quotation without a locator is warned about."
   (interactive)
-  (let* ((key (od--select-key))
-         (loc (string-trim (read-string "Locator (e.g. p. 42; empty for none): "))))
-    (insert (format "◊cite[\"%s\"%s]" key
-                    (if (string-empty-p loc) "" (format " #:loc \"%s\"" loc))))))
+  (let* ((region (od--region-text))
+         (key (od--select-key))
+         (loc (string-trim (read-string "Locator (e.g. p. 42; Enter for none): ")))
+         (default (if region "quotation" "reference"))
+         (kind (completing-read (format "Kind (default %s): " default)
+                                '("reference" "quotation" "block quotation") nil t nil nil default))
+         (remark (string-trim (read-string "Remark (Enter for none): ")))
+         (block (equal kind "block quotation"))
+         (italic (and block (equal (completing-read "Style (default roman): " '("roman" "italic") nil t nil nil "roman")
+                                   "italic")))
+         (kws (string-join (delq nil (list (format "\"%s\"" key)
+                                           (and block "#:block #t")
+                                           (and italic "#:italic #t")
+                                           (and (not (string-empty-p loc)) (format "#:loc \"%s\"" (od--quote loc)))
+                                           (and (not (string-empty-p remark)) (format "#:note \"%s\"" (od--quote remark)))))
+                           " ")))
+    (cond
+     (block (od--insert-block (format "◊cite[%s]{" kws) "}"))
+     ((equal kind "quotation")
+      (when region (delete-region (region-beginning) (region-end)))
+      (insert (format "◊cite[%s]{" kws) (or region ""))
+      (save-excursion (insert "}"))
+      (when region (forward-char 1)))
+     (t (when region (goto-char (max (point) (mark))) (deactivate-mark))
+        (insert (format "◊cite[%s]" kws))))
+    (when (and (not (equal kind "reference")) (string-empty-p loc))
+      (message "A quotation should carry a locator (BIB-9): add #:loc"))))
 
 ;;; Glossary (EMACS-3: read from glossary/ directly, cached by mtime) --------
 
@@ -703,7 +733,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; One entry per line, so pollen-test.rkt can read it (VOCAB-3). Each entry:
 ;;   (TAG :pos ARG :kw (KEYWORD…) :req (REQUIRED…) :body B :block B :built B :command CMD [:only KIND] [:not (KIND…)])
 ;; :pos     the positional argument in [...], or nil (:opt-pos t: it may be left out)
-;; :body    t when the tag takes text in {...}; nil when it takes none
+;; :body    t when the tag takes text in {...}; nil when it takes none; opt
+;;          when it may have it or not (◊cite: with a body it is a quotation, BIB-9)
 ;;          (◊br{}, ◊break{} and ◊latex{} may still be written with empty braces)
 ;; :block   t when the tag must start a line
 ;; :built   nil for tags in SPEC §3.3 that pollen.rkt does not provide yet:
@@ -722,8 +753,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (abstract      :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag)
     (epistemic     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag :not (entry))
     (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t :command od-insert-link-external)
-    (cite          :pos key    :kw (loc note)                                            :req ()                    :body nil :block nil :built t :command od-insert-cite)
-    (q             :pos key    :kw (loc)                                                 :req ()                    :body t   :block nil :built t :command od-insert-tag)
+    (cite          :pos key    :kw (loc note block italic source)                        :req ()                    :body opt :block nil :built t :command od-insert-cite)
     (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t :command od-insert-term)
     (aside         :pos phrase :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-aside :opt-pos t)
     (margin        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-margin)
@@ -736,8 +766,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-break)
     (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-latex)
-    (blockquote    :pos nil    :kw (source italic cite loc)                              :req ()                    :body t   :block t   :built t :command od-insert-blockquote)
-    (epigraph      :pos nil    :kw (source italic cite loc)                              :req ()                    :body t   :block t   :built t :command od-insert-epigraph)
+    (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-blockquote)
+    (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-epigraph)
     (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t :command od-insert-list)
     (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t :command od-insert-table)
     (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
@@ -1536,7 +1566,7 @@ The tag starts at AT and its name ends at NAME-END."
   (let ((needs (od--tag-get name :body)))
     (cond
      ((null body)
-      (when (and needs (not (member name '("figure" "header-sample"))))
+      (when (and (eq needs t) (not (member name '("figure" "header-sample"))))
         (od--error at name-end (format "◊%s needs its text in {…}" name))))
      ((null (cdr body))
       (od--error (car body) (1+ (car body)) "this { is never closed (braces must balance)"))

@@ -12,7 +12,7 @@
          "marks.rkt")
 
 (provide note-form bib-entry bib-order cite-key-known? normalize-loc external-link
-         cite-facts cite-keys)
+         cite-facts cite-keys csl-fields cite-attribution names-text)
 
 (define cache #f)
 (define committed-keys #f)
@@ -54,7 +54,72 @@
   (unless (field 'title)
     (build-error "the citation cache has no title for ~s; run `make refresh`" key))
   (hasheq 'title (field 'title) 'authors (or (field 'authors) null) 'year (or (field 'year) "")
-          'type (or (field 'type) "") 'url (field 'url) 'doi (field 'doi)))
+          'type (or (field 'type) "") 'url (field 'url) 'doi (field 'doi)
+          'csl (or (field 'csl) (hasheq))))
+
+;; ---------------------------------------------------------------------------
+;; BIB-10: a work as facts. The CSL record (tools/refs.py, from pandoc) mapped
+;; to labelled fields, fixed by type; nothing else in the record is shown.
+
+;; Given Family, several joined with commas and "and" before the last.
+(define (names-text people)
+  (define names
+    (for/list ([p (in-list people)])
+      (or (hash-ref p 'literal #f)
+          (string-normalize-spaces (string-append (hash-ref p 'given "") " " (hash-ref p 'family ""))))))
+  (match names
+    ['() #f]
+    [(list a) a]
+    [(list a b) (string-append a " and " b)]
+    [_ (string-append (string-join (drop-right names 1) ", ") " and " (last names))]))
+
+(define (csl-year csl)
+  (define parts (hash-ref (hash-ref csl 'issued (hasheq)) 'date-parts #f))
+  (and (pair? parts) (pair? (car parts)) (format "~a" (caar parts))))
+
+;; A URL as its domain and path (BIB-10).
+(define (url-text u) (regexp-replace #rx"/$" (regexp-replace #rx"^https?://(www\\.)?" u "") ""))
+
+;; The fields of a work, in BIB-10's order for its type, as
+;; (list label elements lining?), empty ones left out.
+(define (csl-fields csl)
+  (define (v k) (let ([x (hash-ref csl k #f)]) (and x (not (equal? x "")) (if (number? x) (number->string x) x))))
+  (define (people k) (let ([ps (hash-ref csl k null)]) (and (pair? ps) (names-text ps))))
+  (define (plural k one many) (if (> (length (hash-ref csl k null)) 1) many one))
+  (define doi (v 'DOI))
+  (define url (v 'URL))
+  (define (field label val #:italic [italic? #f] #:lining [lining? #f])
+    (and val (list label (list (if italic? `(em ,val) val)) lining?)))
+  (define author (field "Author" (people 'author)))
+  (define editor (field (plural 'editor "Editor" "Editors") (people 'editor)))
+  (define translator (field (plural 'translator "Translator" "Translators") (people 'translator)))
+  (define year (field "Year" (csl-year csl) #:lining #t))
+  (define place (field "Place" (v 'publisher-place)))
+  (define publisher (field "Publisher" (v 'publisher)))
+  (define pages (field "Pages" (v 'page) #:lining #t))
+  (define doi-f (and doi (list "DOI" (list (external-link (string-append "https://doi.org/" doi) (list doi))) #t)))
+  (define url-f (and url (list "URL" (list (external-link url (list (url-text url)))) #f)))
+  (filter values
+          (case (hash-ref csl 'type "")
+            [("book") (list author editor translator (field "Edition" (v 'edition)) publisher place year
+                            (field "ISBN" (v 'ISBN) #:lining #t))]
+            [("chapter" "entry-encyclopedia" "entry-dictionary" "paper-conference")
+             (list author (field "In" (v 'container-title) #:italic #t) editor publisher place year pages doi-f)]
+            [("article-journal" "article-magazine" "article-newspaper" "article")
+             (list author (field "Journal" (v 'container-title) #:italic #t) (field "Volume" (v 'volume) #:lining #t)
+                   (field "Issue" (v 'issue) #:lining #t) pages year doi-f)]
+            [("thesis" "report")
+             (list author (field "Type" (v 'genre)) (field "Institution" (v 'publisher)) place year url-f)]
+            [else (list author (field "Site" (or (v 'container-title) (v 'publisher))) year url-f)])))
+
+;; BIB-9: a block quotation's attribution, written from the entry: Given
+;; Family, Title (italic; the short title when there is one), the locator.
+(define (cite-attribution key loc)
+  (define csl (hash-ref (cite-facts key) 'csl))
+  (define who (names-text (hash-ref csl 'author null)))
+  (define title (or (hash-ref csl 'title-short #f) (hash-ref csl 'title #f) (hash-ref (cite-facts key) 'title)))
+  (add-between (filter values (list who `(em ,title) (and loc (not (equal? (string-trim loc) "")) (string-normalize-spaces loc))))
+               ", "))
 
 (define (entry key)
   (or (hash-ref (the-cache) (string->symbol key) #f)

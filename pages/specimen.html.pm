@@ -245,17 +245,18 @@ of this page is, and can be set roman, when emphasis is italic again:
 ◊epigraph[#:italic #f #:source "A roman epigraph"]{An epigraph set roman, for
 a long one of running prose, with ◊em{emphasis} in italic.}
 
-A quotation from a cited work is marked, so that it is listed on the work's
-own page. Inline, Pirsig's claim that the Godhead is as much at home
-◊q["pirsigZenArtMotorcycle1991"]{in the circuits of a digital computer or the gears of a cycle transmission}
+A quotation from a cited work is marked by citing it with the quoted words
+as the citation's body, so that it is listed on the work's own page. Inline,
+Pirsig's claim that the Godhead is as much at home
+◊cite["pirsigZenArtMotorcycle1991" #:loc "ch. 1"]{in the circuits of a digital computer or the gears of a cycle transmission}
 is put in quotation marks by the build and followed by its circle, which opens
-its note; beneath the note is the work's card, with a photograph of the
-cover. A block quotation names its work the same way, and the circle follows
-the attribution:
+the work's card: its title, the photograph of the cover, the facts of the
+edition, and this citation's place in it. A block quotation is the same
+citation set as a block, and the build writes its attribution from the
+entry, the circle at its end:
 
-◊; STYLE: the two Pirsig quotations have no page yet; Ryan to check the words against the 1991 Vintage copy and add #:loc.
-◊blockquote[#:source "Robert M. Pirsig, Zen and the Art of Motorcycle Maintenance" #:cite "pirsigZenArtMotorcycle1991"]{The real
-cycle you're working on is a cycle called yourself.}
+◊; STYLE: Ryan to check both Pirsig quotations against the 1991 Vintage copy; the first is placed in chapter 1 from memory, and both want page numbers.
+◊cite["pirsigZenArtMotorcycle1991" #:block #t]{The real cycle you're working on is a cycle called yourself.}
 
 The paragraph after a quotation is not indented, because it continues the
 paragraph the quotation interrupted. Elsewhere, a new paragraph is marked by
@@ -322,7 +323,7 @@ circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructio
 #:loc "pp. 31-34"], which opens both. Every cited work also has a page of its
 own, reached from the → after its note or its Bibliography entry, and the
 popup shows that page's card beneath the note: for a work with a photograph
-of its cover, such as Pirsig's novel ◊cite["pirsigZenArtMotorcycle1991"], the
+of its cover, such as Pirsig's novel ◊cite["pirsigZenArtMotorcycle1991" #:note "The 1991 Vintage paperback."], the
 card carries the cover. A note opens over the page at
 every width, and its circle stays filled for as long as it is pinned open.
 

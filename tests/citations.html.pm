@@ -11,10 +11,15 @@ A second aside◊aside{With ◊term["looping-effect"]{looping}, whose definition
 cites a work no note cites.} and a final note ◊cite["hackingMakingPeople2006"
 #:note "With a remark."].
 
-◊; BIB-9: an inline quotation (note 6, the short form) and a block quotation
-◊; from a cited work (note 7, short form), each with a locator.
-In his words, people are ◊q["hackingMakingPeople2006" #:loc "p. 23"]{made up, with "kinds" of
+◊; BIB-9: a ◊cite with a body, a quotation (note 6, the short form), and one
+◊; with #:block #t (note 7, short form), each with a locator.
+In his words, people are ◊cite["hackingMakingPeople2006" #:loc "p. 23"]{made up, with "kinds" of
 ◊em{people}}. Then a block:
 
-◊blockquote[#:source "Hacking" #:cite "hackingSocialConstructionWhat2000" #:loc "pp. 31-34"]{A
+◊cite["hackingSocialConstructionWhat2000" #:loc "pp. 31-34" #:block #t]{A
 quoted passage, set as a block.}
+
+◊; BIB-9: two bare citations of one work in one paragraph (notes 8 and 9),
+◊; listed once in its Cited in.
+Twice in one paragraph ◊cite["hackingLoopingEffectsHuman1996"], and again
+◊cite["hackingLoopingEffectsHuman1996"].

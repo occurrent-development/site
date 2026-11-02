@@ -259,23 +259,27 @@ async function tests() {
     expect(w.getComputedStyle(c).zIndex > w.getComputedStyle(a).zIndex, "the one last touched is not on top");
   });
 
-  // References 1 and 2 are the specimen's two Pirsig quotations (BIB-9): the first
-  // a full note, the second short.
-  await test("BIB-5, BIB-8: a note popup shows the note, a hairline, then the card with the cover; the title goes to the work's page", async () => {
+  // Reference 1 is the specimen's inline Pirsig quotation, #:loc "ch. 1";
+  // reference 9 cites Pirsig with a remark (BIB-8, POP-7).
+  await test("BIB-8, POP-7: a citation's popup is the work's card, the locator and remark under its title", async () => {
     trig("note-1").click(); await settle(250);
-    const box = pinned()[0];
+    let box = pinned()[0];
     const card = box?.querySelector(".ref-card");
-    expect(card, "no card under the note");
-    expect(box.querySelector(".popup-sep + .ref-card"), "no hairline between the note and the card");
+    expect(card, "no card in the popup");
+    expect(!box.querySelector(".popup-sep") && !box.querySelector(".popup-bib"), "the Chicago note is still there beside the card");
     expect(card.querySelector(".cover img[alt^='Cover of']"), "the card has no cover");
-    expect(!card.querySelector(".ref-entry"), "under a full note the card repeats the entry");
+    expect(card.querySelector(".ref-title + .ref-loc")?.textContent.replace(/\s/g, " ") === "Chapter 1",
+      `the locator under the title: ${card.querySelector(".ref-loc")?.textContent}`);
+    expect(card.querySelector(".ref-fields dt")?.textContent === "Author", "the fields do not start with Author");
     expect(/Cited in 1 post/.test(card.textContent), `the card's last line: ${card.querySelector(".ref-cited")?.textContent}`);
     const ref = "/references/pirsigZenArtMotorcycle1991";
     expect(box.querySelector(".popup-title a")?.getAttribute("href") === ref, "the title is not a link to the work's page");
     expect(box.querySelector(".popup-open")?.getAttribute("href") === ref, "Open in new tab does not go to the work's page");
     await closeAll();
-    trig("note-2").click(); await settle(250);
-    expect(pinned()[0]?.querySelector(".ref-card .ref-entry"), "under a short note the card has no entry");
+    trig("note-9").click(); await settle(250);
+    box = pinned()[0];
+    expect(box?.querySelector(".ref-title ~ .ref-remark em")?.textContent === "The 1991 Vintage paperback.", "no remark under the title");
+    expect(!box.querySelector(".ref-loc"), "a locator shown where the citation has none");
   });
 
   await test("VAL-4: a backlink's context is two lines until More, which needs no script", async () => {
@@ -541,6 +545,12 @@ const SCENARIOS = {
   async backlinks() {
     const s = d.getElementById("backlinks");
     w.scrollTo({ top: s.offsetTop - 120, behavior: "instant" });
+    await settle(300);
+  },
+  // BIB-9: a work's Cited in
+  async citedin() {
+    const s = d.getElementById("cited-in");
+    w.scrollTo({ top: s.offsetTop - 40, behavior: "instant" });
     await settle(300);
   },
   // a page from its top, with every image loaded (a work's cover)

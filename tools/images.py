@@ -31,7 +31,7 @@ OUT = ROOT / "assets" / "img"
 MANIFEST = OUT / "images.json"
 SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support"}  # BUILD-3a: an essay's support/ is never read
 WIDTHS = [480, 800, 1200, 1600, 2400]
-COVER_WIDTHS = [160, 320, 640]
+COVER_WIDTHS = [160, 320, 640, 960]
 WARN_BYTES = 2 * 1024 * 1024
 FIGURE = re.compile(r'◊figure\[\s*"([^"]+)"')
 

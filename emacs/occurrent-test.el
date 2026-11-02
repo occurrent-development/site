@@ -355,6 +355,48 @@ notebook/demo/ when `od-test-kind' is \"entry\")."
     (insert "Why I write")
     (should (equal (buffer-string) "◊list{\n1. ◊margin{Why I write}Getting a thought expressed.\n2. Next.\n}\n"))))
 
+(defmacro od-test-cite-answers (answers &rest body)
+  "Run BODY with od-insert-cite's prompts answered from ANSWERS, in order.
+The key is picked as \"k\"."
+  (declare (indent 1))
+  `(let ((queue ,answers))
+     (cl-letf (((symbol-function 'od--select-key) (lambda (&rest _) "k"))
+               ((symbol-function 'read-string) (lambda (&rest _) (pop queue)))
+               ((symbol-function 'completing-read)
+                (lambda (_p _c &optional _r _m _i _h def) (let ((a (pop queue))) (if (equal a "") def a)))))
+       ,@body)))
+
+(ert-deftest od-test-insert-cite ()
+  "§16, BIB-9: the four prompts; Enter skips each."
+  ;; a reference, every prompt skipped
+  (od-test-with "Text"
+    (goto-char (point-max))
+    (od-test-cite-answers '("" "" "") (od-insert-cite))
+    (should (equal (buffer-string) "Text◊cite[\"k\"]")))
+  ;; a quotation of the region, with a locator and a remark
+  (od-test-with "He said made up people here."
+    (transient-mark-mode 1)
+    (search-forward "made") (goto-char (match-beginning 0))
+    (set-mark (point)) (search-forward "people") (activate-mark)
+    (od-test-cite-answers '("p. 23" "" "A remark.") (od-insert-cite))
+    (should (equal (buffer-string) "He said ◊cite[\"k\" #:loc \"p. 23\" #:note \"A remark.\"]{made up people} here.")))
+  ;; a quotation with no region leaves point in the braces
+  (od-test-with "Text "
+    (goto-char (point-max))
+    (od-test-cite-answers '("p. 4" "quotation" "") (od-insert-cite))
+    (insert "words")
+    (should (equal (buffer-string) "Text ◊cite[\"k\" #:loc \"p. 4\"]{words}")))
+  ;; a block quotation, italic, on its own lines
+  (od-test-with "Before.\nAfter.\n"
+    (goto-char (point-min)) (end-of-line)
+    (od-test-cite-answers '("p. 9" "block quotation" "" "italic") (od-insert-cite))
+    (insert "Quoted.")
+    (should (equal (buffer-string) "Before.\n\n◊cite[\"k\" #:block #t #:italic #t #:loc \"p. 9\"]{Quoted.}\n\nAfter.\n"))))
+
+(ert-deftest od-test-cite-body-not-an-error ()
+  "BIB-9: ◊cite with or without a body, and #:block, are clean."
+  (od-test-errors-are "A ◊cite[\"k\"] and ◊cite[\"k\" #:loc \"p. 2\"]{words}." nil))
+
 (ert-deftest od-test-insert-commands ()
   (od-test-with "Text\n"
     (goto-char (point-max)) (od-insert-latex)

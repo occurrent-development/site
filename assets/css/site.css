@@ -884,7 +884,7 @@ a.to-ref, a.to-mark { margin-left: 0.1em; }
 /* ── Around the essays (Phase 3) ─────────────────────────────────────── */
 /* VAL-4, BIB-1: Backlinks and Cited in. Each context is clamped to about
    two lines; More (a <details>, so no script) lifts the clamp. */
-ul.contexts, ul.quoted, ul.changelog { list-style: none; margin: 0; padding: 0; }
+ul.contexts, ul.changelog { list-style: none; margin: 0; padding: 0; }
 .context-entry { margin: 0 0 0.9em; }
 .context-from { margin: 0 0 0.15em; }
 .kind { color: var(--text-muted); font-variant-caps: all-small-caps; letter-spacing: 0.04em; }
@@ -907,24 +907,46 @@ ul.contexts, ul.quoted, ul.changelog { list-style: none; margin: 0; padding: 0; 
 ul.changelog li { margin: 0.3em 0; }
 ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted); }
 
-/* BIB-7, BIB-8: the cover at the left of the entry, about 7em tall,
-   top-aligned; the same head on the work's page and in its card. */
-.ref-head, .ref-card { display: flex; gap: 1em; align-items: flex-start; }
-.ref-text { flex: 1; min-width: 0; }
-.ref-text p { margin: 0 0 0.45em; text-indent: 0; }
-.ref-entry { padding-left: 1.5em; text-indent: -1.5em !important; }
-.ref-links, .ref-cited, .ref-dead { color: var(--text-muted); }
-.cover { flex: none; display: block; line-height: 0; }
-.cover img { display: block; height: 7em; width: auto; box-shadow: 0 0 0 1px var(--rule); }
-.ref-card .cover img { height: 6em; }
+/* BIB-7, BIB-10: the cover at the right of the title, 14em tall, its top on
+   the title's top; the fields beneath the title at its left, every value at
+   one tab stop. The same head on the work's page and in its card. */
+.cover { display: block; line-height: 0; float: right; margin: 0 0 0.75em 1.25em; }
+.cover img { display: block; height: 14em; width: auto; box-shadow: 0 0 0 1px var(--rule); }
+.ref-header .cover { margin-top: 0.3em; }          /* the h1's cap height */
+.reference::after { content: ""; display: block; clear: both; }
+/* tier S: a 14em cover beside a 1.6em title leaves the title two words a
+   line, so on the page (not in the card) it is smaller there */
+@container page (width < 39em) { .ref-header .cover img { height: 9em; } }
 /* IMG-4: covers are never inverted, only dimmed */
 :root[data-theme="dark"] .cover img { filter: brightness(0.85); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cover img { filter: brightness(0.85); } }
+:root { --tab-gap: 1em; }   /* the one gap between a field's label and its value */
+.ref-fields {
+  display: grid; grid-template-columns: max-content 1fr; column-gap: var(--tab-gap); row-gap: 0.1em;
+  margin: 0 0 0.6em; text-align: left;
+}
+.ref-fields dt { color: var(--text-muted); }
+.ref-fields dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ref-fields .lining { font-variant-numeric: lining-nums; }
+.ref-card .ref-title {
+  font-family: var(--sans); font-weight: 600; font-size: 0.95em; line-height: 1.3;
+  margin: 0 0 0.5em; text-wrap: balance;
+}
+.ref-card p { margin: 0 0 0.5em; text-indent: 0; }
+.ref-loc { color: var(--text-muted); }
+.ref-remark { margin-top: -0.25em; }
+.ref-cited, .ref-dead { color: var(--text-muted); }
+.ref-card .ref-cited { clear: both; }
 .commentary { margin-top: 1em; }
-.ref-list { margin-top: 2em; }
+.ref-list { margin-top: 2em; clear: both; }
 .ref-list h2 { font-size: 1.45em; }
-.quoted-post { margin: 0 0 1em; }
-ul.quoted li { margin: 0.35em 0 0.35em 1em; }
+/* BIB-9: one Cited in */
+ul.cited-in, ul.cite-entries { list-style: none; margin: 0; padding: 0; }
+.cited-post { margin: 0 0 1.2em; }
+.cited-section { margin: 0.4em 0 0.2em; text-indent: 0; }
+.cite-entry { margin: 0 0 0.7em 1em; }
+.cite-entry .passage { margin: 0; text-indent: 0; }
+.cite-marks { margin: 0.1em 0 0; text-indent: 0; }
 .loc { color: var(--text-muted); font-variant-numeric: oldstyle-nums; }
 
 /* TERM-8, BIB-4: the glossary page and the bibliography */

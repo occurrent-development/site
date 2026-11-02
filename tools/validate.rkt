@@ -92,11 +92,19 @@
 (define post-sources
   (for*/list ([dir (in-list '("essays" "notebook"))] #:when (directory-exists? dir)
               [f (in-directory dir (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
-              #:when (regexp-match? #px"^(?:essays|notebook)/[^/]+/[^/]+\\.html\\.pm$" (path->string f)))
+              #:when (regexp-match? #px"^(?:essays|notebook)/[^/]+/[^/.][^/]*\\.html\\.pm$" (path->string f)))   ; not Emacs's .# lock files
     f))
 
+;; A post's status. A draft that does not build yet (DRAFT-E1: a draft is
+;; work in progress) is read from its source text, so it cannot stop `make`.
 (define (status-of src)
-  (let ([s (select-from-metas 'status (get-metas src))]) (and s (string-trim (format "~a" s)))))
+  (with-handlers ([exn:fail?
+                   (λ (e)
+                     (define m (regexp-match #px"◊define-meta\\[status\\]\\{\\s*([a-z]+)\\s*\\}" (file->string (path->string src))))
+                     (define st (and m (cadr m)))
+                     (unless (equal? st "draft") (raise e))
+                     st)])
+    (let ([s (select-from-metas 'status (get-metas src))]) (and s (string-trim (format "~a" s))))))
 
 ;; A page in the graph: a post, or a page listed in the essay index by its date.
 (define (graph-source? src)
@@ -105,8 +113,8 @@
 (define (walk-all sources)
   (for/list ([s (in-list sources)])
     (match-define (list url src) s)
-    (define-values (post links cites quotes terms changes) (walk-page url src (get-doc src)))
-    (list url post links cites quotes terms changes)))
+    (define-values (post links cites terms changes) (walk-page url src (get-doc src)))
+    (list url post links cites terms changes)))
 
 ;; The published graph sources (DRAFT-2) and the drafts, in and out of the pagetree.
 (define-values (graph-published graph-drafts)
