@@ -262,8 +262,21 @@ blockquote.epigraph footer::before { content: "— "; }
   color: var(--text-muted);
   margin-bottom: 2.5em;
 }
-.site-name, .site-name-short { font-size: 0.85em; font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
-.site-name-short { display: none; }
+/* THEME-6: in tiers L and XL the theme control sits at the window's top
+   right, not the column's (2026-11-02, night), where the bar's controls
+   also are (BAR-1d). */
+@container page (min-width: 66.5em) {
+  .page > .site-header { width: auto; margin-inline: 0; padding-inline: 0 1.25rem; }
+}
+/* NAV-1: the menu's handle is the monogram (BRAND-1) with the chevron, at
+   every tier; 2rem in the header, a little smaller in the bar. A background,
+   not an <img>, so it is one fetch shared with the favicon. */
+.site-menu .menu-icon {
+  display: block; width: 2rem; height: 2rem; flex: none;
+  background: url(/assets/brand/logo.svg) center / contain no-repeat;
+}
+.site-menu summary:hover .menu-icon, .site-menu[open] .menu-icon { opacity: 0.85; }
+.bar-menu .menu-icon { width: 1.75rem; height: 1.75rem; }
 
 /* NAV-1: one menu, on the rail. The rail takes no height: in tiers L, M and
    S the menu sits on the header's line, at the column's left edge, opposite
@@ -278,6 +291,13 @@ blockquote.epigraph footer::before { content: "— "; }
   color: var(--text-muted);
 }
 .menu-rail .site-menu { height: 2.25rem; display: flex; align-items: center; width: max-content; }
+/* NAV-1 (2026-11-02, night): in tier L the menu sits at the window's left
+   edge, 1.25rem in, as the bar's copy does, so the column is clear for the
+   title to rise to the top (LAYOUT-1); in M and S it stays on the column's
+   left edge, where the title stays below it. */
+@container page (min-width: 66.5em) {
+  .page > .menu-rail { width: auto; margin-inline: 0; padding-inline: 1.25rem 0; }
+}
 @container frame (min-width: 80em) {
   .has-column > .page > .menu-rail {
     position: sticky;
@@ -365,14 +385,63 @@ blockquote.epigraph footer::before { content: "— "; }
   -webkit-hyphens: manual;
 }
 .essay-header p { text-indent: 0; }
+/* LAYOUT-2 (2026-11-03): the title in Libertinus Serif Display, the text
+   face's cut for large sizes (lighter strokes, tighter fit), a little larger
+   than the 1.6em the text face was set at */
 .essay-header h1, .essay-title {
-  font-size: 1.6em;
+  font-family: "Libertinus Serif Display", "Libertinus Serif", "Libertinus Fallback", Georgia, serif;
   font-weight: 400;
-  line-height: 1.2;
+  font-size: 1.9em;
+  line-height: 1.15;
   margin: 0 0 0.25em;
   text-wrap: balance;
 }
 .subtitle { font-style: italic; font-size: 1.15em; line-height: 1.35; margin: 0; text-wrap: balance; }
+
+/* HOME-2: the masthead. Cormorant Medium (the only place it is used), the
+   two words on a diagonal with a tapered stroke at each outer end, every
+   measure in em of its own size so the block scales as one drawing. Its
+   size follows the column (cqw) up to a ceiling; in tier S the strokes go
+   and the offset halves, so the words alone fit a phone. The stroke and the
+   words share currentColor, so the dark theme needs nothing more. */
+.essay-header h1.masthead {
+  font-family: "Cormorant", "Libertinus Serif", "Libertinus Fallback", Georgia, serif;
+  font-weight: 500;
+  font-size: min(2.7em, 12cqw);
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
+  margin: 0.1em auto 0.3em;
+  text-wrap: nowrap;
+  white-space: nowrap;
+  font-kerning: normal;
+}
+.masthead-line { display: flex; align-items: center; gap: 0.26em; }
+.masthead-line-2 { margin-left: 2.15em; margin-top: -0.12em; }
+.masthead .swash { display: none; width: 2.2em; height: 0.56em; flex: none; fill: currentColor; }
+.masthead .swash-left { transform: scaleX(-1); }
+@container page (min-width: 39em) {
+  .essay-header h1.masthead { font-size: min(2.7em, 7.6cqw); }
+  .masthead .swash { display: block; }
+  .masthead-line-2 { margin-left: 4.62em; }
+}
+/* LAYOUT-1, HOME-2: in tiers L and XL, where the menu and the theme
+   control sit at the window's edges and the column is clear of them, the
+   header rises to the top of the page, so the title (or the masthead) is
+   level with the menu. The header's margin block aligns on the datum
+   (LAYOUT-1a): the abstract, or the first line after the header. */
+@container page (min-width: 66.5em) {
+  article > .essay-header:not(.sample) { margin-top: calc(-2.5em - 2.25rem); }
+  .essay-header.home-header h1.masthead { margin-top: 0; }
+  /* LAYOUT-1a: without an abstract the block's datum is the first line
+     after the header; this is where that lands before the script measures
+     it (with an abstract, the rule above puts it beside the title and the
+     script moves it onto the abstract's first line) */
+  .essay-header.no-abstract .header-meta { top: calc(100% + 2.25em); margin-top: 0; }
+}
 .header-meta {
   font-size: 0.85em;
   line-height: 1.4;
@@ -577,11 +646,20 @@ section h2:hover .self, section h3:hover .self, section h4:hover .self, .self:fo
     background: var(--rule);
     transition: top 0.2s ease;
   }
-  /* POP-12: the scratch pad's link, at the foot of the list */
-  .toc-inner > .toc-scratch { display: block; flex: none; margin: 0.9em 0 0 0.7em; }
-  .toc-inner > .toc-scratch:first-child { margin-top: 0; }   /* a page without contents */
 }
-.toc-scratch { display: none; }
+/* POP-12: the Scratch link, docked at the window's bottom left in every
+   tier (2026-11-02, night: moved out of the contents column). Only scripts
+   make it, and not on touch devices. */
+.toc-scratch {
+  position: fixed;
+  left: 1rem;
+  bottom: 0.9rem;
+  z-index: 20;
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
 .toc-scratch button {
   appearance: none; border: 0; background: none; padding: 0; font: inherit; cursor: pointer;
   color: var(--text-muted);
@@ -607,6 +685,16 @@ hr.break {
 hr.break + p { text-indent: 0; }
 @container page (min-width: 39em) {
   hr.break { height: 1.1em; margin: 2em auto; }
+}
+/* LAYOUT-4a: ◊rule{}, a hairline half the column's width, in the rule
+   colour of the header's rule (LAYOUT-1c), with the glyph's spacing */
+hr.break.rule {
+  -webkit-mask: none;
+  mask: none;
+  background: none;
+  height: 0;
+  width: 50%;
+  border-top: 1px solid var(--rule);
 }
 
 /* MARK-3a: punctuation moved before a mark keeps the text colour, even
@@ -1255,13 +1343,8 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .bar-menu { flex: none; color: var(--text-muted); }
 .bar-menu summary { padding: 0.25rem 0; }
 @container frame (min-width: 80em) { .has-column .bar-menu { display: none; } }
-@container page (width < 39em) {        /* tier S: the chevron and a shortened name */
-  .bar-menu .site-name { display: none; }
-  .bar-menu .site-name-short { display: inline; }
-}
-/* NAV-1: on touch devices the bar's menu is the site's monogram (BRAND-1),
-   opening upward. A background, not an <img>: only touch devices fetch it. */
-.bar-menu .menu-icon { display: none; width: 1.75rem; height: 1.75rem; }
+/* NAV-1: on touch devices the bar's menu is the monogram alone, no chevron,
+   opening upward. */
 @media (hover: none) {
   /* flush with the screen's left edge, just above the bar; in the sans, at
      a size a thumb can read and hit (seen on a phone, 2026-10-26) */
@@ -1282,8 +1365,7 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
     font-size: 1.0625rem;
     padding: 0.7rem 1.25rem;
   }
-  .bar-menu .site-name, .bar-menu .site-name-short, .bar-menu .chevron { display: none; }
-  .bar-menu .menu-icon { display: block; background: url(/assets/brand/logo.svg) center / contain no-repeat; }
+  .bar-menu .chevron { display: none; }
   .bar-menu summary { justify-content: flex-start; }
   .menu-scratch, .toc-scratch { display: none !important; }   /* POP-12: no scratch pad on touch */
 }

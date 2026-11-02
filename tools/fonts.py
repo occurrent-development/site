@@ -28,7 +28,14 @@ FACES = {
     "serif-italic": "LibertinusSerif-Italic.otf",
     "serif-semibold": "LibertinusSerif-Semibold.otf",
     "mono-regular": "LibertinusMono-Regular.otf",
+    "serif-display": "LibertinusSerifDisplay-Regular.ttf",   # titles (LAYOUT-2)
+    "masthead": "Cormorant-Medium.ttf",                       # the home page's masthead alone (HOME-2)
 }
+
+# HOME-2: the masthead face sets two words and nothing else, so its subset
+# is those glyphs alone (a few KB), not the site's whole character set.
+MASTHEAD_TEXT = "Occurrent Development"
+FACE_CHARS = {"masthead": {ord(c) for c in MASTHEAD_TEXT}}
 
 # Always included: printable ASCII, Latin-1, the punctuation and spaces the
 # typography rules and smart quotes produce, and common symbols.
@@ -88,7 +95,7 @@ def main():
     entries = []
     total = 0
     for key, name in FACES.items():
-        data = subset_face(FONTS / name, unicodes)
+        data = subset_face(FONTS / name, sorted(FACE_CHARS.get(key, unicodes)))
         digest = hashlib.sha256(data).hexdigest()[:10]
         out = FONTS / f"{pathlib.Path(name).stem}.{digest}.woff2"
         out.write_bytes(data)

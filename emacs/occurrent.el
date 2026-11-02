@@ -196,8 +196,26 @@ either side.  A quotation without a locator is warned about."
       (when region (forward-char 1)))
      (t (when region (goto-char (max (point) (mark))) (deactivate-mark))
         (insert (format "◊cite[%s]" kws))))
-    (when (and (not (equal kind "reference")) (string-empty-p loc))
-      (message "A quotation should carry a locator (BIB-9): add #:loc"))))
+    (cond ((and (not (equal kind "reference")) (string-empty-p loc))
+           (message "A quotation should carry a locator (BIB-9): add #:loc"))
+          ((not (od--cite-form-cached-p key loc))
+           (message "New form for %s (%s): the next C-c o p refreshes the citation cache (CITE-9)"
+                    key (if (string-empty-p loc) "no locator" loc))))))
+
+(defun od--cite-form-cached-p (key loc)
+  "Non-nil when KEY with locator LOC is in a citation cache (CITE-5, CITE-5a).
+An unreadable cache counts as holding every form, so this never blocks."
+  (condition-case nil
+      (let ((loc (string-join (split-string loc) " ")))
+        (cl-some (lambda (name)
+                   (let ((f (od--file "data" name)))
+                     (and (file-exists-p f)
+                          (let* ((json-object-type 'hash-table)
+                                 (json-key-type 'string)
+                                 (entry (gethash key (json-read-file f))))
+                            (and entry (gethash loc (gethash "full" entry)))))))
+                 '("cite-cache.json" "cite-cache.local.json")))
+    (error t)))
 
 ;;; Glossary (EMACS-3: read from glossary/ directly, cached by mtime) --------
 
@@ -575,17 +593,24 @@ is italic, a block quotation roman (LAYOUT-4c)."
         (goto-char (car b)) (insert (format "◊%s{" tag))
         (goto-char (+ (cdr b) (length tag) 3))))))
 
-(defun od-insert-break ()
+(defun od-insert-break (&optional rule)
   "Insert ◊break{} on its own line, a blank line either side (LAYOUT-4).
+With a prefix argument RULE, ◊rule{}: a centred hairline half the
+column's width instead of the glyph (LAYOUT-4a).
 Refuses before a heading: a heading already marks the turn (§17)."
-  (interactive)
+  (interactive "P")
   (when (save-excursion
           (skip-chars-forward " \t\n")
           (looking-at-p "◊\\(sub\\)*section\\["))
     (user-error "A heading follows: no break before a heading (style guide, §17)"))
   (od--open-line-for-block)
-  (insert "◊break{}\n")
+  (insert (if rule "◊rule{}\n" "◊break{}\n"))
   (unless (or (eobp) (looking-at-p "[ \t]*$")) (insert "\n")))
+
+(defun od-insert-rule ()
+  "Insert ◊rule{}, the quieter section break (LAYOUT-4a); see `od-insert-break'."
+  (interactive)
+  (od-insert-break t))
 
 (defun od-insert-list (&optional numbered)
   "Insert ◊list{…} with one item and point after its marker (§3.4).
@@ -678,18 +703,102 @@ This is the way in for tags with no command of their own (VOCAB-5)."
 
 ;;; Preview ------------------------------------------------------------------
 
+(defun od--server-up-p ()
+  "Non-nil when something answers on `od-preview-port'."
+  (condition-case nil
+      (let ((s (open-network-stream "od-probe" nil "localhost" od-preview-port)))
+        (delete-process s)
+        t)
+    (error nil)))
+
+(defun od--serve-start ()
+  "Start `make serve' in *od-serve* and return the process."
+  (let ((default-directory (od-root)))
+    (with-current-buffer (get-buffer-create "*od-serve*")
+      (erase-buffer))
+    (start-process "od-serve" "*od-serve*" "make" "serve")))
+
+(defun od--serve-stop ()
+  "Stop the server started by `od--serve-start', if it is running."
+  (let ((proc (get-buffer-process "*od-serve*")))
+    (when (process-live-p proc)
+      (interrupt-process proc)
+      (while (process-live-p proc) (accept-process-output nil 0.1)))))
+
+(defun od--serve-wait (proc seconds)
+  "Wait up to SECONDS for the server, while PROC lives; non-nil when it is up."
+  (let ((deadline (+ (float-time) seconds)))
+    (while (and (not (od--server-up-p))
+                (process-live-p proc)
+                (< (float-time) deadline))
+      (accept-process-output nil 0.5))
+    (od--server-up-p)))
+
+(defun od--serve-needs-refresh-p ()
+  "Non-nil when *od-serve* ended on a citation form missing from the cache (CITE-9)."
+  (with-current-buffer (get-buffer-create "*od-serve*")
+    (save-excursion
+      (goto-char (point-min))
+      (re-search-forward "no cached note for .*run `make refresh`" nil t))))
+
+(defun od--refresh-cites ()
+  "Run `make refresh-cites' synchronously; non-nil when it succeeded.
+Its output follows the server's in *od-serve*."
+  (let ((default-directory (od-root)))
+    (message "Refreshing the citation caches (make refresh-cites)...")
+    (eq 0 (call-process "make" nil "*od-serve*" nil "refresh-cites"))))
+
 (defun od-preview ()
-  "Render this file on the Pollen project server and open it in a browser."
+  "Render this file on the Pollen project server and open it in a browser.
+When nothing answers on `od-preview-port', runs `make serve' (which may
+first re-subset the fonts and rebuild the link graph) and waits for the
+server, up to 90 seconds.
+
+If the build stops because a work is cited at a locator not yet in the
+citation cache (CITE-9), runs `make refresh-cites' and starts the server
+again, once: the new form is then in data/cite-cache.json, to be committed
+with the page.  Any other failure shows *od-serve* with the error instead
+of opening a browser on a dead port."
   (interactive)
   (save-buffer)
   (let* ((root (od-root))
          (rel (file-relative-name (file-name-sans-extension buffer-file-name) root))
          (url (format "http://localhost:%d/%s" od-preview-port rel)))
-    (unless (get-buffer-process "*od-serve*")
-      (let ((default-directory root))
-        (start-process "od-serve" "*od-serve*" "make" "serve")
-        (sleep-for 2)))
+    (unless (od--server-up-p)
+      (let ((proc (or (get-buffer-process "*od-serve*") (od--serve-start))))
+        (message "Starting the Pollen server (make serve)...")
+        (unless (od--serve-wait proc 90)
+          (if (and (not (process-live-p proc))
+                   (od--serve-needs-refresh-p)
+                   (od--refresh-cites))
+              (progn
+                (setq proc (od--serve-start))
+                (message "Citation caches refreshed; starting the Pollen server again...")
+                (unless (od--serve-wait proc 90)
+                  (pop-to-buffer "*od-serve*")
+                  (user-error "make serve failed after the refresh; see *od-serve*")))
+            (pop-to-buffer "*od-serve*")
+            (user-error (if (process-live-p proc)
+                            "The Pollen server has not answered after 90 s; see *od-serve*"
+                          "make serve failed; see *od-serve*"))))
+        (message "Pollen server up on port %d" od-preview-port)))
     (browse-url url)))
+
+;;;###autoload
+(defun od-refresh ()
+  "Run the whole `make refresh' (BUILD-3): citation caches, covers, the
+dark-mode classification of new figures and Wayback snapshots of new
+external links.  `od-publish' runs it too; `od-preview' runs only the
+citation part when a page needs it.  The server, if running, is restarted
+afterwards so it reads the new caches."
+  (interactive)
+  (od--run "make refresh"
+           (lambda (ok)
+             (when ok
+               (when (get-buffer-process "*od-serve*")
+                 (od--serve-stop)
+                 (od--serve-start))
+               (message "Caches refreshed; commit the changed files with the page")))))
 
 ;;; Figures and tables (IMG-7) ---------------------------------------------------
 
@@ -774,6 +883,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-ref)
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-break)
+    (rule          :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-rule)
     (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-latex)
     (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-blockquote)
     (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-epigraph)

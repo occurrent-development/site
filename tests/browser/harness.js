@@ -197,7 +197,8 @@ async function tests() {
     near(b.left, 0, 0.5, "bar's left");
     near(b.width, d.documentElement.clientWidth, 0.5, "bar's width");
     near(rect(bar.querySelector(".bar-section")).left, a.left, 1.5, "section name vs the column's left");
-    near(rect(bar.querySelector(".bar-controls")).right, a.left + v("--measure"), 1.5, "controls vs the column's right");
+    // BAR-1d (2026-11-02): the controls sit at the window's right edge, 1.25rem in
+    near(rect(bar.querySelector(".bar-controls")).right, d.documentElement.clientWidth - 1.25 * parseFloat(w.getComputedStyle(d.documentElement).fontSize), 1.5, "controls vs the window's right");
     await scroll(0);
   });
 

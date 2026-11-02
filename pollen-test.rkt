@@ -722,6 +722,25 @@
   (check-not-false (attrs-have-key? (car (find-all idx (tag? 'table))) 'data-sortable))
   (check-true (fails? (λ () (index #:kind "blog" #:pagetree "tests/index.ptree")))))
 
+(test-case "HOME-2: the home page's title is the masthead, one h1 of two words with a stroke at each outer end"
+  (define metas (hasheq 'title "Occurrent Development"
+                        'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
+  (define header (essay-header metas #f #f))
+  (define h1 (car (find-all header (tag? 'h1))))
+  (check-not-false (has-class* h1 "masthead"))
+  (check-equal? (text h1) "Occurrent Development")
+  (check-equal? (length (find-all h1 (λ (x) (and (txexpr? x) (has-class* x "swash"))))) 2)
+  (check-equal? (map (λ (x) (text x)) (find-all h1 (λ (x) (and (txexpr? x) (has-class* x "masthead-word")))))
+                '("Occurrent" "Development"))
+  (check-false (findf (λ (x) (and (txexpr? x) (has-class* x "header-rule"))) (get-elements header)))
+  ;; any other page, and a one-word or three-word title, keep the plain h1
+  (define about (essay-header (hasheq 'title "Occurrent Development"
+                                      'here-path (path->string (build-path (current-directory) "pages/about.html.pm"))) #f #f))
+  (check-false (has-class* (car (find-all about (tag? 'h1))) "masthead"))
+  (define three (essay-header (hasheq 'title "One Two Three"
+                                      'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))) #f #f))
+  (check-false (has-class* (car (find-all three (tag? 'h1))) "masthead")))
+
 (test-case "HOME-1: ◊recent is two columns, the newest posts of each kind, newest first"
   (define r (recent 3 #:pagetree "tests/recent.ptree"))
   (check-equal? (map (λ (x) (attr-ref x 'class)) (get-elements r)) '("recent-essays" "recent-blog"))
@@ -749,11 +768,12 @@
   (check-regexp-match #rx"href=\"/blog\" aria-current=\"page\"" (menu "blog/a/a.html.pm"))
   (check-regexp-match #rx"href=\"/\" aria-current=\"page\"" (menu "pages/index.html.pm")))
 
-(test-case "NAV-1, POP-12: Scratch is the menu's last item, hidden until scripts show it; the bar's copy has a short name"
+(test-case "NAV-1, POP-12: Scratch is the menu's last item, hidden until scripts show it; the handle is the monogram, never the name"
   (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
   (check-regexp-match #rx">Blog<.*<li class=\"menu-scratch\" hidden=\"\"><button[^>]*aria-label=\"Scratch pad\"" (site-menu here))
-  (check-false (regexp-match? #rx"site-name-short" (site-menu here)))
-  (check-regexp-match #rx"class=\"site-menu bar-menu\".*site-name-short" (site-menu here #:bar #t)))
+  (for ([menu (list (site-menu here) (site-menu here #:bar #t))])
+    (check-regexp-match #rx"<summary aria-label=\"Site menu\"><span class=\"menu-icon\" aria-hidden=\"true\"></span><svg class=\"chevron\"" menu)
+    (check-false (regexp-match? #rx"site-name|Occurrent" menu))))
 
 ;; ---------------------------------------------------------------------------
 ;; Phase 3: around the essays. The graph is built here from fixtures by the
@@ -798,8 +818,11 @@
   ;; #:block #t: set as ◊blockquote is, the attribution written from the entry, the circle at its end
   (define bq (findf (λ (x) (has-class* x "quote")) (find-all doc (tag? 'blockquote))))
   (define footer (car (find-all bq (tag? 'footer))))
-  (check-regexp-match #px"^Ian Hacking, The Social Construction of What\\?, pp\\.[  ]31–34" (text footer))
-  (check-not-false (findf (λ (e) (equal? (text e) "The Social Construction of What?")) (find-all footer (tag? 'em))))
+  ;; the title alone: author and locator are in the card (BIB-8)
+  (check-regexp-match #px"^The Social Construction of What\\?" (text footer))
+  (check-false (regexp-match? #rx"Hacking|31" (text footer)))
+  ;; MARK-3 binds the circle to the title's last word, so the em is in two parts
+  (check-equal? (apply string-append (map text (find-all footer (tag? 'em)))) "The Social Construction of What?")
   (check-equal? (attr-ref (by-class footer "circle-link") 'aria-label) "reference 7")
   (define n7 (by-id doc "note-7"))
   (check-equal? (attr-ref n7 'data-quote) "A quoted passage, set as a block.")
@@ -1096,3 +1119,9 @@
   (check-equal? (find-all doc (λ (x) (has-class* x "endmatter"))) '())
   (define circle (findf (λ (x) (has-class* x "circle-link")) (find-all doc txexpr?)))
   (check-equal? (attr-ref circle 'href) "/references/hackingLoopingEffectsHuman1996"))
+
+(test-case "LAYOUT-4, LAYOUT-4a: ◊break{} is the glyph and ◊rule{} the hairline; text in ◊rule fails"
+  (check-equal? (attr-ref (break) 'class) "break")
+  (check-equal? (attr-ref (rule) 'class) "break rule")
+  (check-equal? (attr-ref (rule "  \n") 'class) "break rule")
+  (check-regexp-match #rx"no text" (or (message-of (λ () (rule "words"))) "did not fail")))

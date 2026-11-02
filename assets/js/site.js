@@ -928,6 +928,10 @@ document.addEventListener("click", (e) => {
     const inPopup = e.target.closest(".popup");
     if (inPopup && kindOf(t) === "circle") { e.preventDefault(); replaceContent(inPopup, t); return; }
     if (inPopup) { close(); return; }   // other links inside a popup simply navigate
+    // LINK-4 (2026-11-02, night): a link is followed on click, in this tab;
+    // its popup is the hover preview, which offers Open in new tab (POP-1).
+    // Touch devices, which cannot hover, keep the tap preview (POP-5).
+    if (kindOf(t) !== "circle" && !touch.matches) { close(); return; }
     e.preventDefault();
     const s = stubFor(t);
     if (s) { close(); toggleMargin(s, { focus: e.detail === 0 }); return; }
@@ -1127,13 +1131,21 @@ function firstBaseline(e) {
   return y;
 }
 
-// LAYOUT-1a: the header's second datum, the subtitle's baseline, or the
-// title's second line when there is no subtitle.
+// LAYOUT-1a (2026-11-03): the header's datum, which the margins align
+// their first baselines to: the abstract's first baseline when there is
+// one, else the first baseline of the first thing after the title and
+// subtitle, i.e. the first element after the header that carries text (not
+// the contents column the script inserts there, nor a rule or break). The
+// title and subtitle stand alone above it; on the home page the masthead.
 function datum(header) {
-  const sub = header?.querySelector(".subtitle");
-  if (sub) return firstBaseline(sub);
-  const title = header?.querySelector("h1, .essay-title");
-  return title ? firstBaseline(title) + parseFloat(getComputedStyle(title).lineHeight) : null;
+  if (!header) return null;
+  const abs = header.querySelector(".abstract");
+  if (abs) return firstBaseline(abs);
+  let next = header.nextElementSibling;
+  while (next && (next.matches(".toc, .dock, hr, script, style") || !next.getClientRects().length
+                  || !textNodes(next, (t) => t.data.trim() && !t.parentElement.closest(".vh")).length))
+    next = next.nextElementSibling;
+  return next ? firstBaseline(next) : null;
 }
 
 // LAYOUT-1a, TOC-2: in tier XL the "Contents" heading sits on the
@@ -1353,8 +1365,9 @@ let headerVisible = true, lastY = scrollY, idle = 0;
 function showBar() { bar.classList.add("is-shown"); restartIdle(); }
 
 // BAR-1d: the bar spans the window, and so does its hairline; its section
-// name starts at the column's left edge and its controls end at the
-// column's right edge, so they line up with the text below. The menu is at
+// name starts at the column's left edge and its controls sit at the
+// window's right edge (2026-11-02, night: they ended at the column's right
+// edge before), the same gap in as the menu at the left. The menu is at
 // its left end: in tier XL the contents column's sticky menu, showing
 // through; elsewhere the bar's own copy, at the window's edge, with the
 // section name moved along to the column (or just past the menu, where
@@ -1378,7 +1391,7 @@ function placeBar() {
   const menuCopy = bar.querySelector(".bar-menu");
   const edge = Math.min(colL, 1.25 * parseFloat(getComputedStyle(root).fontSize));
   Object.assign(bar.style, { left: "0px", right: "0px", width: "auto",
-    paddingLeft: `${edge}px`, paddingRight: `${Math.max(0, vw - colR)}px` });
+    paddingLeft: `${edge}px`, paddingRight: `${1.25 * parseFloat(getComputedStyle(root).fontSize)}px` });
   section.style.marginLeft = "0px";
   const menuShown = menuCopy && getComputedStyle(menuCopy).display !== "none";
   const after = menuShown ? menuCopy.getBoundingClientRect().right : edge;
@@ -1635,7 +1648,7 @@ function openPad(link) {
   }
   // the link the pad returns to: the one at the foot of the contents when
   // it shows, else the menu's summary, since the menu closes
-  const foot = article?.querySelector(".toc-scratch .scratch-open");
+  const foot = document.querySelector(".toc-scratch .scratch-open");
   const visible = (x) => x && x.getClientRects().length;
   const trigger = visible(link) && !link.closest(".site-menu") ? link
     : visible(foot) ? foot : link.closest(".site-menu")?.querySelector("summary") || link;
@@ -1682,11 +1695,13 @@ function setupScratch() {
     const header = article.querySelector(".essay-header:not(.sample)");
     if (header) header.after(column); else article.prepend(column);
   }
-  inner.append(
+  inner.append(el("div", { class: "dock", role: "region", "aria-label": "Docked popups" }));
+  // POP-12 (2026-11-02, night): the link is docked at the window's bottom
+  // left, not at the foot of the contents
+  document.body.append(
     el("p", { class: "toc-scratch" },
       el("button", { type: "button", class: "scratch-open", "aria-label": "Scratch pad" },
-        "Scratch", el("span", { class: "circle", "aria-hidden": "true" }))),
-    el("div", { class: "dock", role: "region", "aria-label": "Docked popups" }));
+        "Scratch", el("span", { class: "circle", "aria-hidden": "true" }))));
 }
 
 // ── Start ────────────────────────────────────────────────────────────────

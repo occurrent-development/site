@@ -115,11 +115,12 @@
 ;; BIB-9: a block quotation's attribution, written from the entry: Given
 ;; Family, Title (italic; the short title when there is one), the locator.
 (define (cite-attribution key loc)
+  ;; BIB-9 (revised 2026-11-02, night): the title alone, in italic. The
+  ;; author and the locator are in the circle's card (BIB-8), and the
+  ;; References entry; LOC is kept in the signature for that reason.
   (define csl (hash-ref (cite-facts key) 'csl))
-  (define who (names-text (hash-ref csl 'author null)))
   (define title (or (hash-ref csl 'title-short #f) (hash-ref csl 'title #f) (hash-ref (cite-facts key) 'title)))
-  (add-between (filter values (list who `(em ,title) (and loc (not (equal? (string-trim loc) "")) (string-normalize-spaces loc))))
-               ", "))
+  (list `(em ,title)))
 
 (define (entry key)
   (or (hash-ref (the-cache) (string->symbol key) #f)

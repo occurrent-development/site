@@ -7,6 +7,7 @@
 #   make serve     Pollen project server on http://localhost:8080, drafts' graph merged
 #   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json,
 #                  covers, invert.json, and Wayback snapshots in link-meta.json
+#   make refresh-cites  only refs.bib, cite-cache.json and covers (no network)
 #   make clean     remove everything the build generates
 #
 # Needs: Racket with the pollen package; Python 3 with fonttools, brotli and
@@ -21,7 +22,7 @@ RACO    ?= raco
 PYTHON  ?= python3
 PORT    ?= 8080
 
-FONTS_SRC := $(wildcard assets/fonts/*.otf)
+FONTS_SRC := $(wildcard assets/fonts/*.otf assets/fonts/*.ttf)
 # Emacs's lock files (.#name, a dangling link while a buffer is modified) are not sources.
 SOURCES   := $(shell find . -name '*.pm' -not -name '.\#*' -not -path './public/*' -not -path './essays/*/support/*' -not -path './blog/*/support/*') \
              template.html.p pollen.rkt typography.rkt
@@ -33,7 +34,7 @@ IMG_SRC   := $(shell find pages essays blog -path '*/img/*' -type f 2>/dev/null)
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
 
-.PHONY: all test test-browser test-emacs render publish serve refresh clean
+.PHONY: all test test-browser test-emacs render publish serve refresh refresh-cites clean
 
 all: test publish test-browser
 
@@ -102,10 +103,14 @@ serve: $(FONTS) $(IMAGES)
 	$(RACO) make tools/validate.rkt && OD_PREVIEW=1 racket tools/validate.rkt --graph
 	OD_PREVIEW=1 $(RACO) pollen start . $(PORT)
 
-refresh:
-	ZOTERO_BIB="$(ZOTERO_BIB)" $(PYTHON) tools/refs.py
+refresh: refresh-cites
 	$(PYTHON) tools/invert.py
 	$(PYTHON) tools/wayback.py
+
+# The citation caches alone (CITE-5): pandoc and local files, no network.
+# `od-preview` runs this when a page cites a work at a locator not yet cached.
+refresh-cites:
+	ZOTERO_BIB="$(ZOTERO_BIB)" $(PYTHON) tools/refs.py
 
 clean:
 	$(RACO) pollen reset

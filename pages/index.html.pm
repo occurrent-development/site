@@ -3,10 +3,14 @@
 ◊define-meta[title]{Occurrent Development}
 ◊define-meta[endmatter]{none}
 
-Essays and shorter pieces on the philosophy and practice of developmental
-paediatrics, written by a clinician in Sydney who thinks the field's working
-paradigm is misaligned with what clinicians claim to do and what families come
-for. More ◊link["/about"]{about me and this site}.
+◊cite["pirsigZenArtMotorcycle1991" #:block #t #:italic #t #:loc "Ch. 14, p. 155"]{When you've got a Chautauqua in your head, it's extremely hard not to inflict it on innocent people.}
+
+◊rule{}
+
+This site hosts a growing collection of my essays about the philosophy and practice of developmental paediatrics. I hold the belief that the field's working
+paradigm is misaligned with its purpose.
+
+More ◊link["/about"]{about me and this site}.
 
 ◊break{}
 

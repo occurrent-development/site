@@ -35,7 +35,7 @@
          section subsection subsubsection summary
          ;; standard elements (§3.3)
          em strong sc code blockquote epigraph br anchor latex
-         (rename-out [section-break break])
+         (rename-out [section-break break]) rule
          ;; annotations (§4–7)
          link cite term sense aside margin
          ;; the essay header's text (LAYOUT-1, SRC-4a)
@@ -52,7 +52,7 @@
          reference-card locator-label
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
-         page-title doc-body format-date revised-date site-menu page-class)
+         page-title essay-header doc-body format-date revised-date site-menu page-class)
 
 (module setup racket/base
   (require racket/runtime-path)
@@ -166,6 +166,13 @@
 
 ;; LAYOUT-4: one glyph, drawn by CSS from assets/icons/asterism.svg.
 (define (section-break) '(hr ((class "break"))))
+
+;; LAYOUT-4a: ◊rule{}, the quieter break: a centred hairline half the
+;; column's width, spaced as the glyph is (2026-11-02, night).
+(define (rule . xs)
+  (unless (null? (filter (λ (x) (not (and (string? x) (regexp-match? #px"^\\s*$" x)))) xs))
+    (build-error "◊rule{} takes no text: write ◊rule{}"))
+  '(hr ((class "break rule"))))
 
 ;; ---------------------------------------------------------------------------
 ;; Annotations (§4–7). Tags emit markers; the root pass resolves them in one
@@ -1768,11 +1775,11 @@
   (define current (case (and rel (post-kind rel)) [(essay) "/essays"] [(entry) "/blog"] [else url]))
   (->html
    `(details ((class ,(if bar? "site-menu bar-menu" "site-menu")))
-             (summary ,@(if bar? '(((aria-label "Site menu"))) null)
-                      (span ((class "site-name")) "Occurrent Development")
-                      ,@(if bar? '((span ((class "site-name-short") (aria-hidden "true")) "Occurrent")
-                                   (span ((class "menu-icon") (aria-hidden "true"))))
-                                null)
+             ;; NAV-1 (revised 2026-11-02, night): the monogram (BRAND-1)
+             ;; and the chevron, at every tier; the site's name is the home
+             ;; page's title (HOME-1), so the menu no longer carries it
+             (summary ((aria-label "Site menu"))
+                      (span ((class "menu-icon") (aria-hidden "true")))
                       (svg ((class "chevron") (viewBox "0 0 12 12") (aria-hidden "true"))
                            (path ((d "M2.5 4.5 6 8l3.5-3.5") (fill "none") (stroke "currentColor")
                                   (stroke-width "1.3") (stroke-linecap "round") (stroke-linejoin "round")))))
@@ -1800,7 +1807,11 @@
 
 (define (read-fonts) (file->value files:fonts))
 
-(define (font-url key) (cdr (assq key (read-fonts))))
+(define (font-url key)
+  (define entry (assq key (read-fonts)))
+  (unless entry
+    (build-error "no subset for the ~a face in assets/fonts/fonts.rktd; run `make` (or restart `make serve`) so tools/fonts.py rebuilds it" key))
+  (cdr entry))
 
 (define (font-face family key weight style)
   (format "@font-face{font-family:\"~a\";src:url(~a) format(\"woff2\");font-weight:~a;font-style:~a;font-display:swap}\n"
@@ -1831,6 +1842,8 @@
    (font-face "Libertinus Serif" 'serif-italic 400 "italic")
    (font-face "Libertinus Serif" 'serif-semibold 600 "normal")
    (font-face "Libertinus Mono" 'mono-regular 400 "normal")
+   (font-face "Libertinus Serif Display" 'serif-display 400 "normal")   ; LAYOUT-2: titles
+   (font-face "Cormorant" 'masthead 500 "normal")   ; HOME-2: the masthead alone
    (mark-properties)
    (strip-css-comments (file->string files:css))))
 
@@ -1839,7 +1852,7 @@
 
 (define (font-preloads)
   (string-join
-   (for/list ([key '(serif-regular serif-italic)])
+   (for/list ([key '(serif-regular serif-italic serif-display)])
      (format "<link rel=\"preload\" href=\"~a\" as=\"font\" type=\"font/woff2\" crossorigin>" (font-url key)))
    "\n"))
 
@@ -1971,6 +1984,24 @@
 ;; LAYOUT-1: the essay header, left-aligned and ragged right, from the metas
 ;; and the ◊abstract and ◊epistemic taken from the body. #f for a page with no
 ;; title (the home page).
+;; HOME-2: the title's two words on a diagonal, the first at the top left
+;; and the second at the bottom right as the O and D of the monogram are
+;; (BRAND-1), a tapered pen stroke leading into the first and out of the
+;; second. Still one h1 reading the title; the strokes are decoration. A
+;; title that is not two words is set as any page's.
+(define (masthead title)
+  (define words (string-split title))
+  (define (swash side)
+    `(svg ((class ,(string-append "swash swash-" side)) (viewBox "0 0 160 40") (aria-hidden "true"))
+          (path ((d "M2 24 C 44 0, 86 40, 158 12 C 86 44, 44 8, 2 24 Z")))
+          (circle ((cx "157") (cy "12") (r "1.8")))))
+  (if (= (length words) 2)
+      `(h1 ((class "masthead"))
+           (span ((class "masthead-line")) ,(swash "left") (span ((class "masthead-word")) ,(car words)))
+           " "
+           (span ((class "masthead-line masthead-line-2")) (span ((class "masthead-word")) ,(cadr words)) ,(swash "right")))
+      (typeset `(h1 ,title))))
+
 (define (essay-header metas abstract-el epistemic-el)
   ;; an empty meta line counts as absent
   (define (meta key)
@@ -1980,8 +2011,9 @@
   (define title (meta 'title))
   (define abs (non-empty abstract-el))
   (define epi (non-empty epistemic-el))
-  ;; HOME-1: the front page shows no title (the site's name in the menu is
-  ;; its title) and no closing rule; a screen reader still gets the h1
+  ;; HOME-1: the front page shows its title as the masthead (HOME-2), the
+  ;; site's name (since 2026-11-02, night: the menu shows the monogram),
+  ;; but no closing rule
   (define home? (regexp-match? #rx"(^|/)pages/index\\.html\\.pm$" (format "~a" (or (and metas (select-from-metas (quote here-path) metas)) ""))))
   (and title
        (txexpr 'header `((class ,(string-append (if abs "essay-header" "essay-header no-abstract")
@@ -1991,7 +2023,7 @@
                (append
                 (let ([c (and (meta 'reference) (reference-cover (meta 'reference)))]) (if c (list c) null))
                (filter (λ (x) (not (and home? (has-class? x "header-rule"))))
-               (header-parts (if home? `(h1 ((class "vh")) ,title) (typeset `(h1 ,title)))
+               (header-parts (if home? (masthead title) (typeset `(h1 ,title)))
                              (meta 'subtitle)
                              (meta 'published)
                              (revised-date (select-from-metas 'here-path metas))
