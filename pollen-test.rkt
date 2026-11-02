@@ -176,8 +176,8 @@
   (define openers (find-all body (λ (x) (attrs-have-key? x 'data-targets))))
   (check-equal? (map (λ (o) (attr-ref o 'data-targets)) openers)
                 '("note-1 note-2" "term-occurrent note-3" "note-4"))
-  (check-equal? (attr-ref (car openers) 'aria-label) "note 1, note 2")
-  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, note 3")
+  (check-equal? (attr-ref (car openers) 'aria-label) "reference 1, reference 2")
+  (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, reference 3")
   ;; D8: without JS a shared circle links to its first item
   (check-equal? (attr-ref (car openers) 'href) "#note-1")
   (check-equal? (attr-ref (cadr openers) 'href) "#term-occurrent"))
@@ -711,7 +711,7 @@
   ;; MARK-3a: the closing mark and the full stop sit between the last word and the circle
   (define nw (findf (λ (x) (and (has-class* x "nw") (by-class x "circle"))) (find-all p txexpr?)))
   (check-regexp-match #rx"^”\\." (text nw))
-  (check-equal? (attr-ref (by-class nw "circle-link") 'aria-label) "note 6")
+  (check-equal? (attr-ref (by-class nw "circle-link") 'aria-label) "reference 6")
   ;; the note carries the quotation for the graph
   (define n6 (by-id doc "note-6"))
   (check-equal? (attr-ref n6 'data-quote) "made up, with ‘kinds’ of people")
@@ -725,7 +725,7 @@
 (test-case "BIB-9: a block quotation with no #:source has its circle alone on the attribution line"
   (define doc (root "Before." "\n\n" (blockquote #:cite "hackingMakingPeople2006" #:loc "p. 23" "Quoted.")))
   (define footer (car (find-all doc (tag? 'footer))))
-  (check-equal? (attr-ref (by-class footer "circle-link") 'aria-label) "note 1")
+  (check-equal? (attr-ref (by-class footer "circle-link") 'aria-label) "reference 1")
   (check-equal? (string-trim (text footer)) ""))
 
 (test-case "BIB-9: what a quotation may not hold, and #:loc without #:cite, fail naming the rule"

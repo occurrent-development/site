@@ -643,7 +643,7 @@
      `(a ((class "link same") (href ,href)) ,@(with-mark kids 'od-dir))]
     [else (build-error "◊link target ~s is not http(s)://…, /slug, /notebook/slug, either with #id, /references/key, or #id" href)]))
 
-;; BIB-5: a work's page, from its Notes and Bibliography entries: a → alone,
+;; BIB-5: a work's page, from its References and Bibliography entries: a → alone,
 ;; named, as the ↩ beside it is.
 (define (reference-link key)
   `(a ((class "link xref to-ref") (href ,(string-append "/references/" key))
@@ -701,7 +701,7 @@
                                key first? quoted)
                          notes))
        ;; CITE-1: the number belongs to the note; the text gets a circle.
-       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
+       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "reference ~a" n))))]
       [(? (tag? 'od-aside))
        (set! aside-n (add1 aside-n))
        (define i aside-n)
@@ -825,7 +825,7 @@
                                            ,@elems " "
                                            (od-back ((target ,(format "aside-~a" i)) (label "Back to the aside in the text"))))))))
              (and (pair? notes)
-                  (endmatter "notes" "Notes"
+                  (endmatter "notes" "References"
                              `(ol ((class "notes"))
                                   ,@(for/list ([nt (in-list (reverse notes))])
                                       (match-define (list n elems key first? quoted) nt)
@@ -834,7 +834,7 @@
                                             (data-form ,(if first? "full" "short"))
                                             ,@(if quoted `((data-quote ,(car quoted)) (data-loc ,(cadr quoted))) null))
                                            ,@elems "\u00A0" ,(reference-link key) " "
-                                           (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
+                                           (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to reference ~a in the text" n)))))))))
              ;; CITE-10: every work the page cites, in the bibliography's
              ;; order, including works cited only inside definitions (CITE-7).
              ;; The popups read it too: under a short-form note (POP-7), and

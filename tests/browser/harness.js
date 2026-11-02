@@ -238,7 +238,7 @@ async function tests() {
     for (const id of ids) { trig(id).click(); await settle(80); }
     const open = titles(pinned());
     expect(open.length === 6, `${open.length} pinned: ${open}`);
-    expect(!open.includes("Note 1"), `the oldest stayed: ${open}`);
+    expect(!open.includes("Reference 1"), `the oldest stayed: ${open}`);
     expect(trig("note-1").getAttribute("aria-expanded") === "false", "the closed one's mark still says expanded");
     expect(pinned().every((b) => b.getAttribute("role") === "dialog" && !b.hasAttribute("aria-modal")), "not non-modal dialogs");
   });
@@ -259,7 +259,7 @@ async function tests() {
     expect(w.getComputedStyle(c).zIndex > w.getComputedStyle(a).zIndex, "the one last touched is not on top");
   });
 
-  // Notes 1 and 2 are the specimen's two Pirsig quotations (BIB-9): the first
+  // References 1 and 2 are the specimen's two Pirsig quotations (BIB-9): the first
   // a full note, the second short.
   await test("BIB-5, BIB-8: a note popup shows the note, a hairline, then the card with the cover; the title goes to the work's page", async () => {
     trig("note-1").click(); await settle(250);
@@ -528,7 +528,7 @@ const SCENARIOS = {
   },
   // BIB-8: a note popup with the reference card and its cover
   async card() {
-    const t = trig("note-1");
+    const t = trig(params.get("target") || "note-1");
     t.scrollIntoView({ block: "center" });
     w.scrollBy(0, -160);
     await settle(200);

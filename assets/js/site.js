@@ -230,7 +230,7 @@ async function item(target) {
     const bib = !card && !full && byId(src.dataset.bib);
     if (card) body.append(el("hr", { class: "popup-sep" }), card);
     else if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
-    return { title: `Note ${n}`, head: `Note ${n}`, body, ref: key && refUrl(key) };
+    return { title: `Reference ${n}`, head: `Reference ${n}`, body, ref: key && refUrl(key) };
   }
   if (target.startsWith("bib-")) {
     // CITE-7: unnumbered, so no heading

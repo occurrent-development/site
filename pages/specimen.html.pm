@@ -303,10 +303,10 @@ with its own, with Back to return. Definitions never sit in the margin, which
 is kept for commentary on the passage beside it. Without scripts, a circle is
 a link to the end of the page, where definitions are collected under Terms.
 
-◊section[#:id "notes-asides" #:short "Notes and asides"]{Notes and asides}
+◊section[#:id "notes-asides" #:short "References and asides"]{References and asides}
 ◊summary{Circles for sources and digressions; the numbers stay with the notes.}
 
-Citations become numbered notes, collected at the end under Notes, but the
+Citations become numbered notes, collected at the end under References, but the
 number belongs to the note and is never printed in the text. Every work the
 page cites is listed again after the notes, in a Bibliography, so that an
 essay is complete without the rest of the site. The first note for a work
@@ -319,7 +319,11 @@ page ◊cite["hackingMakingPeople2006" #:loc "p. 24"], and its popup adds the
 work in full; a note may also carry a remark of its own ◊cite["hackingMakingPeople2006" #:note "The lecture version
 is shorter and sharper."]. Two citations at the same point share one
 circle◊cite["hackingLoopingEffectsHuman1996"]◊cite["hackingSocialConstructionWhat2000"
-#:loc "pp. 31-34"], which opens both. A note opens over the page at
+#:loc "pp. 31-34"], which opens both. Every cited work also has a page of its
+own, reached from the → after its note or its Bibliography entry, and the
+popup shows that page's card beneath the note: for a work with a photograph
+of its cover, such as Pirsig's novel ◊cite["pirsigZenArtMotorcycle1991"], the
+card carries the cover. A note opens over the page at
 every width, and its circle stays filled for as long as it is pinned open.
 
 ◊margin{Asides can be skipped, and this note runs to a second line.} An aside
