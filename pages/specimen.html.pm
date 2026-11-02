@@ -189,19 +189,20 @@ an essay.
 Nothing on a page is centred but the section break. The header at the top of
 this page shows the full form: title, subtitle and abstract in the column,
 closed by a short rule, and, on a wide screen, the facts about the page in the
-right margin beside the title, their first line on the subtitle's baseline.
+right margin, their first line on the abstract's first line, so the title and
+subtitle stand alone above them.
 The author comes first; then the dates, one to a line; then the tags, labelled; then links to
 the page's source and to its history; and last, after a gap, the epistemic
 status, the one line of prose among them, when there is one. Where the window
 is wide enough for the contents beside the left margin, their heading starts
 on the same baseline, with the menu above it. On a narrower screen the same
 lines fall back between the subtitle and the abstract. An essay without an abstract looks like this,
-closed by its rule after the subtitle:
+closed by its rule after the subtitle, its block level with the first line that follows:
 
 ◊header-sample[#:title "A sample header, with a title long enough to need two
 lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
 #:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. Its
-block starts on the subtitle's baseline."]
+block starts on the first line after the header."]
 
 A blog entry has the same header with less in it: no epistemic status,
 so no gap, and no contents however many sections it has. With no subtitle,

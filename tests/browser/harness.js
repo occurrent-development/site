@@ -115,21 +115,33 @@ async function tests() {
     near(leftSpace, rightSpace, 2, "space left vs right of the block");
   });
 
-  await test("LAYOUT-1a: the Contents heading and the block's first line sit on the subtitle's baseline, in both themes, samples too", async () => {
+  // LAYOUT-1a (2026-11-03): the datum is the abstract's first line when there is one, else the first
+  // line after the title and subtitle (the first element after the header that carries text)
+  const datumOf = (h) => {
+    const abs = h.querySelector(".abstract");
+    if (abs) return baseline(abs);
+    let next = h.nextElementSibling;
+    while (next && (next.matches(".toc, .dock, hr, script, style") || !next.textContent.trim())) next = next.nextElementSibling;
+    return baseline(next);
+  };
+  await test("LAYOUT-1a: the Contents heading and the block's first line sit on the datum (the abstract's first line), in both themes, samples too", async () => {
     for (const theme of ["light", "dark"]) {
       d.documentElement.dataset.theme = theme;
       await settle(300);
       const header = d.querySelector(".essay-header:not(.sample)");
+      expect(header.querySelector(".abstract"), "the specimen has no abstract: the test assumes one");
+      const datum = datumOf(header);
       const sub = baseline(header.querySelector(".subtitle"));
+      expect(datum > sub + 10, `${theme}: the datum (${datum}) is not below the subtitle (${sub})`);
       const block = header.querySelector(".header-meta");
       // the specimen is a page: no author line (LAYOUT-1e), so its block opens with Published
       expect(/^Published:/.test(block.firstElementChild.textContent.trim()), `${theme}: the block opens with ${block.firstElementChild.textContent}`);
-      near(baseline(d.querySelector("nav.toc .toc-title")), sub, 1.5, `${theme}: Contents`);
-      near(baseline(block), sub, 1.5, `${theme}: the block`);
-      // the specimen's samples: with a subtitle, its baseline; without, the title's second line
+      near(baseline(d.querySelector("nav.toc .toc-title")), datum, 1.5, `${theme}: Contents`);
+      near(baseline(block), datum, 1.5, `${theme}: the block`);
+      // the specimen's samples: the same rule
       for (const h of d.querySelectorAll(".essay-header.sample")) {
-        const title = h.querySelector("h1, .essay-title"), s = h.querySelector(".subtitle");
-        const want = s ? baseline(s) : baseline(title) + parseFloat(w.getComputedStyle(title).lineHeight);
+        const title = h.querySelector("h1, .essay-title");
+        const want = datumOf(h);
         const meta = h.querySelector(".header-meta");
         expect(/^Author:/.test(meta.firstElementChild.textContent.trim()), `${theme}: a sample's block opens with ${meta.firstElementChild.textContent}`);
         near(baseline(meta), want, 1.5, `${theme}: sample "${title.textContent.slice(0, 20)}", its Author line`);
@@ -446,11 +458,13 @@ async function tests() {
     expect(!d.querySelector(".popup"), "Esc did not close the one popup in M");
   });
 
-  await test("Tier S: the bar's menu shows the shortened name", async () => {
+  await test("Tier S: the bar's menu is the monogram and the chevron, no name (NAV-1, 2026-11-02)", async () => {
     await resize(390, 844);
     expect(tier() === "S", `tier ${tier()} at 390`);
-    const short = d.querySelector(".bar-menu .site-name-short"), long = d.querySelector(".bar-menu .site-name");
-    expect(w.getComputedStyle(short).display !== "none" && w.getComputedStyle(long).display === "none", "the long name shows in S");
+    const m = d.querySelector(".bar-menu");
+    expect(!m.querySelector(".site-name, .site-name-short"), "the name is still in the bar's menu");
+    expect(w.getComputedStyle(m.querySelector(".menu-icon")).display !== "none", "the monogram does not show");
+    expect(w.getComputedStyle(m.querySelector(".chevron")).display !== "none", "the chevron does not show");
   });
 
   await senseElsewhere();
@@ -505,8 +519,8 @@ async function touchTests() {
   });
   await test("NAV-1, BRAND-1: the bar's menu is the monogram, named, and opens upward, flush left, in the sans", async () => {
     const m = d.querySelector(".bar-menu");
-    const shown = (sel) => w.getComputedStyle(m.querySelector(sel)).display !== "none";
-    expect(shown(".menu-icon") && !shown(".site-name") && !shown(".site-name-short"), "the name shows, or the icon does not");
+    const shown = (sel) => { const e = m.querySelector(sel); return e && w.getComputedStyle(e).display !== "none"; };
+    expect(shown(".menu-icon") && !shown(".chevron") && !m.querySelector(".site-name, .site-name-short"), "the name or the chevron shows, or the icon does not");
     expect(m.querySelector("summary").getAttribute("aria-label") === "Site menu", "no accessible name");
     const bg = w.getComputedStyle(m.querySelector(".menu-icon")).backgroundImage;
     expect(/\/assets\/brand\/logo\.svg/.test(bg), `the icon is ${bg}`);
