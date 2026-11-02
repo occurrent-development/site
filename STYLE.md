@@ -1,6 +1,6 @@
 # occurrentdevelopment.com — Manual of Style
 
-Status: draft 1.0 · Owner: Ryan · Last revised: 2026-11-02 · Modelled on [gwern.net/style-guide](https://gwern.net/style-guide)
+Status: draft 1.1 · Owner: Ryan · Last revised: 2026-11-02 (afternoon) · Modelled on [gwern.net/style-guide](https://gwern.net/style-guide)
 
 This is the house style for everything on the site and in its repository: prose, markup, metadata, files, and the look of the thing. `SPEC.md` is the build brief and says what the build *enforces*; this manual says what a writer *chooses*. Where a rule here is also a requirement there, the ID follows it in parentheses (`TYPE-16`).
 
@@ -150,6 +150,7 @@ Every post has depth, and the reader controls how far down they go. Place each t
 - **Third-party diagrams are redrawn** by the author and credited "after Surname (year)". No screenshots of other people's figures.
 - **Refer** with `◊ref[id]` ("Figure 2"); never type the number.
 - **Column width only** (`IMG-2`). A figure that needs more is a figure with too much in it.
+- **Several images that make one point are one figure**, a `◊panels` with lettered panels (`IMG-9`), never a composite image and never three figures in a row. The letters are the build's; the caption refers to them (*the lesion outlined in B*) and the text with `◊ref[id #:panel "b"]`. A sub-caption names a panel in two or three words; what to notice goes in the caption. Two to six panels; if the figure wants more, it is two figures.
 - **Interactive figures** (`◊embed`) carry a static fallback that makes the same point.
 
 ### 5.5 Essays and entries
@@ -326,4 +327,4 @@ For Claude Code sessions and any other model asked to draft, edit or review pros
 
 ---
 
-*Revision notes.* 1.0 (2026-11-02): first draft, from `SPEC.md` §17 and gwern.net's style guide; the file-naming and filetype rules of §7.1–7.2 are taken from that guide with local adaptations marked **Here**. Open: the serial comma (`D5`), ventilated prose as practice (§6.1), the rename script (§7.1).
+*Revision notes.* 1.1 (2026-11-02, afternoon): panel figures in §5.4, with SPEC `IMG-9`. 1.0 (2026-11-02): first draft, from `SPEC.md` §17 and gwern.net's style guide; the file-naming and filetype rules of §7.1–7.2 are taken from that guide with local adaptations marked **Here**. Open: the serial comma (`D5`), ventilated prose as practice (§6.1), the rename script (§7.1).

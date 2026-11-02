@@ -6,7 +6,7 @@ Phase 2c landed and passed Ryan's checks (`reports/2026-10-26-phase2c/`). This h
 
 Read `SPEC.md` in full first; §5a was rewritten on 2026-11-02 (BIB-1, BIB-5…9), and §3.3, CITE-8, IMG-6, POP-7, §16 and §17 changed with it. Then `COMPAT.md`. Do not work from memory of earlier drafts.
 
-Three jobs. **Job A** is the site and is the bulk of the work. **Job B** is mathematics, independent of A, with a TeX dependency Ryan must install first; do it after A, or in a parallel session on its own branch. **Job C** is Emacs; do it last, after Ryan has looked at A.
+Three jobs. **Job A** is the site and is the bulk of the work. **Job B** is mathematics, independent of A, with a TeX dependency Ryan must install first; do it after A, or in a parallel session on its own branch. **Job C** is Emacs; do it last, after Ryan has looked at A. **Job D**, panel figures (IMG-9), was added on the afternoon of 2026-11-02 with spec draft 1.20: independent of A and B, after A.
 
 Commit the uncommitted doc changes first (`SPEC.md`, `HANDOVER-EMACS.md`, this file), as one commit before any code: "Spec 1.16: Phase 3 handover; covers, reference cards, quotations (BIB-7…9)".
 
@@ -87,6 +87,10 @@ Do not begin Phase 4 (print, PDF) or Phase 5 (audio).
 ## Job B — Inline mathematics (MATH-1, §16)
 
 Needs LuaLaTeX, `unicode-math`, Libertinus Math and `dvisvgm` on Ryan's Mac (he installs them; say exactly what, in the report, if anything is missing). `◊m{…}`, pre-rendered at `make refresh` to `currentColor` SVG with its baseline offset, cached in `data/math-cache.json` by SHA-256, inlined at build only on pages that use it; a missing cache entry fails the build with "run `make refresh`". `#:display #t` centres on its own line. MARK-2's test applies to an ordinary inline expression. `make` stays TeX-free (BUILD-2). Specimen: one inline expression in body text, one in italic, one display. Stop and report as for Job A.
+
+## Job D — Panel figures (IMG-9, §3.3, VAL-1, §16)
+
+*Added 2026-11-02 (afternoon), spec draft 1.20.* Independent of A and B; do it after A, on its own branch if in parallel. `◊panels{…}` and `◊panel[src]{…}` in `pollen.rkt`, with a `make-panels` beside `make-figure` in `lib/figures.rkt` that lifts the panels from the body, reuses `picture` and `inline-svg` per panel, puts `data-invert` on each panel, and hands `make-exhibit` one body; letters A–F by the root pass's numbering, never in the source; `◊ref`'s `#:panel`; the build errors VAL-1 lists; the grid, the letters above the top-left corners and the stacking below tier M in `site.css`; one line in the lightbox so the grid keeps its width on the stage; `tools/images.py` scanning `◊panel` sources. Specimen: one `◊panels` of a photograph, a PNG line drawing and an SVG, with a `◊ref` to B in the text, checked in both themes and at tiers L and S. Then `od-insert-ref` offering `id#b` (Job C, if it has not run). What the spec leaves to you: the gap between panels and the letter's exact size and offset, both settled on the specimen and recorded in the CSS comment.
 
 ## Job C — Emacs (§16, HANDOVER-EMACS.md)
 
