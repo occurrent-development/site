@@ -10,6 +10,7 @@
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="manifest" href="/assets/brand/site.webmanifest">
+<link rel="alternate" type="application/atom+xml" href="/feed.xml" title="Occurrent Development">
 <meta name="apple-mobile-web-app-title" content="Occ Dev">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#EFE7D4">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212">

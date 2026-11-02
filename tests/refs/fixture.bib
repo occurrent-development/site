@@ -1,0 +1,33 @@
+% Fixture for tools/refs_test.py (BIB-7). @FIXTURES@ is replaced with the
+% absolute path of tests/refs/ by the test, since Better BibTeX writes
+% absolute paths.
+
+@book{withCover2001,
+  title = {A Book with a Cover},
+  author = {Author, Ann},
+  year = 2001,
+  publisher = {Press},
+  file = {@FIXTURES@/notes.pdf;@FIXTURES@/cover.jpg}
+}
+
+@article{noImage2002,
+  title = {An Article with Only a PDF},
+  author = {Writer, Bea and Other, Cy},
+  year = 2002,
+  journal = {Journal},
+  file = {@FIXTURES@/notes.pdf}
+}
+
+@book{twoImages2003,
+  title = {Two Pictures, Neither the Cover},
+  author = {Snap, Dee},
+  year = 2003,
+  file = {@FIXTURES@/front.jpg;@FIXTURES@/other.png}
+}
+
+@book{heic2004,
+  title = {From the Phone},
+  author = {Phone, Eve},
+  year = 2004,
+  file = {@FIXTURES@/cover.heic}
+}

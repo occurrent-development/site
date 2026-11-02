@@ -245,6 +245,18 @@ of this page is, and can be set roman, when emphasis is italic again:
 ◊epigraph[#:italic #f #:source "A roman epigraph"]{An epigraph set roman, for
 a long one of running prose, with ◊em{emphasis} in italic.}
 
+A quotation from a cited work is marked, so that it is listed on the work's
+own page. Inline, Pirsig's claim that the Godhead is as much at home
+◊q["pirsigZenArtMotorcycle1991"]{in the circuits of a digital computer or the gears of a cycle transmission}
+is put in quotation marks by the build and followed by its circle, which opens
+its note; beneath the note is the work's card, with a photograph of the
+cover. A block quotation names its work the same way, and the circle follows
+the attribution:
+
+◊; STYLE: the two Pirsig quotations have no page yet; Ryan to check the words against the 1991 Vintage copy and add #:loc.
+◊blockquote[#:source "Robert M. Pirsig, Zen and the Art of Motorcycle Maintenance" #:cite "pirsigZenArtMotorcycle1991"]{The real
+cycle you're working on is a cycle called yourself.}
+
 The paragraph after a quotation is not indented, because it continues the
 paragraph the quotation interrupted. Elsewhere, a new paragraph is marked by
 an indent rather than a blank line, which keeps the page continuous and the
@@ -479,7 +491,14 @@ their dock, the scratch pad, the bar that appears when you scroll back up
 menu at its left end), the text size and theme controls, and the sortable
 tables. On the widest screens the contents scroll with the page until they
 reach the menu and then stay; once they stay, their heading becomes the
-title of the page. What remains is around the essays rather than in
-them: interactive figures, backlinks between essays, a changelog and a feed,
-a page for correspondence, and a stylesheet for print. Each will be checked
-here as it is built.
+title of the page.
+
+Around the essays, every cited work has a page of its own, reached from the
+→ after its note or its entry in the Bibliography: the work in full, with a
+photograph of the cover where there is one, every passage the site quotes
+from it, and every place it is cited. A post that another links to ends with
+its Backlinks, each with the passage that links to it; this page has one,
+from the placeholder essay. An essay's revisions are listed last, under
+Changelog, and collected on one page for the whole site. What remains is
+interactive figures, mathematics and a stylesheet for print. Each will be
+checked here as it is built.

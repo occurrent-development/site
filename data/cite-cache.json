@@ -43,7 +43,55 @@
   ],
   "order": 1,
   "doi": "10.1093/acprof:oso/9780198524021.003.0012",
-  "url": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012"
+  "url": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012",
+  "title": "The Looping Effects of Human Kinds",
+  "authors": [
+   "Hacking"
+  ],
+  "year": "1996",
+  "type": "Chapter"
+ },
+ "pirsigZenArtMotorcycle1991": {
+  "full": {
+   "": [
+    "Robert M. Pirsig, ",
+    [
+     "em",
+     {},
+     "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values"
+    ],
+    " (Vintage, 1991)."
+   ]
+  },
+  "short": {
+   "": [
+    "Pirsig, ",
+    [
+     "em",
+     {},
+     "Zen and the Art of Motorcycle Maintenance"
+    ],
+    "."
+   ]
+  },
+  "bib": [
+   "Pirsig, Robert M. ",
+   [
+    "em",
+    {},
+    "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values"
+   ],
+   ". Vintage, 1991."
+  ],
+  "order": 4,
+  "doi": null,
+  "url": null,
+  "title": "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values",
+  "authors": [
+   "Pirsig"
+  ],
+  "year": "1991",
+  "type": "Book"
  },
  "hackingMakingPeople2006": {
   "full": {
@@ -97,7 +145,13 @@
   ],
   "order": 0,
   "doi": null,
-  "url": null
+  "url": null,
+  "title": "Making Up People",
+  "authors": [
+   "Hacking"
+  ],
+  "year": "2006",
+  "type": "Article"
  },
  "hackingSocialConstructionWhat2000": {
   "full": {
@@ -133,6 +187,12 @@
   ],
   "order": 2,
   "doi": null,
-  "url": null
+  "url": null,
+  "title": "The Social Construction of What?",
+  "authors": [
+   "Hacking"
+  ],
+  "year": "2000",
+  "type": "Book"
  }
 }

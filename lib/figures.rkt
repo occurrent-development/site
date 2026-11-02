@@ -14,7 +14,7 @@
          "util.rkt"
          "exhibits.rkt")
 
-(provide make-figure licence-label)
+(provide make-figure licence-label cover-picture)
 
 ;; IMG-2: every figure is column width (rem at the default 16px: 36.5em × 1.25);
 ;; Expand (IMG-8) shows it larger.
@@ -54,6 +54,10 @@
                      #:width width #:invert invert)
   (unless (string? alt)
     (build-error "figure ~s needs #:alt (use #:alt \"\" for a decorative image)" src))
+  ;; IMG-6, BIB-7: `cover` exists for one thing, the photograph of your own
+  ;; copy that the build itself shows on a work's page and card
+  (when (equal? licence "cover")
+    (build-error "figure ~s: #:licence \"cover\" is only for the cover the build shows on a work's reference page; a figure needs own, public-domain, permission, cc0 or a CC licence (IMG-6, BIB-7)" src))
   (unless (and (string? licence) (regexp-match? licence-rx licence))
     (build-error "figure ~s needs #:licence: own, public-domain, permission, cc0 or a CC licence like cc-by-4.0" src))
   (when (and (not (equal? licence "own")) (not credit))
@@ -92,6 +96,27 @@
           (width ,(number->string (hash-ref entry 'width)))
           (height ,(number->string (hash-ref entry 'height)))
           (alt ,alt) (loading "lazy") (decoding "async")))))
+
+;; BIB-7: the cover of a cited work, a photograph of your own copy, from
+;; refs/covers/<key>.jpg (refs/covers.local/ for works only drafts cite) via
+;; the image manifest; #f when the work has none. Small and lazy: the card
+;; requests its bytes only when shown. Licence `cover` (IMG-6); never
+;; inverted in dark mode, only dimmed (IMG-4), so no classification.
+(define (cover-picture key title)
+  (define entry (or (hash-ref (the-manifest) (string->symbol (format "refs/covers/~a.jpg" key)) #f)
+                    (hash-ref (the-manifest) (string->symbol (format "refs/covers.local/~a.jpg" key)) #f)))
+  (and entry
+       (let* ([w (hash-ref entry 'width)] [h (hash-ref entry 'height)]
+              ;; about 7em tall at the text size (CSS), so about this wide
+              [sz (format "~apx" (ceiling (* 150 (/ w h))))])
+         (define srcs (hash-ref entry 'sources))
+         (define fb (hash-ref srcs 'jpg))
+         `(picture ((class "cover") (data-licence "cover"))
+                   (source ((type "image/avif") (srcset ,(srcset (hash-ref srcs 'avif))) (sizes ,sz)))
+                   (source ((type "image/webp") (srcset ,(srcset (hash-ref srcs 'webp))) (sizes ,sz)))
+                   (img ((src ,(hash-ref (first fb) 'url)) (srcset ,(srcset fb)) (sizes ,sz)
+                         (width ,(number->string w)) (height ,(number->string h))
+                         (alt ,(string-append "Cover of " title)) (loading "lazy") (decoding "async")))))))
 
 ;; Inline an SVG, labelled by its alt text (or hidden when decorative).
 (define (inline-svg path alt)

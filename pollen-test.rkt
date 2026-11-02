@@ -120,12 +120,13 @@
   (define doc (fixture "citations.html.pm"))
   (define (targets x) (string-split (attr-ref x 'data-targets "")))
   (define openers (find-all doc (λ (x) (attrs-have-key? x 'data-targets))))
-  ;; CITE-1: no numerals in the text; circles open notes 1–5 in reading order
+  ;; CITE-1: no numerals in the text; circles open notes 1–7 in reading order
+  ;; (6 and 7 are the quotations, BIB-9)
   (check-equal? (filter (λ (t) (regexp-match? #rx"^note-" t)) (remove-duplicates (append-map targets openers)))
-                '("note-1" "note-2" "note-3" "note-4" "note-5"))
+                '("note-1" "note-2" "note-3" "note-4" "note-5" "note-6" "note-7"))
   (check-equal? (find-all doc (tag? 'sup)) '())
   (define notes (find-all (by-id doc "notes") (tag? 'li)))
-  (check-equal? (length notes) 5)                       ; not double-counted (CITE-2)
+  (check-equal? (length notes) 7)                       ; not double-counted (CITE-2)
   (define (note n) (regexp-replace* #rx"\u00A0" (text (by-id doc (format "note-~a" n))) " "))
   ;; CITE-3: full form first, short form after, each with its own locator
   (check-regexp-match #rx"^Ian Hacking, “Making Up People,” London Review of Books 28, no. 16 \\(2006\\): 23\\." (note 1))
@@ -133,6 +134,10 @@
   (check-regexp-match #rx"^Hacking, “Making Up People,” 24\\." (note 3))                           ; inside the first aside
   (check-regexp-match #rx"^Hacking, The Social Construction of What\\?, 31–34\\." (note 4))         ; body
   (check-regexp-match #rx"^Hacking, “Making Up People\\.” With a remark\\." (note 5))
+  ;; BIB-9: a quotation is a citation in every other respect: short forms here,
+  ;; with their own locators
+  (check-regexp-match #rx"^Hacking, “Making Up People,” 23\\." (note 6))
+  (check-regexp-match #rx"^Hacking, The Social Construction of What\\?, 31–34\\." (note 7))
   ;; CITE-4: each note's ↩ goes to the circle that opens it; for a note inside
   ;; an aside that circle is in the aside's end copy (the inline copy has no ids)
   (define backs (find-all (by-id doc "notes") (λ (x) (equal? (attr-ref x 'class #f) "back"))))
@@ -281,7 +286,8 @@
 
 (test-case "MARK-3: a circle after an inline element is bound to it"
   (define doc (root (em "Books") " " (cite "hackingMakingPeople2006" #:loc "p. 23") " and on."))
-  (define nw (find-all doc (λ (x) (has-class* x "nw"))))
+  (define body (filter (λ (x) (not (has-class* x "endmatter"))) (get-elements doc)))
+  (define nw (find-all (txexpr 'root null body) (λ (x) (has-class* x "nw"))))
   (check-equal? (length nw) 1)
   (check-equal? (get-tag (car (get-elements (car nw)))) 'em))
 
@@ -291,8 +297,8 @@
 
 (test-case "POP-7: notes say whether they are the full or the short form"
   (define doc (fixture "citations.html.pm"))
-  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "note-~a" n)) 'data-form)) '(1 2 3 4 5))
-                '("full" "full" "short" "short" "short")))
+  (check-equal? (map (λ (n) (attr-ref (by-id doc (format "note-~a" n)) 'data-form)) '(1 2 3 4 5 6 7))
+                '("full" "full" "short" "short" "short" "short" "short")))
 
 (test-case "INDEX-3: tags are comma-separated lowercase words"
   (check-equal? (parse-tags "philosophy,  child development , site, site") '("philosophy" "child development" "site"))
@@ -363,7 +369,8 @@
 (test-case "VOCAB-3: od-vocabulary's built tags are exactly the tags pollen.rkt provides"
   (define template-helpers
     '(root site-css font-preloads head-script asset-url specimen? specimen-css page-title
-      essay-header doc-body format-date revised-date site-menu page-class))
+      essay-header doc-body format-date revised-date site-menu page-class
+      reference-card))   ; for tools/validate.rkt (BIB-8), not a tag
   ;; tags with keyword arguments are exported as syntax, so read both lists
   (define-values (vars stx) (module->exports (string->path (path->string (build-path (current-directory) "pollen.rkt")))))
   (define provided
@@ -670,3 +677,228 @@
   (check-regexp-match #rx">Notebook<.*<li class=\"menu-scratch\" hidden=\"\"><button[^>]*aria-label=\"Scratch pad\"" (site-menu here))
   (check-false (regexp-match? #rx"site-name-short" (site-menu here)))
   (check-regexp-match #rx"class=\"site-menu bar-menu\".*site-name-short" (site-menu here #:bar #t)))
+
+;; ---------------------------------------------------------------------------
+;; Phase 3: around the essays. The graph is built here from fixtures by the
+;; same walk tools/validate.rkt runs (lib/walk.rkt), and handed to the
+;; renderers in place of data/links.json.
+
+(require json racket/match
+         (only-in "lib/walk.rkt" walk-page graph-of)
+         (only-in "lib/graph.rkt" current-graph))
+
+(define (message-of thunk) (with-handlers ([exn:fail? exn-message]) (thunk) #f))
+(define link-a (build-path "tests" "essays" "link-a" "link-a.html.pm"))
+(define link-b (build-path "tests" "essays" "link-b" "link-b.html.pm"))
+(define cites-fixture (build-path "tests" "citations.html.pm"))
+(define (walked url src)
+  (define-values (post links cites quotes terms changes) (walk-page url src (get-doc src)))
+  (list url post links cites quotes terms changes))
+;; through JSON and back, as validate.rkt writes it and lib/graph.rkt reads it
+(define fixture-graph
+  (string->jsexpr (jsexpr->string (graph-of (list (walked "/link-a" link-a) (walked "/link-b" link-b)
+                                                  (walked "/citations" cites-fixture))))))
+(define (in-graph thunk) (parameterize ([current-graph fixture-graph]) (thunk)))
+(define (hrefs x) (map (λ (a) (attr-ref a 'href)) (find-all x (λ (e) (and (eq? (get-tag e) 'a) (attrs-have-key? e 'href))))))
+(define (by-class x c) (findf (λ (e) (has-class* e c)) (find-all x txexpr?)))
+
+(test-case "BIB-9: ◊q is the text in quotation marks, then its citation's circle, the mark after the punctuation"
+  (define doc (fixture "citations.html.pm"))
+  (define p (findf (λ (x) (regexp-match? #rx"made up" (text x))) (find-all doc (tag? 'p))))
+  ;; double marks outside, single inside (TYPE-16); emphasis kept
+  (check-regexp-match #rx"“made up, with ‘kinds’ of people”\\." (text p))
+  (check-not-false (findf (λ (e) (equal? (get-elements e) '("people"))) (find-all p (tag? 'em))))
+  ;; MARK-3a: the closing mark and the full stop sit between the last word and the circle
+  (define nw (findf (λ (x) (and (has-class* x "nw") (by-class x "circle"))) (find-all p txexpr?)))
+  (check-regexp-match #rx"^”\\." (text nw))
+  (check-equal? (attr-ref (by-class nw "circle-link") 'aria-label) "note 6")
+  ;; the note carries the quotation for the graph
+  (define n6 (by-id doc "note-6"))
+  (check-equal? (attr-ref n6 'data-quote) "made up, with ‘kinds’ of people")
+  (check-equal? (attr-ref n6 'data-loc) "p. 23")
+  ;; a block quotation: the circle follows the attribution, on its line
+  (define footer (car (find-all (findf (λ (x) (has-class* x "quote")) (find-all doc (tag? 'blockquote))) (tag? 'footer))))
+  (check-regexp-match #rx"^Hacking" (text footer))
+  (check-not-false (by-class footer "circle"))
+  (check-equal? (attr-ref (by-id doc "note-7") 'data-quote) "A quoted passage, set as a block."))
+
+(test-case "BIB-9: a block quotation with no #:source has its circle alone on the attribution line"
+  (define doc (root "Before." "\n\n" (blockquote #:cite "hackingMakingPeople2006" #:loc "p. 23" "Quoted.")))
+  (define footer (car (find-all doc (tag? 'footer))))
+  (check-equal? (attr-ref (by-class footer "circle-link") 'aria-label) "note 1")
+  (check-equal? (string-trim (text footer)) ""))
+
+(test-case "BIB-9: what a quotation may not hold, and #:loc without #:cite, fail naming the rule"
+  (for ([bad (list (λ () (q "hackingMakingPeople2006"))
+                   (λ () (q "hackingMakingPeople2006" " "))
+                   (λ () (q "hackingMakingPeople2006" "a " (cite "hackingMakingPeople2006")))
+                   (λ () (q "hackingMakingPeople2006" "a " (term "occurrent" "b")))
+                   (λ () (q "hackingMakingPeople2006" "a " (aside "b")))
+                   (λ () (q "hackingMakingPeople2006" "a " (link "/x" "b")))
+                   (λ () (q "hackingMakingPeople2006" "a " (margin "b")))
+                   (λ () (blockquote #:loc "p. 3" "text"))
+                   (λ () (epigraph #:loc "p. 3" "text")))])
+    (check-regexp-match #rx"BIB-9" (or (message-of bad) "did not fail")))
+  ;; ◊em and ◊sc are allowed
+  (check-false (message-of (λ () (q "hackingMakingPeople2006" (em "a") " " (sc "B"))))))
+
+(test-case "VAL-4, BIB-6: one walk records links, citations, quotations, terms and changes"
+  (define (part k) (hash-ref fixture-graph k))
+  ;; a link to B's section from A's opening paragraph, its context marked
+  (match-define (list l) (hash-ref (part 'links) '/link-b))
+  (check-equal? (hash-ref l 'from) "/link-a")
+  (check-equal? (hash-ref l 'id) "second")
+  (check-equal? (hash-ref l 'section) 'null)
+  (check-regexp-match #rx"graph-here" (jsexpr->string (hash-ref l 'context)))
+  ;; A's link to its own section is not in the graph
+  (check-false (hash-ref (part 'links) '/link-a/ #f))
+  (check-equal? (map (λ (l) (hash-ref l 'from)) (hash-ref (part 'links) '/link-a)) '("/link-b"))
+  (check-equal? (hash-ref (car (hash-ref (part 'links) '/link-a)) 'section) "second")
+  ;; every citation, quoting or not, with its context; the circle is marked
+  (define mp (hash-ref (part 'cites) 'hackingMakingPeople2006))
+  (check-equal? (remove-duplicates (map (λ (c) (hash-ref c 'from)) mp)) '("/link-a" "/link-b" "/citations"))
+  (check-true (for/and ([c (in-list mp)]) (regexp-match? #rx"graph-circle" (jsexpr->string (hash-ref c 'context)))))
+  ;; quotations: text, locator, and the mark to link back to (BIB-9)
+  (match-define (list qt) (hash-ref (part 'quotes) 'hackingMakingPeople2006))
+  (check-equal? (hash-ref qt 'text) "made up, with ‘kinds’ of people")
+  (check-equal? (hash-ref qt 'loc) "p. 23")
+  (check-equal? (hash-ref qt 'note) 6)
+  (define doc (fixture "citations.html.pm"))
+  (check-not-false (member "note-6" (string-split (attr-ref (by-id doc (hash-ref qt 'mark)) 'data-targets))))
+  (check-equal? (map (λ (q) (hash-ref q 'text)) (hash-ref (part 'quotes) 'hackingSocialConstructionWhat2000))
+                '("A quoted passage, set as a block."))
+  ;; a quotation inside an aside is not lost: the citations inside asides
+  ;; point at the circle that opens the aside
+  (check-true (for/and ([c (in-list (hash-ref (part 'cites) 'hackingSocialConstructionWhat2000))]) (string? (hash-ref c 'mark))))
+  ;; TERM-8: the terms a page marks
+  (check-not-false (member "looping-effect" (hash-ref (part 'terms) '/citations)))
+  ;; REV-3
+  (check-equal? (map (λ (c) (list (hash-ref c 'from) (hash-ref c 'date))) (part 'changes)) '(("/link-a" "2026-10-05"))))
+
+;; An essay at essays/<slug>/, rendered with the fixture graph.
+(define (as-post slug thunk #:kind [kind "essays"])
+  (in-graph
+   (λ () (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-03"
+                                               'here-path (path->string (build-path (current-directory) kind slug (string-append slug ".html.pm"))))])
+           (thunk)))))
+
+(test-case "VAL-4, CITE-10: Backlinks between Bibliography and Changelog; the linking post and section, the context expandable"
+  (define doc (as-post "link-a" (λ () (root "Text" (cite "hackingMakingPeople2006" #:loc "p. 24") "." "\n\n"
+                                            (changelog "2026-10-05: Added a section.")))))
+  (check-equal? (map (λ (s) (attr-ref s 'id)) (find-all doc (λ (x) (equal? (attr-ref x 'class #f) "endmatter"))))
+                '("notes" "bibliography" "backlinks" "changelog"))
+  (define bl (by-id doc "backlinks"))
+  (check-equal? (length (find-all bl (λ (x) (has-class* x "context-entry")))) 1)
+  (check-not-false (member "/link-b" (hrefs bl)))
+  (check-not-false (member "/link-b#second" (hrefs bl)))
+  (check-regexp-match #rx"B answers" (text bl))
+  (check-regexp-match #rx"essay" (text (by-class bl "kind")))
+  ;; REV-3: the changelog line, dated
+  (check-regexp-match #rx"5 October 2026 Added a section\\." (text (by-id doc "changelog")))
+  ;; a page nothing links to has no Backlinks
+  (define lone (as-post "nowhere" (λ () (root "Text."))))
+  (check-false (by-id lone "backlinks")))
+
+(test-case "REV-3: ◊changelog lines start with their date; an entry has none"
+  (check-equal? (map (λ (c) (attr-ref c 'date)) (get-elements (changelog "2026-10-05: One." "\n" "2026-11-01: Two.")))
+                '("2026-10-05" "2026-11-01"))
+  (check-regexp-match #rx"REV-3" (message-of (λ () (changelog "Undated line."))))
+  (check-regexp-match #rx"KIND-2"
+                      (message-of (λ () (as-post "e" #:kind "notebook" (λ () (root "Text." "\n\n" (changelog "2026-10-05: x."))))))))
+
+(test-case "REV-3: /changelog lists every line on the site, newest first, each with its post"
+  (define l (in-graph changelog-list))
+  (check-equal? (length (find-all l (tag? 'li))) 1)
+  (check-not-false (member "/link-a" (hrefs l))))
+
+(test-case "BIB-1: a work's page: the head, then Quoted grouped by post, then Cited in"
+  (define page (in-graph (λ () (reference-page "hackingMakingPeople2006"))))
+  (check-equal? (map (λ (x) (or (attr-ref x 'id #f) (attr-ref x 'class #f))) (get-elements page))
+                '("ref-head" "quoted" "cited-in"))
+  (define quoted (by-id page "quoted"))
+  (check-regexp-match #rx"“made up, with ‘kinds’ of people”" (text quoted))
+  (check-regexp-match #px"^p\\.[  ]23$" (text (by-class quoted "loc")))
+  (check-not-false (findf (λ (h) (regexp-match? #rx"^/citations#ref-" h)) (hrefs quoted)))
+  ;; Cited in: every citing post, as Backlinks are (index order: newest first)
+  (define cited (by-id page "cited-in"))
+  (check-equal? (remove-duplicates (filter (λ (h) (member h '("/link-a" "/link-b" "/citations"))) (hrefs cited)))
+                '("/link-b" "/link-a" "/citations")))
+
+(test-case "BIB-8: one function builds the page's head and the card"
+  (define head (in-graph (λ () (car (get-elements (reference-page "hackingMakingPeople2006"))))))
+  (define card (in-graph (λ () (reference-card "hackingMakingPeople2006"))))
+  (check-not-false (has-class* card "ref-card"))
+  (check-equal? (by-class card "ref-entry") (by-class head "ref-entry"))
+  (check-regexp-match #rx"Cited in 3 posts" (text (by-class card "ref-cited")))
+  (check-not-false (member "/references/hackingMakingPeople2006" (hrefs card)))
+  ;; the page's head has no "Cited in" line; it has the lists
+  (check-false (by-class head "ref-cited")))
+
+(test-case "BIB-7: a cover is at the left of the entry, small, lazy, licence cover; covers only there"
+  (define card (in-graph (λ () (reference-card "pirsigZenArtMotorcycle1991"))))
+  (define pic (by-class card "cover"))
+  (check-not-false pic "no cover: run `make refresh` with the Zotero export, then `make`")
+  (check-equal? (car (get-elements card)) pic)
+  (define img (car (find-all pic (tag? 'img))))
+  (check-regexp-match #rx"^Cover of Zen and the Art of Motorcycle Maintenance" (attr-ref img 'alt))
+  (check-equal? (attr-ref img 'loading) "lazy")
+  (check-equal? (attr-ref pic 'data-licence) "cover")
+  ;; never in the bibliography (BIB-4)
+  (check-false (by-class (in-graph bibliography-table) "cover"))
+  ;; IMG-6: an author cannot use the licence
+  (check-regexp-match #rx"BIB-7" (message-of (λ () (figure "img/x.jpg" #:id "x" #:title "X" #:alt "x" #:licence "cover")))))
+
+(test-case "BIB-5: each note and each Bibliography entry links to the work's page"
+  (define doc (fixture "citations.html.pm"))
+  (check-not-false (member "/references/hackingMakingPeople2006" (hrefs (by-id doc "note-1"))))
+  (check-not-false (member "/references/hackingLoopingEffectsHuman1996" (hrefs (by-id doc "bib-hackingLoopingEffectsHuman1996")))))
+
+(test-case "TERM-8: the glossary page: every term by headword, see-also within the page, Used in"
+  (define g (in-graph glossary-list))
+  (define entries (find-all g (λ (x) (has-class* x "glossary-entry"))))
+  (check-equal? (map (λ (e) (attr-ref e 'id)) entries) '("continuant" "looping-effect" "occurrent"))
+  (define looping (by-id g "looping-effect"))
+  (check-not-false (member "/citations" (hrefs (by-class looping "used-in"))))
+  ;; see-also and terms inside definitions are links within the page
+  (check-true (for/and ([l (in-list (find-all g (tag? 'od-link)))]) (regexp-match? #rx"^#" (attr-ref l 'href)))))
+
+(test-case "BIB-4: the bibliography is one table: Author · Year · Title · Type · Cited in"
+  (define t (in-graph bibliography-table))
+  (check-equal? (map text (find-all (car (find-all t (tag? 'thead))) (tag? 'th))) '("Author" "Year" "Title" "Type" "Cited in"))
+  (define rows (find-all (car (find-all t (tag? 'tbody))) (tag? 'tr)))
+  (check-true (for/and ([r (in-list rows)]) (= 5 (length (find-all r (tag? 'td))))))
+  (define mp (findf (λ (r) (member "/references/hackingMakingPeople2006" (hrefs r))) rows))
+  (check-equal? (text (last (find-all mp (tag? 'td)))) "3")
+  ;; by author, then year
+  (check-equal? (map (λ (r) (text (car (find-all r (tag? 'td))))) rows) (sort (map (λ (r) (text (car (find-all r (tag? 'td))))) rows) string-ci<?)))
+
+(test-case "NAV-1: Glossary and Bibliography join the menu, in order"
+  (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
+  (check-regexp-match #rx">Home<.*>Essays<.*>Notebook<.*>Glossary<.*>Bibliography<.*Scratch" (site-menu here)))
+
+(test-case "BIB-3, BIB-8: a commentary: paragraphs on the page, the first in the card; anything else fails"
+  (define dir (build-path "references"))
+  (define made-dir? (not (directory-exists? dir)))
+  (define f (build-path dir "hackingSocialConstructionWhat2000.pm"))
+  (dynamic-wind
+   (λ () (make-directory* dir)
+         (call-with-output-file f #:exists 'replace
+           (λ (o) (write-string "#lang pollen\n\nThe first paragraph stands on its own, with ◊em{emphasis} and a\n◊term[\"occurrent\"]{term}.\n\nA second cites ◊cite[\"hackingLoopingEffectsHuman1996\"].\n" o))))
+   (λ ()
+     (define page (in-graph (λ () (reference-page "hackingSocialConstructionWhat2000"))))
+     (define com (by-class page "commentary"))
+     (check-equal? (length (find-all com (tag? 'p))) 2)
+     ;; CITE-7: its citations are unnumbered
+     (check-true (for/and ([c (in-list (find-all com (tag? 'od-cite)))]) (attrs-have-key? c 'unnumbered)))
+     ;; the card has the first paragraph only, resolved for a fragment
+     (define card (in-graph (λ () (reference-card "hackingSocialConstructionWhat2000"))))
+     (check-regexp-match #rx"stands on its own" (text card))
+     (check-false (regexp-match? #rx"A second" (text card)))
+     (check-equal? (find-all card (λ (x) (memq (get-tag x) '(od-term od-cite od-link)))) '()))
+   (λ () (delete-file f) (when made-dir? (delete-directory/files dir))))
+  ;; headings (and the rest) are refused, and so is a key no page cites
+  (define (as-commentary key thunk)
+    (parameterize ([current-metas (hasheq 'here-path (path->string (build-path (current-directory) "references" (string-append key ".pm"))))])
+      (thunk)))
+  (check-regexp-match #rx"BIB-3" (message-of (λ () (as-commentary "hackingMakingPeople2006" (λ () (root (section #:id "a" "A") "\n\n" "Text."))))))
+  (check-regexp-match #rx"BIB-3" (message-of (λ () (as-commentary "noSuchWork1999" (λ () (root "Text.")))))))

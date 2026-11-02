@@ -1,0 +1,33 @@
+name: Dead links
+
+# CARD-5: once a month, re-check every external URL the site shows and open
+# an issue listing the ones that did not answer. A report, never a gate: it
+# builds nothing and no deploy waits on it.
+
+on:
+  schedule:
+    - cron: '17 3 1 * *'   # 03:17 UTC on the 1st of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check external links
+        run: python3 tools/linkcheck.py > dead-links.md
+
+      - name: Open an issue for the dead ones
+        if: hashFiles('dead-links.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -s dead-links.md ]; then
+            gh issue create --title "Dead links, $(date -u +%Y-%m)" --body-file dead-links.md
+          fi

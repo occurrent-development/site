@@ -56,6 +56,17 @@ SHOTS = [
     ("l-1400", 1400, 900, "pins", "light"),
     ("m-900", 900, 900, "def", "light"),
     ("s-390", 390, 844, "def", "dark"),
+    # Phase 3 (an optional sixth field is the page; the specimen otherwise)
+    ("reference-pirsig", 1680, 1050, "loaded", "light", "/references/pirsigZenArtMotorcycle1991"),
+    ("reference-pirsig", 1680, 1050, "loaded", "dark", "/references/pirsigZenArtMotorcycle1991"),
+    ("reference-hacking", 1680, 1400, "top", "light", "/references/hackingMakingPeople2006"),
+    ("note-card", 1680, 1050, "card", "light"),
+    ("note-card", 1680, 1050, "card", "dark"),
+    ("bibliography", 1680, 1050, "top", "light", "/bibliography"),
+    ("glossary", 1680, 1050, "top", "light", "/glossary"),
+    ("changelog", 1680, 1050, "top", "light", "/changelog"),
+    ("backlinks", 1680, 1050, "backlinks", "light"),
+    ("reference-s-390", 390, 844, "loaded", "light", "/references/pirsigZenArtMotorcycle1991"),
 ]
 
 
@@ -125,11 +136,27 @@ POINTER = "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPoin
 TOUCH = "--blink-settings=primaryHoverType=1,availableHoverTypes=1,primaryPointerType=2,availablePointerTypes=2"
 
 
-def run_chrome(binary, profile, args, url, timeout=180, device=POINTER):
+def run_chrome(binary, profile, args, url, timeout=180, device=POINTER, until_posted=False):
+    """Run headless Chrome on URL. With UNTIL_POSTED, stop it a few seconds
+    after the harness has posted its results: headless Chrome sometimes
+    stays open after --dump-dom once every request has finished and the
+    page has loaded (seen 2026-11-02, about one run in two, after the
+    results were in), and the results are what the run is for."""
     cmd = [binary, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
            "--no-default-browser-check", "--disable-extensions", f"--user-data-dir={profile}",
            device, *args, url]
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    if not until_posted:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if DONE.wait(timeout):
+        try:
+            proc.wait(5)
+        except subprocess.TimeoutExpired:
+            pass
+    if proc.poll() is None:
+        proc.terminate()
+    out, err = proc.communicate()
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
 
 FIREFOX = "/Applications/Firefox.app/Contents/MacOS/firefox"
@@ -195,7 +222,7 @@ def main():
         DONE.clear()
         RESULTS.clear()
         r = run_chrome(binary, profile, ["--window-size=2600,1500", "--dump-dom"],
-                       f"{base}/__test/harness.html?run=tests")
+                       f"{base}/__test/harness.html?run=tests", until_posted=True)
         if "body" not in RESULTS:
             print("browser tests: the harness posted no results")
             print(r.stdout[-2000:], r.stderr[-2000:])
@@ -205,19 +232,20 @@ def main():
         DONE.clear()
         RESULTS.clear()
         r = run_chrome(binary, profile, ["--window-size=600,900", "--dump-dom"],
-                       f"{base}/__test/harness.html?run=touch", device=TOUCH)
+                       f"{base}/__test/harness.html?run=touch", device=TOUCH, until_posted=True)
         if "body" not in RESULTS:
             print("browser tests: the touch harness posted no results")
             return 1
         failed += report(json.loads(RESULTS["body"]), "headless Chrome as a touch device")
         if shots:
-            for name, w, h, scenario, theme in SHOTS:
+            for name, w, h, scenario, theme, *page in SHOTS:
                 out = os.path.join(shots, f"{name}-{theme}.png" if theme == "dark" else f"{name}.png")
                 DONE.clear()
                 # headless Chrome keeps a window at least ~500 px wide, so the
                 # frame takes the width and the shot is cropped to it
                 run_chrome(binary, profile, [f"--window-size={max(w, 600)},{h}", f"--screenshot={out}"],
-                           f"{base}/__test/harness.html?show={scenario}&theme={theme}&w={w}&h={h}")
+                           f"{base}/__test/harness.html?show={scenario}&theme={theme}&w={w}&h={h}"
+                           + (f"&page={page[0]}" if page else ""))
                 if w < 600:
                     try:
                         from PIL import Image

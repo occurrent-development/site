@@ -8,14 +8,20 @@ Needs Racket with the `pollen` package; Python 3 with `fonttools`, `brotli` and 
 
 | Command | Does |
 |---|---|
-| `make` | Runs the tests, subsets the fonts, renders every page and assembles `public/`. Works offline. |
-| `make test` | Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`). |
+| `make` | Runs the tests, subsets the fonts, writes the link graph, renders every page and assembles `public/`. Works offline. |
+| `make test` | Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`), and the covers step of `make refresh` (`tools/refs_test.py`). |
 | `make test-browser` | The interactive layer in headless Chrome against the built site (`tools/browser_test.py`, `tests/browser/`); part of `make`, skipped without Chrome. `--browser firefox` or `--browser safari` runs it elsewhere by hand; `--shots DIR` saves the specimen screenshots. |
-| `make serve` | Pollen's project server on http://localhost:8080 (pages at `/pages/<name>.html`). |
-| `make refresh` | Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, and classifies new figures for dark mode into `data/invert.json`. Run it after adding a citation or a figure; commit the changed files. |
+| `make serve` | Pollen's project server on http://localhost:8080 (pages at `/pages/<name>.html`, a work's page at `/build/references/<key>.html`). Previews drafts with their own backlinks and citations (below). |
+| `make refresh` | Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, copies each cited work's cover (a `cover.jpg` attached to the item in Zotero) to `refs/covers/`, classifies new figures for dark mode into `data/invert.json`, and asks the Wayback Machine to keep a copy of each new external URL (`data/link-meta.json`). Run it after adding a citation, a cover, a figure or a link; commit the changed files. |
 | `make clean` | Removes everything generated. |
 
-The project server renders on request, so it can show stale cross-page information (backlinks, once they exist) until `make` runs. CI always does a full rebuild.
+### The link graph, and why `make serve` can be stale
+
+Backlinks, a work's page (its Quoted and Cited in), the glossary's Used in, the bibliography's counts and `/changelog` are all built from one file, `data/links.json`, which `tools/validate.rkt` writes by walking every published post before anything is rendered (SPEC VAL-4, BIB-6). Every page therefore depends on every other. `make` handles this: the graph is in Pollen's cache watchlist, so when it changes every page is rendered again, and `make` is always as good as a full rebuild (BUILD-4). CI always builds from scratch.
+
+The project server renders a page when you ask for it, from the graph as `make serve` found it when it started. It can show stale Backlinks, Used in and Cited in lists until you run `make`, or restart `make serve`.
+
+Drafts contribute nothing to `data/links.json`, exactly as their citations stay out of the committed cache (CITE-5a): their links, citations and quotations go to `data/links.local.json` (gitignored). `make` never reads that file, so nothing a draft says can reach a published page. `make serve` sets `OD_PREVIEW=1`, and then the graph, the citation caches and the covers all merge their drafts' halves: a draft previews with its own backlinks from other drafts, and the pages of the works it cites show it under Cited in and Quoted. Pollen keeps the two kinds of build in separate caches.
 
 ## Citations and Emacs
 
@@ -50,5 +56,7 @@ Every push builds on GitHub Actions (`.github/workflows/deploy.yml`). Pushes to 
 - `lib/`: citations, glossary, lists, tables, figures and marks.
 - `glossary/`: one file per term; never a page.
 - `refs/`: the generated `refs.bib` and the Chicago notes CSL style (CC BY-SA 3.0).
-- `tests/`: fixtures rendered by the tests.
-- `tools/`: font subsetting, image variants, the citation refresh, dark-mode classification, and site-wide validation (which also writes the cross-page fragments in `build/_x/` and the publish list).
+- `tests/`: fixtures rendered by the tests (`tests/refs/` for the covers step).
+- `references/<key>.pm`: optional commentary on a cited work, set on its page (SPEC BIB-3). The page itself, `/references/<key>`, is generated for every cited work.
+- `lib/walk.rkt`, `lib/graph.rkt`: the one walk that makes the link graph, and its reader.
+- `tools/`: font subsetting, image variants, the citation refresh (entries and covers), dark-mode classification, Wayback snapshots (`wayback.py`) and the monthly dead-link check (`linkcheck.py`, run by `.github/workflows/links.yml`, which opens an issue and never fails a build), and site-wide validation, which runs before rendering: it writes the link graph, the work pages' sources in `build/references/`, the cross-page fragments and reference cards in `build/_x/`, the Atom feed and the publish list.

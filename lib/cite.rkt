@@ -11,9 +11,11 @@
          "util.rkt"
          "marks.rkt")
 
-(provide note-form bib-entry bib-order cite-key-known? normalize-loc external-link)
+(provide note-form bib-entry bib-order cite-key-known? normalize-loc external-link
+         cite-facts cite-keys)
 
 (define cache #f)
+(define committed-keys #f)
 ;; The committed cache, merged with the local one that holds the forms only
 ;; drafts cite (not committed, absent in CI; tools/refs.py).
 (define (the-cache)
@@ -31,8 +33,28 @@
                         (hash-set o form (for/fold ([h (hash-ref o form)]) ([(loc v2) (in-hash (hash-ref v form))])
                                            (hash-set h loc v2))))
                       v))))
+    (set! committed-keys (map symbol->string (hash-keys (load "data" "cite-cache.json"))))
     (set! cache merged))
   cache)
+
+;; The works that get pages and rows (BIB-1, BIB-4): those the committed
+;; cache holds, so a work only drafts cite never reaches a published page;
+;; the project server's preview (OD_PREVIEW=1) adds the drafts' works.
+(define (cite-keys)
+  (the-cache)
+  (if (equal? (getenv "OD_PREVIEW") "1")
+      (map symbol->string (hash-keys (the-cache)))
+      committed-keys))
+
+;; The facts /bibliography and a work's page show (BIB-1, BIB-4), written by
+;; tools/refs.py; a cache from before Phase 3 lacks them until `make refresh`.
+(define (cite-facts key)
+  (define e (entry key))
+  (define (field k) (let ([v (hash-ref e k #f)]) (and v (not (eq? v 'null)) v)))
+  (unless (field 'title)
+    (build-error "the citation cache has no title for ~s; run `make refresh`" key))
+  (hasheq 'title (field 'title) 'authors (or (field 'authors) null) 'year (or (field 'year) "")
+          'type (or (field 'type) "") 'url (field 'url) 'doi (field 'doi)))
 
 (define (entry key)
   (or (hash-ref (the-cache) (string->symbol key) #f)

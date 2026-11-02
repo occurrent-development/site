@@ -198,16 +198,39 @@ function termItem(target) {
   return { title, head: title, body };
 }
 
-function item(target) {
+// BIB-8: the work's card, the head of its page, fetched as a cross-page
+// extract is (on pointerenter, once). Under a full note it omits the entry,
+// which the note already is.
+const refUrl = (key) => `/references/${key}`;
+async function cardFor(key, full) {
+  const html = await fetchFragment(refUrl(key));
+  if (!html) return null;
+  const t = document.createElement("template");
+  t.innerHTML = html;
+  const card = t.content.firstElementChild;
+  if (full) card?.querySelector(".ref-entry")?.remove();
+  return card;
+}
+const noteKeys = (t) => (t.dataset.targets || "").split(" ").filter((x) => x.startsWith("note-"))
+  .map((x) => byId(x)?.dataset.bib?.slice(4)).filter(Boolean);
+
+async function item(target) {
   const src = byId(target);
   if (!src && !target.startsWith("aside-")) return null;
   if (target.startsWith("note-")) {
     const n = target.slice(5);
-    const body = el("div", {}, el("p", {}, ...clean(src).childNodes));
-    // A full note is already the reference; a short one gets the full entry (POP-7).
-    const bib = src.dataset.form === "short" && src.dataset.bib && byId(src.dataset.bib);
-    if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
-    return { title: `Note ${n}`, head: `Note ${n}`, body };
+    const key = src.dataset.bib?.slice(4);
+    const full = src.dataset.form !== "short";
+    const note = clean(src);
+    for (const a of note.querySelectorAll(".to-ref")) a.remove();
+    const body = el("div", {}, el("p", {}, ...note.childNodes));
+    // POP-7, BIB-8: a hairline, then the card; a short note's card carries the
+    // full entry. Without the card, a short note still gets the entry.
+    const card = key && await cardFor(key, full);
+    const bib = !card && !full && byId(src.dataset.bib);
+    if (card) body.append(el("hr", { class: "popup-sep" }), card);
+    else if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
+    return { title: `Note ${n}`, head: `Note ${n}`, body, ref: key && refUrl(key) };
   }
   if (target.startsWith("bib-")) {
     // CITE-7: unnumbered, so no heading
@@ -224,15 +247,17 @@ function item(target) {
 }
 
 // A circle: everything it opens, in source order, separated by a hairline (MARK-1c).
-function circleContent(t) {
-  const items = t.dataset.targets.split(" ").map(item).filter(Boolean);
+// BIB-5: a note's title is a link to the work's page, and so is Open in new tab.
+async function circleContent(t) {
+  const items = (await Promise.all(t.dataset.targets.split(" ").map(item))).filter(Boolean);
   const body = el("div");
   items.forEach((it, i) => {
     if (i) body.append(el("hr", { class: "popup-sep" }));
     if (items.length > 1 && it.head) body.append(el("p", { class: "popup-item-head" }, it.head));
     body.append(it.body);
   });
-  return { title: items.map((i) => i.title).join(" · "), body, items };
+  const ref = items.length === 1 ? items[0].ref : undefined;
+  return { title: items.map((i) => i.title).join(" · "), body, items, url: ref, titleHref: ref };
 }
 
 function sectionContent(id) {
@@ -252,6 +277,7 @@ const fragments = new Map();
 function fragmentUrl(href) {
   const u = new URL(href, location.href);
   const slug = u.pathname.replace(/^\//, "").replace(/\.html$/, "");
+  if (slug.startsWith("references/")) return `/_x/${slug}.frag`;   // BIB-8: the card
   return `/_x/${slug}/${u.hash.slice(1) || "_page"}.frag`;
 }
 function fetchFragment(href) {
@@ -267,7 +293,7 @@ async function xrefContent(a) {
   const t = document.createElement("template");
   t.innerHTML = html;
   const h = t.content.querySelector("h1, h2, h3, h4");
-  const title = h ? h.textContent.trim() : linkText(a);
+  const title = h ? h.textContent.trim() : t.content.firstElementChild?.dataset.title || linkText(a);
   if (h) h.remove();
   return { title, url: a.href, body: el("div", {}, ...t.content.childNodes) };
 }
@@ -359,7 +385,8 @@ function buildPopup(c, pinned, { pinnable = true } = {}) {
   const id = `popup-title-${++seq}`;
   const box = el("div", { class: "popup", role: pinned ? "dialog" : "tooltip", "aria-labelledby": id, tabindex: "-1" });
   const bar = el("div", { class: "popup-bar" },
-    el("span", { class: c.plain ? "popup-title plain" : "popup-title", id }, c.title || ""),
+    el("span", { class: c.plain ? "popup-title plain" : "popup-title", id },
+      c.titleHref ? el("a", { href: c.titleHref }, c.title) : c.title || ""),
     pinnable ? el("button", { type: "button", class: "popup-pin", "aria-pressed": "false", hidden: "" }, "Pin") : null,
     pinnable ? el("button", { type: "button", class: "popup-dock", "aria-pressed": "false", hidden: "" }, "Dock") : null,
     c.url ? el("a", { class: "popup-open", href: c.url, target: "_blank", rel: "noopener" }, "Open in new tab") : null,
@@ -664,9 +691,9 @@ document.addEventListener("focusin", (e) => {
 
 // POP-6, TERM-7: a circle inside a popup replaces its content; Back, in the
 // title bar, restores it.
-function replaceContent(box, t) {
+async function replaceContent(box, t) {
   const body = box.querySelector(".popup-body");
-  const c = circleContent(t);
+  const c = await circleContent(t);
   if (!body || !c.items.length) return;
   const title = box.querySelector(".popup-title");
   const saved = { nodes: [...body.childNodes], title: title?.textContent };
@@ -952,6 +979,7 @@ document.addEventListener("pointerover", (e) => {
     highlight(t, true, s);
     if (s) { schedulePreview(s); return; }
     if (kindOf(t) === "xref") fetchFragment(t.getAttribute("href"));   // prefetch
+    else if (kindOf(t) === "circle") for (const k of noteKeys(t)) fetchFragment(refUrl(k));   // BIB-8
     clearTimeout(closeTimer);
     if (open && open.trigger === t) return;
     if (pinOf(t)) return;   // already pinned

@@ -1,30 +1,58 @@
 #lang racket/base
-;; Site-wide checks after rendering (§12). Run from the repository root.
+;; Site-wide checks and the link graph (§12). Run from the repository root,
+;; before `raco pollen render`: the graph it writes is what Backlinks, the
+;; reference pages, the glossary and the bibliography are rendered from.
 ;;
+;; - VAL-2, VAL-4, BIB-6: the one walk. For every published post of both
+;;   kinds (and the specimen, a page listed in the essay index by its date):
+;;   every internal link with its context, every citation with its context,
+;;   every quotation (BIB-9), the terms each page marks (TERM-8) and its
+;;   changelog lines (REV-3). Written to data/links.json (shape in
+;;   lib/graph.rkt) only when it changes: it is in Pollen's cache
+;;   watchlist, so a change re-renders every page. Drafts go to
+;;   data/links.local.json, read only by the project server's preview.
 ;; - LINK-2: every cross-page link points to a page and section that exist.
 ;; - VAL-2: writes data/anchors.json (pages → sections, for validation and
-;;   Emacs completion) and data/links.json (the internal link graph).
+;;   Emacs completion).
 ;; - VAL-3: a section id published in the last deploy (data/anchors-deployed.json,
 ;;   fetched by CI) must not disappear while a page links to it.
 ;; - TERM-6: warns about glossary terms no page uses.
 ;; - POP-7: writes build/_x/<slug>/<id>.frag, one fragment per section (and
-;;   _page.frag with the title and abstract), fetched by cross-page popups.
+;;   _page.frag with the title and abstract), fetched by cross-page popups,
+;;   and BIB-8's build/_x/references/<key>.frag, the reference card.
 ;;   Not .html: Cloudflare's HTML handling would redirect those.
+;; - BIB-1: writes build/references/<key>.html.pm, one line of source per
+;;   work in the citation cache, which `make` then renders.
+;; - REV-4: writes build/feed.xml, the Atom feed.
 ;; - DRAFT-2: writes data/publish.txt, the pages `make` copies into public/:
 ;;   every page, and essays whose status is not draft. A published page may
 ;;   not link to a draft.
+;;
+;; Two runs, two processes: `--graph` walks the posts and writes the graph
+;; and the reference sources; the second run, without it, does the rest.
+;; Pollen keeps one instance of every page in a process, so pages read after
+;; the graph changed, in the process that changed it, would be the stale
+;; ones; a new process reads them afresh. `make serve` runs only the first.
 
 (require racket/list
          racket/string
          racket/match
          racket/path
          racket/file
+         racket/cmdline
          json
          txexpr
+         xml
          pollen/core
          pollen/pagetree
          (only-in pollen/template ->html)
-         (only-in "../lib/util.rkt" text-of published? output->url check-post-slugs))
+         (only-in "../lib/util.rkt" text-of published? output->url check-post-slugs post-kind site-value)
+         "../lib/walk.rkt"
+         (only-in "../lib/cite.rkt" cite-keys cite-key-known? cite-facts)
+         (only-in "../pollen.rkt" reference-card format-date))
+
+(define graph-only? (make-parameter #f))
+(command-line #:once-each [("--graph") "Write the link graph and reference sources only" (graph-only? #t)])
 
 (define errors 0)
 (define (fail fmt . args) (set! errors (add1 errors)) (eprintf "build error: ~a\n" (apply format fmt args)))
@@ -41,10 +69,114 @@
       null))
 
 (define (class? x c)
-  (and (attrs-have-key? x 'class) (member c (string-split (attr-ref x 'class))) #t))
+  (and (txexpr? x) (attrs-have-key? x 'class) (member c (string-split (attr-ref x 'class))) #t))
+
+(define (meta-text metas k)
+  (define v (select-from-metas k metas))
+  (and v (string-trim (if (string? v) v (text-of v)))))
+
+(define (write-json-file path v)
+  (call-with-output-file path #:exists 'replace (λ (o) (write-json v o #:indent 1) (newline o))))
+
+;; Write only when the contents change: the graph is in Pollen's watchlist.
+(define (write-if-changed path s)
+  (unless (and (file-exists? path) (equal? (file->string path) s))
+    (call-with-output-file path #:exists 'replace (λ (o) (void (write-string s o))))))
+
+;; ---------------------------------------------------------------------------
+;; Pages, posts and drafts
+
+(define nodes (pagetree->list (get-pagetree "index.ptree")))
+
+;; Every post's source: essays/<slug>/<slug>.html.pm and notebook/<slug>/<slug>.html.pm.
+(define post-sources
+  (for*/list ([dir (in-list '("essays" "notebook"))] #:when (directory-exists? dir)
+              [f (in-directory dir (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
+              #:when (regexp-match? #px"^(?:essays|notebook)/[^/]+/[^/]+\\.html\\.pm$" (path->string f)))
+    f))
+
+(define (status-of src)
+  (let ([s (select-from-metas 'status (get-metas src))]) (and s (string-trim (format "~a" s)))))
+
+;; A page in the graph: a post, or a page listed in the essay index by its date.
+(define (graph-source? src)
+  (or (post-kind src) (and (select-from-metas 'published (get-metas src)) #t)))
+
+(define (walk-all sources)
+  (for/list ([s (in-list sources)])
+    (match-define (list url src) s)
+    (define-values (post links cites quotes terms changes) (walk-page url src (get-doc src)))
+    (list url post links cites quotes terms changes)))
+
+;; The published graph sources (DRAFT-2) and the drafts, in and out of the pagetree.
+(define-values (graph-published graph-drafts)
+  (let ()
+    (define in-tree
+      (for/list ([node (in-list nodes)])
+        (define-values (url src) (page-info node))
+        (list url src)))
+    (define srcs (filter (λ (s) (graph-source? (second s))) in-tree))
+    (define listed (map (λ (s) (path->string (second s))) in-tree))
+    (define loose   ; drafts not yet in index.ptree (DRAFT-E1)
+      (for/list ([f (in-list post-sources)]
+                 #:unless (member (path->string f) listed)
+                 #:when (equal? (status-of f) "draft"))
+        (list (output->url (regexp-replace #rx"\\.pm$" (path->string f) "")) f)))
+    (partition (λ (s) (published? (second s) (status-of (second s)))) (append srcs loose))))
+
+(define published-graph
+  (cond
+    [(graph-only?)
+     (define g (graph-of (walk-all graph-published)))
+     (make-directory* "data")
+     (write-if-changed (build-path "data" "links.json") (jsexpr->string g #:indent 1))
+     g]
+    [else (call-with-input-file (build-path "data" "links.json") read-json)]))
+;; a draft that does not build yet keeps nothing from the preview
+(when (graph-only?)
+  (write-if-changed (build-path "data" "links.local.json")
+                    (jsexpr->string
+                     (graph-of (filter values (for/list ([d (in-list graph-drafts)])
+                                                (with-handlers ([exn:fail? (λ (e) (warn "~a: not in the drafts' graph: ~a" (second d) (exn-message e)) #f)])
+                                                  (car (walk-all (list d)))))))
+                     #:indent 1)))
+
+;; ---------------------------------------------------------------------------
+;; BIB-1, BIB-3: a source per work; a commentary must be for a cited work
+
+(define ref-dir (build-path "build" "references"))
+(make-directory* ref-dir)
+(define ref-keys (cite-keys))
+(define (cite-facts-title key) (hash-ref (cite-facts key) 'title))
+(for ([f (in-list (directory-list ref-dir))]
+      #:when (regexp-match? #rx"\\.html\\.pm$" (path->string f))
+      #:unless (member (regexp-replace #rx"\\.html\\.pm$" (path->string f) "") ref-keys))
+  (delete-file (build-path ref-dir f)))
+(for ([key (in-list ref-keys)])
+  ;; the commentary's text is part of the source, so editing it re-renders the page
+  (define com (build-path "references" (string-append key ".pm")))
+  (write-if-changed (build-path ref-dir (string-append key ".html.pm"))
+                    (format "#lang pollen\n◊; Generated by tools/validate.rkt (BIB-1); not committed.\n◊; commentary: ~a\n◊define-meta[title ~s]\n◊define-meta[reference ~s]\n◊reference-page[~s]\n"
+                            (if (file-exists? com) (equal-hash-code (file->string com)) "none")
+                            (cite-facts-title key) key key)))
+(when (directory-exists? "references")
+  (for ([f (in-list (directory-list "references"))] #:when (regexp-match? #rx"\\.pm$" (path->string f)))
+    (define key (regexp-replace #rx"\\.pm$" (path->string f) ""))
+    (unless (cite-key-known? key)
+      (fail "references/~a: no published page cites ~s, so it has no page; check the key, or run `make refresh` (BIB-3)" f key))))
+(call-with-output-file (build-path ref-dir "index.ptree") #:exists 'replace
+  (λ (o) (fprintf o "#lang pollen\n~a\n" (string-join (map (λ (k) (string-append k ".html")) ref-keys) "\n"))))
+
+(when (graph-only?)
+  (unless (zero? errors) (exit 1))
+  (printf "validate: the graph, ~a reference sources\n" (length ref-keys))
+  (exit 0))
+
+;; ---------------------------------------------------------------------------
+;; Every page, rendered now that the graph is written
 
 (define all-pages
-  (for/list ([node (in-list (pagetree->list (get-pagetree "index.ptree")))])
+  (for/list ([node (in-list nodes)])
     (define-values (url src) (page-info node))
     (define doc (get-doc src))
     (define sections
@@ -55,21 +187,14 @@
                 'title (string-trim (regexp-replace #rx"§$" (text-of heading) ""))
                 'level (string->number (substring (attr-ref s 'class) 6)))))
     (define ids (for/list ([x (in-list (find-all doc (λ (x) (attrs-have-key? x 'id))))]) (attr-ref x 'id)))
-    (define xrefs (for/list ([a (in-list (find-all doc (λ (x) (and (eq? (get-tag x) 'a) (class? x "xref")))))])
+    ;; links in the text: the end matter's Backlinks and reference links are the build's own
+    (define body (filter (λ (x) (not (class? x "endmatter"))) (get-elements doc)))
+    (define xrefs (for*/list ([e (in-list body)]
+                              [a (in-list (find-all e (λ (x) (and (eq? (get-tag x) 'a) (class? x "xref")))))])
                     (attr-ref a 'href)))
-    (define terms (for/list ([a (in-list (find-all doc (λ (x) (and (eq? (get-tag x) 'div) (class? x "term-entry")))))])
-                    (substring (attr-ref a 'id) 5)))
-    (define status (let ([s (select-from-metas 'status (get-metas src))]) (and s (string-trim (format "~a" s)))))
-    (hasheq 'url url 'src src 'doc doc 'out (symbol->string node) 'title (or (select-from-metas 'title (get-metas src)) "")
-            'published (published? src status)
-            'sections sections 'ids ids 'xrefs xrefs 'terms terms)))
-
-;; Every post's source: essays/<slug>/<slug>.html.pm and notebook/<slug>/<slug>.html.pm.
-(define post-sources
-  (for*/list ([dir (in-list '("essays" "notebook"))] #:when (directory-exists? dir)
-              [f (in-directory dir (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
-              #:when (regexp-match? #px"^(?:essays|notebook)/[^/]+/[^/]+\\.html\\.pm$" (path->string f)))
-    f))
+    (hasheq 'url url 'src src 'doc doc 'out (symbol->string node) 'title (or (meta-text (get-metas src) 'title) "")
+            'published (published? src (status-of src))
+            'sections sections 'ids ids 'xrefs xrefs)))
 
 ;; KIND-1: one slug, one post, across both folders; none of the site's own paths.
 (for ([e (in-list (check-post-slugs
@@ -87,10 +212,7 @@
   (define listed (for/list ([p (in-list all-pages)]) (path->string (hash-ref p 'src))))
   (for ([f (in-list post-sources)]
         #:unless (member (path->string f) listed))
-    (define status
-      (let ([m (regexp-match #px"◊define-meta\\[status\\]\\{\\s*([a-z]+)\\s*\\}" (file->string (path->string f)))])
-        (and m (cadr m))))
-    (if (equal? status "draft")
+    (if (equal? (status-of f) "draft")
         (warn "~a is a draft and not in index.ptree, so it is not built (od-publish adds it)" f)
         (fail "~a is not in index.ptree" f))))
 
@@ -99,12 +221,16 @@
 
 (define by-url (for/hash ([p (in-list pages)]) (values (hash-ref p 'url) p)))
 
-;; LINK-2 and the link graph
+;; LINK-2: every cross-page link resolves; a work's page exists for every
+;; work in the cache (BIB-1)
 (define links
   (for*/list ([p (in-list pages)] [href (in-list (hash-ref p 'xrefs))])
     (match-define (list _ path frag) (regexp-match #px"^([^#]*)(?:#(.*))?$" href))
     (define target (hash-ref by-url path #f))
+    (define ref (regexp-match #px"^/references/(.+)$" path))
     (cond
+      [ref (unless (member (cadr ref) ref-keys)
+             (fail "~a: link to ~a, but no published page cites ~s" (hash-ref p 'src) href (cadr ref)))]
       [(hash-ref drafts path #f) (fail "~a: link to ~a, which is a draft and will not be published" (hash-ref p 'src) href)]
       [(not target) (fail "~a: link to ~a, which is not a page" (hash-ref p 'src) href)]
       [(and frag (not (member frag (hash-ref target 'ids))))
@@ -129,24 +255,21 @@
             (warn "published anchor ~a#~a has gone; links to it from elsewhere will break" url id))))))
 
 ;; TERM-6: unused terms
-(define used (remove-duplicates (append-map (λ (p) (hash-ref p 'terms)) pages)))
+(define used (remove-duplicates (append* (hash-values (hash-ref published-graph 'terms)))))
 (for ([f (in-list (if (directory-exists? "glossary") (directory-list "glossary") null))]
       #:when (regexp-match? #rx"\\.pm$" (path->string f)))
   (define id (path->string (path-replace-extension f #"")))
   (unless (member id used) (warn "glossary term ~s is not used by any page" id)))
 
-(define (write-json-file path v)
-  (call-with-output-file path #:exists 'replace (λ (o) (write-json v o #:indent 1) (newline o))))
-
-(make-directory* "data")
 (write-json-file (build-path "data" "anchors.json")
                  (for/hasheq ([p (in-list pages)])
                    (values (string->symbol (hash-ref p 'url))
                            (hasheq 'title (hash-ref p 'title) 'sections (hash-ref p 'sections)))))
-(write-json-file (build-path "data" "links.json") links)
 
-;; POP-7: section fragments for cross-page popups. Circles, self-links and
+;; ---------------------------------------------------------------------------
+;; POP-7, BIB-8: fragments for cross-page popups. Circles, self-links and
 ;; hidden aside copies are dropped: a fragment is read, not explored.
+
 (define (fragment-clean x)
   (cond
     [(txexpr? x)
@@ -178,13 +301,90 @@
     (call-with-output-file (build-path dir (string-append (attr-ref sec 'id) ".frag")) #:exists 'replace
       (λ (o) (write-string (->html (fragment-clean sec)) o)))))
 
-;; DRAFT-2: what `make` publishes, as "rendered-file public-name" lines.
+;; BIB-8: the reference card, the head of each work's page as a fragment
+(make-directory* (build-path x-dir "references"))
+(for ([key (in-list ref-keys)])
+  (call-with-output-file (build-path x-dir "references" (string-append key ".frag")) #:exists 'replace
+    (λ (o) (write-string (->html (fragment-clean (reference-card key))) o))))
+
+;; ---------------------------------------------------------------------------
+;; REV-4: the Atom feed: new posts of both kinds, and substantive revisions
+;; (a changelog line dated after `published`), each marked with its kind.
+;; Pages, the specimen among them, are never in it (THEME-7).
+
+(define site (string-trim (site-value 'url) "/" #:left? #f))
+(define (stamp iso) (string-append iso "T00:00:00Z"))
+(define feed-posts
+  (for/list ([p (in-list pages)] #:when (post-kind (hash-ref p 'src)))
+    (define metas (get-metas (hash-ref p 'src)))
+    (define abstract
+      (string-normalize-spaces
+       (string-join (map (λ (a) (regexp-replace #rx"^Abstract" (text-of a) ""))
+                         (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'p) (class? x "abstract")))))
+                    " ")))
+    (hasheq 'url (hash-ref p 'url) 'title (hash-ref p 'title) 'kind (post-kind (hash-ref p 'src))
+            'published (meta-text metas 'published)
+            'author (or (meta-text metas 'author) (site-value 'author))
+            'abstract abstract)))
+(define (kind-category k)
+  `(category ((term ,(if (eq? k 'entry) "notebook" "essay")) (label ,(if (eq? k 'entry) "Notebook entry" "Essay")))))
+(define feed-entries
+  (append
+   (for/list ([p (in-list feed-posts)])
+     (define url (string-append site (hash-ref p 'url)))
+     (cons (hash-ref p 'published)
+           `(entry (title ,(hash-ref p 'title))
+                   (link ((rel "alternate") (type "text/html") (href ,url)))
+                   (id ,url)
+                   (published ,(stamp (hash-ref p 'published)))
+                   (updated ,(stamp (hash-ref p 'published)))
+                   (author (name ,(hash-ref p 'author)))
+                   ,(kind-category (hash-ref p 'kind))
+                   ,@(if (equal? (hash-ref p 'abstract) "") null `((summary ((type "text")) ,(hash-ref p 'abstract)))))))
+   (for*/list ([c (in-list (hash-ref published-graph 'changes))]
+               [p (in-value (findf (λ (p) (equal? (hash-ref p 'url) (hash-ref c 'from))) feed-posts))]
+               #:when (and p (string>? (hash-ref c 'date) (hash-ref p 'published))))
+     (define url (string-append site (hash-ref p 'url)))
+     (cons (hash-ref c 'date)
+           `(entry (title ,(string-append "Revised: " (hash-ref p 'title)))
+                   (link ((rel "alternate") (type "text/html") (href ,(string-append url "#changelog"))))
+                   (id ,(format "~a#changelog-~a" url (hash-ref c 'date)))
+                   (published ,(stamp (hash-ref c 'date)))
+                   (updated ,(stamp (hash-ref c 'date)))
+                   (author (name ,(hash-ref p 'author)))
+                   ,(kind-category (hash-ref p 'kind))
+                   (summary ((type "text")) ,(string-normalize-spaces (text-of (json->tx (hash-ref c 'text))))))))))
+(define (json->tx j) (if (string? j) j (list* (string->symbol (car j)) '() (map json->tx (cddr j)))))
+(define sorted-entries (sort feed-entries string>? #:key car))
+(make-directory* "build")
+(call-with-output-file (build-path "build" "feed.xml") #:exists 'replace
+  (λ (o)
+    (write-string "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" o)
+    (write-string
+     (xexpr->string
+      `(feed ((xmlns "http://www.w3.org/2005/Atom") (xml:lang "en-AU"))
+             (title "Occurrent Development")
+             (subtitle "Essays and notebook entries")
+             (link ((rel "self") (type "application/atom+xml") (href ,(string-append site "/feed.xml"))))
+             (link ((rel "alternate") (type "text/html") (href ,(string-append site "/"))))
+             (id ,(string-append site "/"))
+             (updated ,(stamp (if (pair? sorted-entries) (car (car sorted-entries)) "2026-10-01")))
+             (author (name ,(site-value 'author)))
+             ,@(map cdr sorted-entries)))
+     o)
+    (newline o)))
+
+;; DRAFT-2: what `make` publishes, as "rendered-file public-name" lines:
+;; the pages, every work's page (BIB-1) and the feed (REV-4).
 (call-with-output-file (build-path "data" "publish.txt") #:exists 'replace
   (λ (o) (for ([p (in-list pages)])
            (fprintf o "~a ~a\n" (hash-ref p 'out)
                     (if (equal? (hash-ref p 'url) "/") "index.html"
-                        (string-append (substring (hash-ref p 'url) 1) ".html"))))))
+                        (string-append (substring (hash-ref p 'url) 1) ".html"))))
+         (for ([k (in-list ref-keys)])
+           (fprintf o "build/references/~a.html references/~a.html\n" k k))
+         (fprintf o "build/feed.xml feed.xml\n")))
 
 (unless (zero? errors) (exit 1))
-(printf "validate: ~a pages published, ~a drafts held back, ~a internal links\n"
-        (length pages) (hash-count drafts) (length links))
+(printf "validate: ~a pages published, ~a drafts held back, ~a internal links, ~a works, ~a feed items\n"
+        (length pages) (hash-count drafts) (length links) (length ref-keys) (length sorted-entries))

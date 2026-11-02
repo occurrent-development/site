@@ -4,8 +4,9 @@
 #   make test      typography rules (TYPE-14) and the root pass
 #   make test-browser  the interactive layer in headless Chrome (skipped without Chrome)
 #   make test-emacs  the Emacs mode's tests (needs Emacs 29+)
-#   make serve     Pollen project server on http://localhost:8080
-#   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json, invert.json
+#   make serve     Pollen project server on http://localhost:8080, drafts' graph merged
+#   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json,
+#                  covers, invert.json, and Wayback snapshots in link-meta.json
 #   make clean     remove everything the build generates
 #
 # Needs: Racket with the pollen package; Python 3 with fonttools, brotli and
@@ -26,7 +27,8 @@ SOURCES   := $(shell find . -name '*.pm' -not -name '.\#*' -not -path './public/
              template.html.p pollen.rkt typography.rkt
 FONTS     := assets/fonts/fonts.rktd
 IMAGES    := assets/img/images.json
-IMG_SRC   := $(shell find pages essays notebook -path '*/img/*' -type f 2>/dev/null)
+IMG_SRC   := $(shell find pages essays notebook -path '*/img/*' -type f 2>/dev/null) \
+             $(wildcard refs/covers/*.jpg refs/covers.local/*.jpg)
 
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
@@ -35,8 +37,10 @@ FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name 
 
 all: test publish test-browser
 
-test:
+# The root-pass tests read the image manifest for the covers (BIB-7).
+test: $(IMAGES)
 	$(RACO) test typography-test.rkt pollen-test.rkt
+	$(PYTHON) -m unittest discover -s tools -p '*_test.py'
 	@! grep -rn --include='*.pm' '◊quote\b' . || \
 	  { echo "◊quote is not a tag (Racket's quote swallows it); use ◊blockquote"; exit 1; }
 
@@ -59,13 +63,20 @@ $(FONTS): $(FONTS_SRC) $(SOURCES) tools/fonts.py
 $(IMAGES): $(IMG_SRC) $(SOURCES) tools/images.py
 	$(PYTHON) tools/images.py
 
-# The indexes and the home page list every post, so they are rebuilt
+# The indexes, the home page and the pages built from the link graph
+# (glossary, bibliography, changelog) list every post, so they are rebuilt
 # whenever anything is.
-INDEXES := pages/index.html.pm pages/essays.html.pm pages/notebook.html.pm
+INDEXES := pages/index.html.pm pages/essays.html.pm pages/notebook.html.pm \
+           pages/glossary.html.pm pages/bibliography.html.pm pages/changelog.html.pm
+# BUILD-4: the link graph is written first, by one walk over every post
+# (tools/validate.rkt); every page is then rendered from it. data/links.json
+# is in Pollen's cache watchlist, so when the graph changes every page is
+# rendered again; `make` is always as good as a full rebuild.
 render: $(FONTS) $(IMAGES)
 	touch $(INDEXES)
+	$(RACO) make tools/validate.rkt && racket tools/validate.rkt --graph && racket tools/validate.rkt
 	$(RACO) pollen render -p index.ptree
-	$(RACO) make tools/validate.rkt && racket tools/validate.rkt
+	$(RACO) pollen render -p build/references/index.ptree
 
 # Pages render beside their sources; public/ gets them flattened to /<name>.
 publish: render
@@ -84,16 +95,20 @@ publish: render
 	@bad=$$(find public $(FORBIDDEN)); \
 	  if [ -n "$$bad" ]; then echo "Refusing to publish: $$bad"; exit 1; fi
 
+# The preview merges the drafts' link graph and citations (lib/graph.rkt):
+# OD_PREVIEW=1. Work pages are at /build/references/<key>.html.
 serve: $(FONTS) $(IMAGES)
 	touch $(INDEXES)
-	$(RACO) pollen start . $(PORT)
+	$(RACO) make tools/validate.rkt && OD_PREVIEW=1 racket tools/validate.rkt --graph
+	OD_PREVIEW=1 $(RACO) pollen start . $(PORT)
 
 refresh:
 	ZOTERO_BIB="$(ZOTERO_BIB)" $(PYTHON) tools/refs.py
 	$(PYTHON) tools/invert.py
+	$(PYTHON) tools/wayback.py
 
 clean:
 	$(RACO) pollen reset
 	rm -rf public
 	rm -f index.html pages/*.html essays/*/*.html notebook/*/*.html assets/fonts/*.woff2 $(FONTS)
-	rm -rf assets/img build data/anchors.json data/links.json data/publish.txt
+	rm -rf assets/img build data/anchors.json data/links.json data/links.local.json data/publish.txt

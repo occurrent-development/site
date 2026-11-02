@@ -26,13 +26,14 @@
          "lib/glossary.rkt"
          "lib/lists.rkt"
          "lib/tables.rkt"
-         "lib/figures.rkt")
+         "lib/figures.rkt"
+         "lib/graph.rkt")
 
 (provide root
          ;; headings (§8)
          section subsection subsubsection summary
          ;; standard elements (§3.3)
-         em strong sc code blockquote epigraph br anchor latex
+         em strong sc code blockquote epigraph q br anchor latex
          (rename-out [section-break break])
          ;; annotations (§4–7)
          link cite term aside margin more
@@ -42,6 +43,12 @@
          (rename-out [od-list list]) table table-csv sort-key figure ref
          ;; the home page (§13a); the specimen's sample header (THEME-7)
          index latest header-sample
+         ;; revisions (REV-3) and the pages built from the link graph (Phase 3):
+         ;; the glossary (TERM-8), the bibliography (BIB-4), the site-wide
+         ;; changelog (REV-3) and a work's reference page (BIB-1)
+         changelog glossary-list bibliography-table changelog-list reference-page
+         ;; the reference card, for tools/validate.rkt (BIB-8)
+         reference-card
          ;; used by the template
          site-css font-preloads head-script asset-url specimen? specimen-css
          page-title doc-body format-date revised-date site-menu page-class)
@@ -62,14 +69,21 @@
   (define-runtime-path specimen-css "assets/css/specimen.css")
   (define-runtime-path marks-dir "assets/icons/marks")
   (define-runtime-path site-data "data/site.rktd")
+  ;; Phase 3: the link graph, and its drafts' half, read only in preview (lib/graph.rkt)
+  (define-runtime-path links "data/links.json")
+  (define-runtime-path links-local "data/links.local.json")
+  ;; The project server merges the drafts' graph; `make` never does. The
+  ;; variable is part of the cache key, so the two never share a cache.
+  (define envvar-watchlist '("OD_PREVIEW"))
   ;; SRC-2: an unknown tag is an unbound identifier, so the build fails.
   (define allow-unbound-ids? #f)
   (define block-tags
     '(root address article aside blockquote body div dl dt dd figure figcaption
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
-      od-summary od-more od-abstract od-epistemic))
+      od-summary od-more od-abstract od-epistemic od-changelog))
   (define cache-watchlist
-    (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css site-data)))
+    (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css site-data
+          links links-local)))
 
 (require (prefix-in files: (submod "." setup)))
 
@@ -96,21 +110,92 @@
     (build-error "◊~a #:italic is #t or #f (got ~s)" tag italic))
   italic)
 
+;; BIB-9: #:cite "key" (and #:loc) on a block quotation or an epigraph
+;; makes it a quotation from a cited work: its circle follows the #:source
+;; line, or stands alone on that line when there is none. The cite carries
+;; `block`, so the numbering walk records the quoted text with it.
+(define (quote-footer tag source key loc)
+  (when (and loc (not key))
+    (build-error "◊~a has #:loc but no #:cite: a locator belongs to a cited work (BIB-9)" tag))
+  (when (and key (not (string? key)))
+    (build-error "◊~a #:cite is a citation key in quotes, as in #:cite \"hackingMakingPeople2006\" (BIB-9)" tag))
+  (define circle (and key (txexpr 'od-cite (filter values (list (list 'key key)
+                                                             (and loc (list 'loc (normalize-loc loc)))
+                                                             '(block "1")))
+                                  null)))
+  (cond [(or source circle) `((footer ,@(if source (list (norm source)) null) ,@(if circle (list circle) null)))]
+        [else null]))
+
 ;; `◊quote` cannot be a tag: Racket's `quote` would silently swallow it.
 ;; LAYOUT-4b: roman by default, set off by its indent; #:italic #t sets it
 ;; italic. An optional source is set as an epigraph's is.
-(define (blockquote #:source [source #f] #:italic [italic 'default] . xs)
+(define (blockquote #:source [source #f] #:italic [italic 'default] #:cite [key #f] #:loc [loc #f] . xs)
   (check-italic italic 'blockquote)
   (txexpr 'blockquote `((class ,(if (eq? italic #t) "quote italic" "quote")))
-          (append (paragraphs xs)
-                  (if source `((footer ,(norm source))) null))))
+          (append (paragraphs xs) (quote-footer 'blockquote source key loc))))
 
 ;; LAYOUT-4a: italic by default; #:italic #f sets it roman.
-(define (epigraph #:source [source #f] #:italic [italic 'default] . xs)
+(define (epigraph #:source [source #f] #:italic [italic 'default] #:cite [key #f] #:loc [loc #f] . xs)
   (check-italic italic 'epigraph)
   (txexpr 'blockquote `((class ,(if (eq? italic #f) "epigraph roman" "epigraph")))
-          (append (paragraphs xs)
-                  (if source `((footer ,(norm source))) null))))
+          (append (paragraphs xs) (quote-footer 'epigraph source key loc))))
+
+;; BIB-9: ◊q["key" #:loc "p. 325"]{text}, an inline quotation from a cited
+;; work: a ◊cite with the quoted text attached. The numbering walk sets the
+;; text in quotation marks and follows it with the citation's circle; a
+;; quotation inside it takes single marks, so a straight double quote typed
+;; in the text becomes a single one before the typography pass curls it.
+(define (q key #:loc [loc #f] . xs)
+  (unless (string? key)
+    (build-error "◊q needs a citation key, as in ◊q[\"hackingMakingPeople2006\" #:loc \"p. 23\"]{…} (BIB-9)"))
+  (when (or (null? xs) (regexp-match? #px"^\\s*$" (text-of xs)))
+    (build-error "◊q[~s] quotes nothing: an empty quotation (BIB-9)" key))
+  (for ([x (in-list (find-all xs (tag? 'od-cite 'od-term 'od-aside 'od-link 'od-margin 'od-q)))])
+    (build-error "◊q cannot contain ◊~a: a quotation holds only its text, with ◊em and ◊sc (BIB-9)"
+                 (case (get-tag x) [(od-cite) "cite"] [(od-term) "term"] [(od-aside) "aside"]
+                   [(od-link) "link"] [(od-margin) "margin"] [else "q"])))
+  (define (singles x)
+    (cond [(string? x) (string-replace x "\"" "'")]
+          [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map singles (get-elements x)))]
+          [else x]))
+  (txexpr 'od-q (filter values (list (list 'key key) (and loc (list 'loc (normalize-loc loc)))))
+          (map singles xs)))
+
+;; REV-3: ◊changelog{…}, one line per substantive revision, each starting
+;; with its date: "2026-11-02: Rewrote the second section." The root pass
+;; takes it out of the text and sets it last in the end matter (CITE-10);
+;; /changelog collects every line (◊changelog-list). An entry has none (KIND-2).
+(define (changelog . xs)
+  (txexpr 'od-changelog null (changelog-lines xs)))
+
+(define (changelog-lines xs)
+  ;; split the body at newlines, keeping inline markup within a line
+  (define lines
+    (let loop ([xs xs] [line '()] [lines '()])
+      (match xs
+        ['() (reverse (if (null? line) lines (cons (reverse line) lines)))]
+        [(cons (? string? s) rest)
+         (define parts (string-split s "\n" #:trim? #f))
+         (if (= (length parts) 1)
+             (loop rest (cons s line) lines)
+             (let* ([first-line (reverse (cons (car parts) line))]
+                    [middle (map list (drop-right (cdr parts) 1))]
+                    [last-part (last parts)])
+               (loop rest (list last-part) (append (reverse middle) (list first-line) lines))))]
+        [(cons x rest) (loop rest (cons x line) lines)])))
+  (define kept (for/list ([l (in-list lines)] #:when (regexp-match? #px"\\S" (text-of l)))
+                 (filter (λ (e) (not (equal? e ""))) l)))
+  (when (null? kept) (build-error "◊changelog is empty: one line per revision, as in 2026-11-02: What changed (REV-3)"))
+  (for/list ([l (in-list kept)])
+    (define l* (match l [(cons (? string? s) r) (cons (string-trim s #:right? #f) r)] [_ l]))
+    (match (and (string? (car l*)) (regexp-match #px"^(\\d{4}-\\d{2}-\\d{2}):?\\s*(.*)$" (car l*)))
+      [(list _ date rest)
+       (format-date date)   ; a bad date fails here
+       (define text (filter (λ (e) (not (equal? e ""))) (cons rest (cdr l*))))
+       (when (null? text) (build-error "◊changelog: the line for ~a says nothing (REV-3)" date))
+       (txexpr 'od-change `((date ,date)) text)]
+      [_ (build-error "◊changelog: every line starts with its date, as in 2026-11-02: What changed (REV-3); got ~s"
+                      (string-trim (text-of l)))])))
 
 ;; LAYOUT-4: one glyph, drawn by CSS from assets/icons/asterism.svg.
 (define (section-break) '(hr ((class "break"))))
@@ -547,12 +632,38 @@
      (define meta (for/list ([(k v) (in-hash (link-meta href))]
                              #:unless (assq (string->symbol (format "data-~a" k)) data))
                     (list (string->symbol (format "data-~a" k)) (format "~a" v))))
-     `(a ((class "link ext") (href ,href) ,@data ,@meta) ,@(with-mark kids 'ext))]
-    [(regexp-match? #px"^/(?:notebook/)?[a-z0-9-]*(#[a-z0-9-]+)?$" href)   ; KIND-5: entries too
+     ;; CARD-3: a link known dead points at its Wayback copy
+     (define m (link-meta href))
+     (define href* (if (and (hash-ref m 'dead #f) (hash-ref m 'wayback #f)) (hash-ref m 'wayback) href))
+     `(a ((class "link ext") (href ,href*) ,@data ,@meta) ,@(with-mark kids 'ext))]
+    [(or (regexp-match? #px"^/(?:notebook/)?[a-z0-9-]*(#[a-z0-9-]+)?$" href)   ; KIND-5: entries too
+         (regexp-match? #px"^/references/[A-Za-z0-9_:.-]+$" href))           ; BIB-2: the key, case kept
      `(a ((class "link xref") (href ,href)) ,@(with-mark kids 'xref))]
     [(regexp-match? #px"^#[a-z0-9-]+$" href)
      `(a ((class "link same") (href ,href)) ,@(with-mark kids 'od-dir))]
-    [else (build-error "◊link target ~s is not http(s)://…, /slug, /notebook/slug, either with #id, or #id" href)]))
+    [else (build-error "◊link target ~s is not http(s)://…, /slug, /notebook/slug, either with #id, /references/key, or #id" href)]))
+
+;; BIB-5: a work's page, from its Notes and Bibliography entries: a → alone,
+;; named, as the ↩ beside it is.
+(define (reference-link key)
+  `(a ((class "link xref to-ref") (href ,(string-append "/references/" key))
+       (aria-label "The work's reference page"))
+      (span ((class "nw")) ,WJ ,(mark 'xref))))
+
+;; BIB-9: a quotation's text, plain (markup and margin notes dropped), for
+;; the link graph and the work's Quoted list.
+(define (plain-text xs)
+  (string-normalize-spaces
+   (let loop ([x xs])
+     (cond [(string? x) x]
+           [(and (txexpr? x) (or (has-class? x "margin-note") (has-class? x "vh") (attrs-have-key? x 'hidden))) ""]
+           [(txexpr? x) (string-append* (map loop (get-elements x)))]
+           [(list? x) (string-append* (map loop x))]
+           [else ""]))))
+
+;; The children of a walked element, with any od-splice spliced in.
+(define (splice els)
+  (append-map (λ (e) (if ((tag? 'od-splice) e) (get-elements e) (list e))) els))
 
 ;; The numbering walk and end matter (steps 4–6, CITE-1/2/10).
 (define (annotate doc-elems)
@@ -567,6 +678,13 @@
 
   (define (walk x)
     (match x
+      ;; CITE-7: unnumbered (a reference page's commentary, the glossary
+      ;; page): the circle opens the work's entry in the Bibliography
+      [(? (tag? 'od-cite)) #:when (attrs-have-key? x 'unnumbered)
+       (define key (attr-ref x 'key))
+       (bib-entry key)
+       (hash-set! bib-keys key #t)
+       `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")))]
       [(? (tag? 'od-cite))
        (set! note-n (add1 note-n))
        (define n note-n)
@@ -576,9 +694,11 @@
        (hash-set! seen-keys key #t)
        (hash-set! bib-keys key #t)
        (define commentary (and (attrs-have-key? x 'note) (typeset-string (attr-ref x 'note))))
+       ;; BIB-9: a quotation's text and locator go with its note, for the graph
+       (define quoted (and (attrs-have-key? x 'quote) (list (attr-ref x 'quote) (or loc ""))))
        (set! notes (cons (list n (append (note-form key loc first?)
                                          (if commentary (list " " commentary) null))
-                               key first?)
+                               key first? quoted)
                          notes))
        ;; CITE-1: the number belongs to the note; the text gets a circle.
        `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "note ~a" n))))]
@@ -590,7 +710,7 @@
            [(cons (? (tag? 'od-phrase) p) more) (values (get-elements p) more)]
            [els (values #f els)]))
        ;; reference numbering continues inside the aside, at its place in the argument
-       (define body (map walk els))
+       (define body (splice (map walk els)))
        (set! asides (cons (list i body) asides))
        ;; ASIDE-2: unnumbered. ASIDE-1: the inline copy, which the script lifts
        ;; into the margin, travels with the circle.
@@ -611,10 +731,32 @@
            (term-link id kids)
            `(span ((class "term")) ,@kids))]
       [(? (tag? 'od-link)) (resolve-link x (map walk (get-elements x)))]
-      [(? txexpr?) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+      ;; BIB-9: “text” and its citation's circle, closing mark bound to the last word
+      [(? (tag? 'od-q))
+       (define kids (map walk (get-elements x)))
+       (define cite (txexpr 'od-cite (append (filter (λ (a) (memq (car a) '(key loc))) (get-attrs x))
+                                             `((quote ,(plain-text kids))))
+                            null))
+       (define closed (match (and (pair? kids) (last kids))
+                        [(? string? s) (append (drop-right kids 1) (list (string-append s "”")))]
+                        [_ (append kids (list "”"))]))
+       `(od-splice () ,@(match closed
+                          [(cons (? string? s) more) (cons (string-append "“" s) more)]
+                          [_ (cons "“" closed)])
+                   ,(walk cite))]
+      ;; BIB-9: a block quotation from a cited work; its text goes with the note
+      [(? (tag? 'blockquote))
+       #:when (pair? (find-all x (λ (e) (and ((tag? 'od-cite) e) (attrs-have-key? e 'block)))))
+       (define text (plain-text (filter (λ (e) (not ((tag? 'footer) e))) (get-elements x))))
+       (walk (let mark ([e x])
+               (cond [(and ((tag? 'od-cite) e) (attrs-have-key? e 'block))
+                      (txexpr 'od-cite (cons (list 'quote text) (filter (λ (a) (not (eq? (car a) 'block))) (get-attrs e))) null)]
+                     [(txexpr? e) (txexpr (get-tag e) (get-attrs e) (map mark (get-elements e)))]
+                     [else e])))]
+      [(? txexpr?) (txexpr (get-tag x) (get-attrs x) (splice (map walk (get-elements x))))]
       [_ x]))
 
-  (define body (map walk doc-elems))
+  (define body (splice (map walk doc-elems)))
 
   ;; TERM-4: the Terms section, including terms used inside definitions.
   (define term-entries
@@ -686,11 +828,12 @@
                   (endmatter "notes" "Notes"
                              `(ol ((class "notes"))
                                   ,@(for/list ([nt (in-list (reverse notes))])
-                                      (match-define (list n elems key first?) nt)
+                                      (match-define (list n elems key first? quoted) nt)
                                       `(li ((id ,(format "note-~a" n)) (value ,(number->string n))
                                             (data-bib ,(string-append "bib-" key))
-                                            (data-form ,(if first? "full" "short")))
-                                           ,@elems " "
+                                            (data-form ,(if first? "full" "short"))
+                                            ,@(if quoted `((data-quote ,(car quoted)) (data-loc ,(cadr quoted))) null))
+                                           ,@elems "\u00A0" ,(reference-link key) " "
                                            (od-back ((target ,(format "note-~a" n)) (label ,(format "Back to note ~a in the text" n)))))))))
              ;; CITE-10: every work the page cites, in the bibliography's
              ;; order, including works cited only inside definitions (CITE-7).
@@ -700,7 +843,7 @@
                   (endmatter "bibliography" "Bibliography"
                              `(ul ((class "bibliography"))
                                   ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
-                                      `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k)))))))))
+                                      `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k) "\u00A0" ,(reference-link k)))))))))
   (append body end))
 
 ;; A first-use term: its text links to its definition, with a circle.
@@ -983,8 +1126,15 @@
 (define (page-root elems)
   (check-essay-metas)
   (let ([t (and (current-metas) (select-from-metas 'tags (current-metas)))]) (when t (parse-tags t)))
-  (define-values (abstract-el epistemic-el flat) (take-header-text (prepare elems)))
+  (define-values (abstract-el epistemic-el flat*) (take-header-text (prepare elems)))
   (define entry? (eq? (post-kind (or (source-path) "")) 'entry))
+  ;; REV-3: the changelog leaves the text for the end matter; KIND-2: an entry has none
+  (define-values (changelogs flat) (partition (tag? 'od-changelog) flat*))
+  (when (and entry? (pair? changelogs))
+    (build-error "◊changelog is for essays: a notebook entry is not revised, and a change of mind is a new entry (KIND-2)"))
+  (when (> (length changelogs) 1) (build-error "◊changelog appears more than once; keep every line in one (REV-3)"))
+  (for ([x (in-list flat)] #:when (txexpr? x))
+    (forbid (list x) '(od-changelog) "a paragraph or another tag"))
   ;; KIND-2: an entry records what was thought on a date; it states no epistemic status
   (when (and entry? epistemic-el)
     (build-error "◊epistemic is for essays: a notebook entry has no epistemic status (KIND-2)"))
@@ -1011,12 +1161,290 @@
   ;; TOC-1: after the abstract (in the header) and any epigraph, before the text.
   (define-values (epigraphs body)
     (splitf-at nested (λ (x) (has-class? x "epigraph"))))
-  (define annotated (annotate (append (if header (list (car numbered)) null)
-                                      epigraphs (if toc (list toc) null) body)))
+  (define annotated (append (annotate (append (if header (list (car numbered)) null)
+                                              epigraphs (if toc (list toc) null) body))
+                            ;; CITE-10: … Bibliography · Backlinks · Changelog
+                            (backlinks-section)
+                            (if (pair? changelogs) (list (changelog-section (car changelogs))) null)))
   (define doc (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated)))))))
   (check-unique-ids doc)
   (check-quotes doc)
   doc)
+
+;; ---------------------------------------------------------------------------
+;; Around the essays (Phase 3): everything built from the link graph
+;; (lib/graph.rkt, written by tools/validate.rkt before rendering)
+
+;; This page's URL, from its source path.
+(define (page-url)
+  (define p (source-path))
+  (and p (let ([rel (find-relative-path (simplify-path (path->complete-path (current-project-root)))
+                                        (simplify-path (path->complete-path p)))])
+           (output->url (regexp-replace #rx"\\.pm$" (path->string rel) "")))))
+
+;; A page in the graph: a post, or a page listed in the essay index by its
+;; date (the specimen, THEME-7). Only these have Backlinks and a Cited in.
+(define (graph-page?)
+  (define p (source-path))
+  (and p (or (post-source? p) (and (current-metas) (select-from-metas 'published (current-metas)) #t))))
+
+(define (post-title url)
+  (define info (post-info url))
+  (typeset-string (if info (hash-ref info 'title "") url)))
+
+;; KIND-5: each listed post is marked with its kind.
+(define (kind-label url)
+  (define info (post-info url))
+  `(span ((class "kind")) ,(if (and info (equal? (hash-ref info 'kind #f) "entry")) "notebook" "essay")))
+
+;; One entry of Backlinks or Cited in (VAL-4, BIB-1): the linking post and
+;; section, then the context, collapsed to about two lines; More expands it,
+;; without scripts (a <details>; CSS lifts the clamp). Short contexts need no More.
+(define (context-entry r)
+  (define from (hash-ref r 'from))
+  (define sec (hash-ref r 'section #f))
+  (define sec-title (and (string? sec) (let ([info (post-info from)])
+                                         (and info (hash-ref (hash-ref info 'sections (hasheq)) (string->symbol sec) #f)))))
+  (define ctx (json->txexpr (hash-ref r 'context)))
+  `(li ((class "context-entry"))
+       (p ((class "context-from"))
+          (a ((class "link xref") (href ,from)) ,@(with-mark (list (post-title from)) 'xref))
+          ,@(if sec-title
+                `((span ((class "sep")) " · ")
+                  (a ((class "link xref") (href ,(string-append from "#" sec))) ,@(with-mark (list (typeset-string sec-title)) 'xref)))
+                null)
+          " " ,(kind-label from))
+       (div ((class "context")) ,@(get-elements ctx))
+       ,@(if (> (string-length (text-of ctx)) 170)
+             '((details ((class "context-more")) (summary (span ((class "more")) "More") (span ((class "less")) "Less"))))
+             null)))
+
+(define (context-list records)
+  (define order (index-order (map (λ (r) (hash-ref r 'from)) records)))
+  `(ul ((class "contexts"))
+       ,@(for*/list ([url (in-list order)] [r (in-list records)] #:when (equal? (hash-ref r 'from) url))
+           (context-entry r))))
+
+;; VAL-4: the posts and sections that link here.
+(define (backlinks-section)
+  (define url (and (graph-page?) (page-url)))
+  (define links (if url (backlinks-to url) null))
+  (if (null? links)
+      null
+      (list `(section ((class "endmatter") (id "backlinks")) (h2 "Backlinks") ,(context-list links)))))
+
+;; REV-3: a post's own changelog, last in the end matter.
+(define (change-line c)
+  (define date (attr-ref c 'date))
+  (forbid (get-elements c) '(od-cite od-term od-aside od-margin od-q) "◊changelog")
+  `(li (time ((datetime ,date)) ,(format-date date)) " "
+       ,@(for/list ([e (in-list (get-elements c))])
+           (let walk ([e e])
+             (cond [((tag? 'od-link) e) (resolve-link e (map walk (get-elements e)))]
+                   [(txexpr? e) (txexpr (get-tag e) (get-attrs e) (map walk (get-elements e)))]
+                   [else e])))))
+(define (changelog-section cl)
+  `(section ((class "endmatter") (id "changelog")) (h2 "Changelog")
+            (ul ((class "changelog")) ,@(map change-line (get-elements cl)))))
+
+;; /changelog (REV-3): every line on the site, newest first, each with its post.
+(define (changelog-list)
+  (define lines (sort (changes) string>? #:key (λ (c) (hash-ref c 'date))))
+  (if (null? lines)
+      '(p ((class "empty")) "Nothing has been revised yet.")
+      `(ul ((class "changelog site-changelog"))
+           ,@(for/list ([c (in-list lines)])
+               (define from (hash-ref c 'from))
+               `(li (time ((datetime ,(hash-ref c 'date))) ,(format-date (hash-ref c 'date))) " "
+                    (a ((class "link xref") (href ,from)) ,@(with-mark (list (post-title from)) 'xref))
+                    " " ,(kind-label from) (span ((class "sep")) " · ")
+                    ,@(get-elements (json->txexpr (hash-ref c 'text))))))))
+
+;; --- Reference pages and the card (§5a) --------------------------------------
+
+;; BIB-3: references/<key>.pm, commentary on a cited work. Paragraphs only;
+;; ◊term, ◊link, ◊em, ◊sc and ◊cite inside (the citations unnumbered, CITE-7).
+(define (commentary-source? path)
+  (and path (let-values ([(dir name _) (split-path (simplify-path path))])
+              (equal? (simplify-path dir) (simplify-path (path->directory-path (project-file "references")))))))
+
+(define (commentary-root elems)
+  (define key (path->string (path-replace-extension (file-name-from-path (source-path)) #"")))
+  (unless (cite-key-known? key)
+    (build-error "references/~a.pm: no work ~s is cited, so it has no page; check the key, or run `make refresh` (BIB-3)" key key))
+  (define flat (prepare elems))
+  (for ([x (in-list flat)] #:unless (or ((tag? 'p) x) (blank? x)))
+    (build-error "references/~a.pm: a commentary is paragraphs only, with ◊term, ◊link, ◊em, ◊sc and ◊cite inside (BIB-3); found ~a"
+                 key (if (txexpr? x) (format "◊~a" (get-tag x)) (format "~s" x))))
+  (forbid flat '(od-aside od-margin od-more od-q od-changelog) (format "references/~a.pm (BIB-3)" key))
+  (for ([l (in-list (find-all flat (tag? 'od-link)))] #:when (regexp-match? #rx"^#" (attr-ref l 'href)))
+    (build-error "references/~a.pm: a commentary cannot link within a page" key))
+  (check-quotes (txexpr 'root null flat)))
+
+;; The commentary's paragraphs, unresolved (od-term, od-link, od-cite), or null.
+(define (commentary key)
+  (define f (project-file "references" (string-append key ".pm")))
+  (if (file-exists? f)
+      (filter (tag? 'p) (get-elements (get-doc f)))
+      null))
+
+(define (work-facts key) (cite-facts key))
+
+;; BIB-8: one function builds the head of the work's page and its card, so
+;; the two cannot drift. Both: the cover at the left (BIB-7), the
+;; bibliography entry, the DOI or URL with its ↗ and the Wayback copy
+;; (CARD-3). The card adds the commentary's first paragraph and the line
+;; "Cited in n posts · Reference page"; the page sets the whole commentary
+;; after the head. The commentary is left unresolved: the page's root pass
+;; resolves it, and the card resolves it for a fragment (reference-card).
+(define (reference-head key #:card? [card? #f])
+  (define facts (work-facts key))
+  (define title (hash-ref facts 'title))
+  (define cover (cover-picture key title))
+  (define url (hash-ref facts 'url))
+  (define doi (hash-ref facts 'doi))
+  (define meta (if url (link-meta url) (hasheq)))
+  (define links
+    (filter values
+            (list (and doi (external-link (string-append "https://doi.org/" doi) (list "DOI")))
+                  (and url (not (equal? url (and doi (string-append "https://doi.org/" doi))))
+                       (external-link url (list "Online")))
+                  (and (hash-ref meta 'wayback #f) (external-link (hash-ref meta 'wayback) (list "Wayback copy"))))))
+  (define dead (hash-ref meta 'dead #f))
+  (define n (length (remove-duplicates (map (λ (c) (hash-ref c 'from)) (cites-of key)))))
+  `(div ((class ,(string-append (if card? "ref-card" "ref-head") (if cover " has-cover" "")))
+         ,@(if card? `((data-title ,title)) null))   ; a popup's title when the card is opened alone
+        ,@(if cover (list cover) null)
+        (div ((class "ref-text"))
+             (p ((class "ref-entry")) ,@(bib-entry key))
+             ,@(if (null? links) null
+                   `((p ((class "ref-links")) ,@(add-between links '(span ((class "sep")) " · "))
+                        ,@(if dead `(" " (span ((class "ref-dead")) ,(format "Original offline since ~a" dead))) null))))
+             ,@(if card?
+                   (append (take (commentary key) (min 1 (length (commentary key))))
+                           `((p ((class "ref-cited"))
+                                ,@(if (positive? n) (list (format "Cited in ~a post~a" n (if (= n 1) "" "s")) '(span ((class "sep")) " · ")) null)
+                                (a ((class "link xref") (href ,(string-append "/references/" key)))
+                                   ,@(with-mark '("Reference page") 'xref)))))
+                   null))))
+
+;; BIB-8: the card as a fragment (/_x/references/<key>.frag), for the note
+;; popups; tools/validate.rkt writes it. Its commentary paragraph is
+;; resolved here: links keep their marks, a term is plain text and a
+;; citation is dropped, as circles are in every fragment (POP-7).
+(define (reference-card key)
+  (let walk ([x (reference-head key #:card? #t)])
+    (cond
+      [((tag? 'od-cite) x) ""]
+      [((tag? 'od-term) x) (txexpr 'span null (map walk (get-elements x)))]
+      [((tag? 'od-link) x) (resolve-link x (map walk (get-elements x)))]
+      [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+      [else x])))
+
+;; Mark a commentary's or definition's citations unnumbered (CITE-7).
+(define (unnumbered xs)
+  (let walk ([x xs])
+    (cond [((tag? 'od-cite) x) (attr-set x 'unnumbered "1")]
+          [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+          [(list? x) (map walk x)]
+          [else x])))
+
+;; BIB-1: /references/<key>, generated for every work in the citation cache
+;; (tools/validate.rkt writes a one-line source per key under build/). In
+;; order: the head (reference-head), the commentary, Quoted (BIB-9) and Cited
+;; in (as Backlinks are). No dates, no tags; not listed anywhere.
+(define (reference-page key)
+  (unless (cite-key-known? key) (build-error "◊reference-page: no work ~s in the citation cache" key))
+  (define quotes (quotes-of key))
+  (define cites (cites-of key))
+  (define com (commentary key))
+  `(div ((class "reference"))
+        ,(reference-head key)
+        ,@(if (null? com) null `((div ((class "commentary")) ,@(unnumbered com))))
+        ,@(if (null? quotes) null
+              `((section ((class "ref-list") (id "quoted")) (h2 "Quoted")
+                         ,@(for/list ([url (in-list (index-order (map (λ (q) (hash-ref q 'from)) quotes)))])
+                             `(div ((class "quoted-post"))
+                                   (p ((class "context-from"))
+                                      (a ((class "link xref") (href ,url)) ,@(with-mark (list (post-title url)) 'xref))
+                                      " " ,(kind-label url))
+                                   (ul ((class "quoted"))
+                                       ,@(for/list ([q (in-list quotes)] #:when (equal? (hash-ref q 'from) url))
+                                           (define loc (hash-ref q 'loc ""))
+                                           `(li (span ((class "passage")) ,(typeset-string (string-append "“" (hash-ref q 'text) "”")))
+                                                ,@(if (equal? loc "") null `(" " (span ((class "loc")) ,(typeset-string loc))))
+                                                "\u00A0"
+                                                (a ((class "link xref to-mark") (href ,(string-append url "#" (hash-ref q 'mark)))
+                                                    (aria-label "Where it is quoted"))
+                                                   (span ((class "nw")) ,WJ ,(mark 'xref)))))))))))
+        ,@(if (null? cites) null
+              `((section ((class "ref-list") (id "cited-in")) (h2 "Cited in") ,(context-list cites))))))
+
+;; --- The glossary page (TERM-8) -------------------------------------------
+
+;; /glossary: every term, alphabetical by headword, built from glossary/ at
+;; render. A term inside a definition is a link within this page; citations
+;; keep their circles, unnumbered (CITE-7).
+(define (glossary-list)
+  (define ids (sort (glossary-ids) string-ci<? #:key (λ (id) (hash-ref (term-ref id) 'term))))
+  (define (localise xs)
+    (let walk ([x xs])
+      (cond [((tag? 'od-term) x)
+             (txexpr 'od-link `((href ,(string-append "#" (attr-ref x 'ref)))) (map walk (get-elements x)))]
+            [((tag? 'od-cite) x) (attr-set x 'unnumbered "1")]
+            [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
+            [(list? x) (map walk x)]
+            [else x])))
+  `(div ((class "glossary"))
+        ,@(for/list ([id (in-list ids)])
+            (define t (term-ref id))
+            (define users (term-users id))
+            `(div ((class "glossary-entry") (id ,id))
+                  (p ((class "definition")) (dfn ,(hash-ref t 'term)) ". " ,@(localise (hash-ref t 'definition)))
+                  ,@(if (pair? (hash-ref t 'aliases))
+                        `((p ((class "aliases")) "Also: " ,@(add-between (map (λ (a) `(em ,a)) (hash-ref t 'aliases)) ", ")))
+                        null)
+                  ,@(if (hash-ref t 'more) `((div ((class "term-more")) ,@(localise (hash-ref t 'more)))) null)
+                  ,@(if (null? (hash-ref t 'see-also)) null
+                        `((p ((class "see-also")) "See also: "
+                             ,@(add-between (for/list ([s (in-list (hash-ref t 'see-also))])
+                                              `(od-link ((href ,(string-append "#" s))) ,(hash-ref (term-ref s) 'term)))
+                                            ", "))))
+                  ,@(if (null? users) null
+                        `((p ((class "used-in")) "Used in: "
+                             ,@(add-between (for/list ([u (in-list users)])
+                                              `(span (a ((class "link xref") (href ,u)) ,@(with-mark (list (post-title u)) 'xref))
+                                                     " " ,(kind-label u)))
+                                            ", "))))))))
+
+;; --- The bibliography page (BIB-4) ----------------------------------------
+
+;; /bibliography: one table through the shared table code (INDEX-1a):
+;; Author · Year · Title · Type · Cited in, by author then year; the title
+;; links to the work's page; Cited in is a count. No covers (BIB-7).
+(define (bibliography-table)
+  (define keys (sort (cite-keys) string-ci<?
+                     #:key (λ (k) (let ([f (work-facts k)])
+                                    (format "~a ~a ~a" (string-join (hash-ref f 'authors) " ") (hash-ref f 'year) (hash-ref f 'title))))))
+  (define (authors f)
+    (match (hash-ref f 'authors)
+      ['() "—"] [(list a) a] [(list a b) (string-append a " and " b)] [(cons a _) (string-append a " et al.")]))
+  (define rows
+    (for/list ([k (in-list keys)])
+      (define f (work-facts k))
+      (define n (length (remove-duplicates (map (λ (c) (hash-ref c 'from)) (cites-of k)))))
+      (list (list (authors f))
+            (list (hash-ref f 'year))
+            (list `(a ((class "link xref") (href ,(string-append "/references/" k)))
+                      ,@(with-mark (list (typeset-string (hash-ref f 'title))) 'xref)))
+            (list (hash-ref f 'type))
+            (list (number->string n)))))
+  `(div ((class "bibliography-index"))
+        (div ((class "table-wrap size-normal"))
+             (div ((class "table-scroll") (tabindex "0") (role "region") (aria-label "Bibliography"))
+                  ,(table-element '(("Author") ("Year") ("Title") ("Type") ("Cited in")) '(#f #f #f #f #f) rows
+                                  #:class "index-table bib-table" #:sortable #t
+                                  #:col-classes '("author" "year" "title" "type" "cited"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; The indexes and the home page (§13a, §13b)
@@ -1117,9 +1545,10 @@
                       ,(if (eq? (hash-ref e 'kind) 'entry) " · notebook · " " · essay · ")
                       (time ((datetime ,(hash-ref e 'published))) ,(format-date (hash-ref e 'published))))))))
 
-;; NAV-1: the menu at the top left. Items live here, once. Glossary (TERM-8)
-;; and Bibliography (BIB-4) join it when their pages are built, in Phase 3.
-(define menu-items '(("Home" "/") ("Essays" "/essays") ("Notebook" "/notebook")))
+;; NAV-1: the menu at the top left. Items live here, once: Home · Essays ·
+;; Notebook · Glossary (TERM-8) · Bibliography (BIB-4), then Scratch.
+(define menu-items '(("Home" "/") ("Essays" "/essays") ("Notebook" "/notebook")
+                     ("Glossary" "/glossary") ("Bibliography" "/bibliography")))
 
 ;; NAV-1, BAR-1: BAR? makes the reading bar's copy, which on tier S shows a
 ;; shortened name and on touch devices the monogram (BRAND-1), which the
@@ -1158,9 +1587,9 @@
   (if (and here (eq? (post-kind (format "~a" here)) 'entry)) "page kind-entry" "page"))
 
 (define (root . elems)
-  (if (glossary-source? (source-path))
-      (glossary-root elems)
-      (page-root elems)))
+  (cond [(glossary-source? (source-path)) (glossary-root elems)]
+        [(commentary-source? (source-path)) (commentary-root elems)]
+        [else (page-root elems)]))
 
 ;; ---------------------------------------------------------------------------
 ;; Template helpers
@@ -1359,7 +1788,12 @@
                              ;; unless the post names its own; pages (the indexes, the colophon) none
                              #:author (and (post-source? (format "~a" (or (select-from-metas 'here-path metas) "")))
                                            (or (meta 'author) (site-value 'author)))
-                             #:source (select-from-metas 'here-path metas)
+                             ;; BIB-1: a reference page's source is its commentary, when it has one
+                             #:source (let ([key (meta 'reference)])
+                                        (if key
+                                            (let ([f (project-file "references" (string-append key ".pm"))])
+                                              (and (file-exists? f) f))
+                                            (select-from-metas 'here-path metas)))
                              #:index (if (eq? (post-kind (format "~a" (or (select-from-metas 'here-path metas) ""))) 'entry)
                                          "/notebook" "/essays")))))
 

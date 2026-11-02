@@ -7,8 +7,11 @@
    refs.bib. Private fields (abstracts, notes, file paths, keywords) are
    dropped: the repository is public.
 3. Run pandoc --citeproc with the Chicago notes style and write, per key,
-   the full note, the short note and the bibliography entry, plus DOI/URL
-   and bibliography order, to data/cite-cache.json.
+   the full note, the short note and the bibliography entry, plus DOI/URL,
+   bibliography order and the facts /bibliography sorts by (title, authors,
+   year, type; BIB-4), to data/cite-cache.json.
+4. Copy each cited work's cover (BIB-7): a photograph of your own copy,
+   attached to the Zotero item as cover.jpg, downsized to refs/covers/<key>.jpg.
 
 Fragments are stored as X-expressions in JSON (["em", {}, "text"]), so the
 Racket build never parses HTML.
@@ -38,8 +41,17 @@ PRIVATE_FIELDS = {
     "abstract", "file", "keywords", "annotation", "annote", "note", "copyright",
     "urldate", "ids", "mendeley-tags", "groups", "owner", "timestamp",
 }
-CITE = re.compile(r'◊cite\[\s*"([^"]+)"([^\]]*)\]', re.S)
+# A citation is ◊cite["key" …], ◊q["key" …]{…} (BIB-9), or #:cite "key" on a
+# block quotation or epigraph, each with an optional #:loc.
+CITE = re.compile(r'◊(?:cite|q)\[\s*"([^"]+)"([^\]]*)\]', re.S)
+BLOCK = re.compile(r'◊(?:blockquote|epigraph)\[([^\]]*#:cite[^\]]*)\]', re.S)
+BLOCK_KEY = re.compile(r'#:cite\s+"([^"]+)"')
 LOC = re.compile(r'#:loc\s+"([^"]*)"')
+COVERS = ROOT / "refs" / "covers"
+# Covers of works only drafts cite stay local too, as their entries do (CITE-5a).
+LOCAL_COVERS = ROOT / "refs" / "covers.local"
+IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic", ".heif"}
+COVER_SIDE = 800
 
 
 def norm_loc(loc):
@@ -59,7 +71,8 @@ def cited():
             continue
         text = path.read_text(encoding="utf-8")
         draft = bool(DRAFT.search(text))
-        for key, rest in CITE.findall(text):
+        blocks = [(m.group(1), rest) for rest in BLOCK.findall(text) for m in [BLOCK_KEY.search(rest)] if m]
+        for key, rest in CITE.findall(text) + blocks:
             m = LOC.search(rest)
             loc = norm_loc(m.group(1) if m else "")
             locs = found.setdefault(key, [])
@@ -125,6 +138,8 @@ def strip_private(entry):
 
 
 def write_bib(keys, local_keys=()):
+    """Write refs.bib (and refs.local.bib); return the raw entries read,
+    `file` fields and all, for the covers."""
     zotero = os.environ.get("ZOTERO_BIB")
     sources = {}
     for f in (BIB, LOCAL_BIB):
@@ -147,6 +162,85 @@ def write_bib(keys, local_keys=()):
         print(f"refs: {len(local_keys)} entries cited only by drafts, in refs/refs.local.bib (not committed)")
     elif LOCAL_BIB.exists():
         LOCAL_BIB.unlink()
+    return sources if zotero else None
+
+
+def attachments(entry):
+    """The absolute paths in a Better BibTeX `file` field, `;`-separated."""
+    raw = next((v for n, v in parse_entry(entry)[2] if n.lower() == "file"), None)
+    if not raw:
+        return []
+    raw = raw.strip()
+    if raw[:1] in "{\"":
+        raw = raw[1:-1]
+    return [pathlib.Path(p.strip()) for p in re.split(r"(?<!\\);", raw) if p.strip()]
+
+
+def cover_source(key, entry):
+    """The attachment that is the work's cover (BIB-7): the image whose name
+    contains `cover`, else the only image; None when there is none. Two or
+    more images with no cover among them, or a HEIC, is an error."""
+    images = [p for p in attachments(entry) if p.suffix.lower() in IMAGE_EXT]
+    named = [p for p in images if "cover" in p.name.lower()]
+    if len(named) > 1:
+        sys.exit(f"refs: {key} has {len(named)} attachments named cover: "
+                 + ", ".join(str(p) for p in named) + "; keep one")
+    if not named and len(images) > 1:
+        sys.exit(f"refs: {key} has {len(images)} image attachments and none is named cover: "
+                 + ", ".join(str(p) for p in images) + "; rename the photograph of your copy cover.jpg")
+    src = (named or images or [None])[0]
+    if src and src.suffix.lower() in (".heic", ".heif"):
+        sys.exit(f"refs: {key}: {src} is HEIC; export the photograph as JPEG (cover.jpg) and attach that instead")
+    return src
+
+
+def shown(path):
+    """A path for a message: relative to the repository when it is inside it."""
+    try:
+        return path.relative_to(ROOT)
+    except ValueError:
+        return path
+
+
+def write_cover(src, dest):
+    """A JPEG copy, longest side COVER_SIDE px, of a cover photograph."""
+    from PIL import Image, ImageOps
+    with Image.open(src) as img:
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        img.thumbnail((COVER_SIDE, COVER_SIDE), Image.LANCZOS)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        img.save(dest, "JPEG", quality=85, optimize=True, progressive=True)
+
+
+def refresh_covers(sources, public_keys, local_keys):
+    """BIB-7: refs/covers/<key>.jpg for every cited work with a cover in
+    Zotero, refs/covers.local/ for works only drafts cite. A copy whose
+    attachment has gone is deleted, with a warning. Without the Zotero
+    export (no ZOTERO_BIB) the covers are left as they are."""
+    if sources is None:
+        print("refs: ZOTERO_BIB not set; covers left as they are")
+        return
+    for folder, keys in ((COVERS, public_keys), (LOCAL_COVERS, local_keys)):
+        wanted = set()
+        for k in keys:
+            src = cover_source(k, sources[k])
+            if src is None:
+                continue
+            if not src.exists():
+                print(f"refs: warning: {k}: the cover attachment {src} is missing from Zotero's storage")
+                continue
+            dest = folder / f"{k}.jpg"
+            # re-encode only when the photograph is newer than the copy
+            if not dest.exists() or src.stat().st_mtime > dest.stat().st_mtime:
+                write_cover(src, dest)
+                print(f"refs: cover for {k} → {shown(dest)}")
+            wanted.add(dest.name)
+        if folder.exists():
+            for old in folder.glob("*.jpg"):
+                if old.name not in wanted:
+                    old.unlink()
+                    print(f"refs: warning: {old.stem} has no cover in Zotero any more (or is no longer cited "
+                          f"there); deleted {shown(old)}")
 
 
 class XExpr(html.parser.HTMLParser):
@@ -261,6 +355,32 @@ def field(entry, name):
     return None
 
 
+def plain(tex):
+    """A BibTeX value as plain text: braces, escapes and dashes resolved."""
+    s = re.sub(r"\\([&%$#_])", r"\1", tex or "")
+    s = s.replace("---", "—").replace("--", "–")
+    s = re.sub(r"[{}]", "", s).replace("~", "\u00a0")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+TYPES = {"book": "Book", "article": "Article", "incollection": "Chapter", "inbook": "Chapter",
+         "inproceedings": "Paper", "thesis": "Thesis", "phdthesis": "Thesis", "mastersthesis": "Thesis",
+         "report": "Report", "techreport": "Report", "online": "Web page", "misc": "Other",
+         "collection": "Book", "unpublished": "Manuscript"}
+
+
+def facts(entry):
+    """What /bibliography shows and sorts by (BIB-4): the title, the authors'
+    (or editors') family names, the year and the type of work."""
+    kind = parse_entry(entry)[0].lower()
+    people = field(entry, "author") or field(entry, "editor") or ""
+    families = [plain(p.split(",")[0]) if "," in p else plain(p).split(" ")[-1]
+                for p in re.split(r"\s+and\s+", people) if p.strip()]
+    year = field(entry, "year") or (field(entry, "date") or "")[:4]
+    return {"title": plain(field(entry, "title")), "authors": families,
+            "year": plain(year), "type": TYPES.get(kind, kind.capitalize())}
+
+
 def main():
     found, public = cited()
     if not found:
@@ -273,7 +393,8 @@ def main():
         return
     public_keys = [k for k in found if any((k, loc) in public for loc in found[k])]
     local_keys = [k for k in found if k not in public_keys]
-    write_bib(public_keys, local_keys)
+    sources = write_bib(public_keys, local_keys)
+    refresh_covers(sources, public_keys, local_keys)
     notes, bib_entries = run_pandoc(found)
     raw = split_entries(BIB.read_text(encoding="utf-8"))
     if LOCAL_BIB.exists():
@@ -290,6 +411,7 @@ def main():
             "order": order[k],
             "doi": doi,
             "url": f"https://doi.org/{doi}" if doi else field(raw[k], "url"),
+            **facts(raw[k]),
         }
 
     # committed: only the forms published pages use; the rest stay local

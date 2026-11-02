@@ -234,7 +234,7 @@ async function tests() {
   });
 
   await test("POP-9: up to six pinned; the seventh closes the oldest", async () => {
-    const ids = ["note-1", "note-2", "note-3", "note-4", "note-5 note-6", "term-occurrent", "term-looping-effect"];
+    const ids = ["note-1", "note-2", "note-3", "note-4", "note-7 note-8", "term-occurrent", "term-looping-effect"];
     for (const id of ids) { trig(id).click(); await settle(80); }
     const open = titles(pinned());
     expect(open.length === 6, `${open.length} pinned: ${open}`);
@@ -257,6 +257,37 @@ async function tests() {
     expect(pinned().length === 2, `${pinned().length} after Esc with nothing focused`);
     c.focus();
     expect(w.getComputedStyle(c).zIndex > w.getComputedStyle(a).zIndex, "the one last touched is not on top");
+  });
+
+  // Notes 1 and 2 are the specimen's two Pirsig quotations (BIB-9): the first
+  // a full note, the second short.
+  await test("BIB-5, BIB-8: a note popup shows the note, a hairline, then the card with the cover; the title goes to the work's page", async () => {
+    trig("note-1").click(); await settle(250);
+    const box = pinned()[0];
+    const card = box?.querySelector(".ref-card");
+    expect(card, "no card under the note");
+    expect(box.querySelector(".popup-sep + .ref-card"), "no hairline between the note and the card");
+    expect(card.querySelector(".cover img[alt^='Cover of']"), "the card has no cover");
+    expect(!card.querySelector(".ref-entry"), "under a full note the card repeats the entry");
+    expect(/Cited in 1 post/.test(card.textContent), `the card's last line: ${card.querySelector(".ref-cited")?.textContent}`);
+    const ref = "/references/pirsigZenArtMotorcycle1991";
+    expect(box.querySelector(".popup-title a")?.getAttribute("href") === ref, "the title is not a link to the work's page");
+    expect(box.querySelector(".popup-open")?.getAttribute("href") === ref, "Open in new tab does not go to the work's page");
+    await closeAll();
+    trig("note-2").click(); await settle(250);
+    expect(pinned()[0]?.querySelector(".ref-card .ref-entry"), "under a short note the card has no entry");
+  });
+
+  await test("VAL-4: a backlink's context is two lines until More, which needs no script", async () => {
+    const entry = d.querySelector("#backlinks .context-entry");
+    expect(entry, "the specimen has no Backlinks");
+    const ctx = entry.querySelector(".context");
+    const line = parseFloat(w.getComputedStyle(ctx).lineHeight);
+    near(ctx.getBoundingClientRect().height, 2 * line, 2, "collapsed height");
+    const more = entry.querySelector("details.context-more");
+    more.open = true; await settle(50);
+    expect(ctx.getBoundingClientRect().height > 2.5 * line, "More did not expand the context");
+    more.open = false;
   });
 
   await test("POP-10: a pinned popup drags by its title bar and stays in the window; it resizes", async () => {
@@ -369,6 +400,10 @@ async function tests() {
 // Release the page's load event, so Chrome dumps or captures it (browser_test.py).
 async function done(body = "") {
   document.title = "done";
+  // The page under test may still be fetching something (a card's cover,
+  // lazily, BIB-8), which would hold the frame, and so this page's load
+  // event, open; the results are in hand, so let it go.
+  if (params.get("run")) await new Promise((r) => { frame.onload = r; frame.src = "about:blank"; });
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   await fetch("/__results", { method: "POST", body });
 }
@@ -490,6 +525,28 @@ const SCENARIOS = {
     await settle(200);
     d.querySelector(".popup .popup-more")?.click();
     await settle(100);
+  },
+  // BIB-8: a note popup with the reference card and its cover
+  async card() {
+    const t = trig("note-1");
+    t.scrollIntoView({ block: "center" });
+    w.scrollBy(0, -160);
+    await settle(200);
+    t.click();
+    await settle(400);
+    for (const img of d.querySelectorAll(".popup img")) { img.loading = "eager"; await img.decode().catch(() => {}); }
+    await settle(200);
+  },
+  // VAL-4: the Backlinks section at the foot of the page, one entry opened
+  async backlinks() {
+    const s = d.getElementById("backlinks");
+    w.scrollTo({ top: s.offsetTop - 120, behavior: "instant" });
+    await settle(300);
+  },
+  // a page from its top, with every image loaded (a work's cover)
+  async loaded() {
+    for (const img of d.querySelectorAll("article img")) { img.loading = "eager"; await img.decode().catch(() => {}); }
+    await settle(200);
   },
 };
 

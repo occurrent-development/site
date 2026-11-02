@@ -8,6 +8,10 @@ assets/img/images.json gives the template their URLs and the source's
 intrinsic size. SVG sources are inlined by the build, so only their size is
 recorded. Runs offline (BUILD-2) and only re-encodes what changed.
 
+Covers (BIB-7), refs/covers/<key>.jpg from `make refresh`, get variants too,
+at the small widths a card needs (COVER_WIDTHS), under the key
+refs/covers/<key>.jpg; refs/covers.local/ holds those only drafts cite.
+
 Run from the repository root: python3 tools/images.py
 """
 
@@ -27,6 +31,7 @@ OUT = ROOT / "assets" / "img"
 MANIFEST = OUT / "images.json"
 SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support"}  # BUILD-3a: an essay's support/ is never read
 WIDTHS = [480, 800, 1200, 1600, 2400]
+COVER_WIDTHS = [160, 320, 640]
 WARN_BYTES = 2 * 1024 * 1024
 FIGURE = re.compile(r'◊figure\[\s*"([^"]+)"')
 
@@ -43,6 +48,9 @@ def sources():
             if not path.exists():
                 sys.exit(f"images: {pm.relative_to(ROOT)}: no file {src}")
             found[path.relative_to(ROOT).as_posix()] = path
+    for folder in ("covers", "covers.local"):
+        for path in sorted((ROOT / "refs" / folder).glob("*.jpg")):
+            found[path.relative_to(ROOT).as_posix()] = path
     return found
 
 
@@ -54,13 +62,13 @@ def svg_size(path):
     return round(float(m.group(1))), round(float(m.group(2)))
 
 
-def variants(key, path, digest):
+def variants(key, path, digest, sizes=WIDTHS):
     img = Image.open(path)
     img.load()
     w, h = img.size
     alpha = img.mode in ("RGBA", "LA") or "transparency" in img.info
     fallback = "png" if alpha else "jpg"
-    widths = sorted({x for x in WIDTHS if x < w} | {min(w, WIDTHS[-1])})
+    widths = sorted({x for x in sizes if x < w} | {min(w, sizes[-1])})
     stem = path.stem
     out = {"width": w, "height": h, "fallback": fallback, "sources": {"avif": [], "webp": [], fallback: []}}
     for width in widths:
@@ -99,8 +107,9 @@ def main():
             w, h = svg_size(path)
             manifest[key] = {"svg": True, "width": w, "height": h}
             continue
-        digest = hashlib.sha256(path.read_bytes() + repr(WIDTHS).encode()).hexdigest()[:10]
-        entry = variants(key, path, digest)
+        sizes = COVER_WIDTHS if key.startswith("refs/") else WIDTHS
+        digest = hashlib.sha256(path.read_bytes() + repr(sizes).encode()).hexdigest()[:10]
+        entry = variants(key, path, digest, sizes)
         manifest[key] = entry
         for urls in entry["sources"].values():
             keep |= {pathlib.Path(u["url"]).name for u in urls}

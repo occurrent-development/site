@@ -30,6 +30,7 @@ __pycache__/
 # Citations used only by drafts (tools/refs.py): local until publication
 /refs/refs.local.bib
 /data/cite-cache.local.json
+/refs/covers.local/
 
 # Machine-specific make settings
 local.mk
@@ -38,6 +39,7 @@ local.mk
 /assets/img/
 /data/anchors.json
 /data/links.json
+/data/links.local.json
 /data/anchors-deployed.json
 /data/publish.txt
 /build/

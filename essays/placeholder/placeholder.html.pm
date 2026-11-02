@@ -16,4 +16,5 @@ the first real essay is published.
 
 A real essay would continue here. This one stops after a second paragraph,
 which is enough to show the header, the dates and a section heading set as
-they will be.
+they will be. Everything else an essay can hold is set out in
+◊link["/specimen#notes-asides"]{the specimen}.

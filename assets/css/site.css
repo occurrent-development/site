@@ -878,6 +878,63 @@ a.back:hover, a.back:focus-visible { color: var(--accent); }
 .term-entry p { margin: 0.25em 0; }
 .term-entry dfn { font-style: normal; font-weight: 600; }
 .term-entry .see-also { color: var(--text-muted); font-size: 0.95em; }
+/* BIB-5: the → after a note or an entry goes to the work's page */
+a.to-ref, a.to-mark { margin-left: 0.1em; }
+
+/* ── Around the essays (Phase 3) ─────────────────────────────────────── */
+/* VAL-4, BIB-1: Backlinks and Cited in. Each context is clamped to about
+   two lines; More (a <details>, so no script) lifts the clamp. */
+ul.contexts, ul.quoted, ul.changelog { list-style: none; margin: 0; padding: 0; }
+.context-entry { margin: 0 0 0.9em; }
+.context-from { margin: 0 0 0.15em; }
+.kind { color: var(--text-muted); font-variant-caps: all-small-caps; letter-spacing: 0.04em; }
+.context { color: var(--text-muted); }
+.context p, .context blockquote { margin: 0; text-indent: 0; padding: 0; }
+.context-entry:has(> .context-more) .context {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.context-entry:has(> .context-more[open]) .context { display: block; -webkit-line-clamp: none; line-clamp: none; }
+.context-more summary { display: inline; cursor: pointer; color: var(--accent); list-style: none; }
+.context-more summary::-webkit-details-marker { display: none; }
+.context-more .less, .context-more[open] .more { display: none; }
+.context-more[open] .less { display: inline; }
+.graph-here { color: var(--text); }
+.graph-circle {
+  display: inline-block; width: 0.42em; height: 0.42em; margin-left: 0.08em;
+  border-radius: 50%; background: var(--accent); vertical-align: 0.45em; line-height: 0;
+}
+/* REV-3 */
+ul.changelog li { margin: 0.3em 0; }
+ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted); }
+
+/* BIB-7, BIB-8: the cover at the left of the entry, about 7em tall,
+   top-aligned; the same head on the work's page and in its card. */
+.ref-head, .ref-card { display: flex; gap: 1em; align-items: flex-start; }
+.ref-text { flex: 1; min-width: 0; }
+.ref-text p { margin: 0 0 0.45em; text-indent: 0; }
+.ref-entry { padding-left: 1.5em; text-indent: -1.5em !important; }
+.ref-links, .ref-cited, .ref-dead { color: var(--text-muted); }
+.cover { flex: none; display: block; line-height: 0; }
+.cover img { display: block; height: 7em; width: auto; box-shadow: 0 0 0 1px var(--rule); }
+.ref-card .cover img { height: 6em; }
+/* IMG-4: covers are never inverted, only dimmed */
+:root[data-theme="dark"] .cover img { filter: brightness(0.85); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cover img { filter: brightness(0.85); } }
+.commentary { margin-top: 1em; }
+.ref-list { margin-top: 2em; }
+.ref-list h2 { font-size: 1.45em; }
+.quoted-post { margin: 0 0 1em; }
+ul.quoted li { margin: 0.35em 0 0.35em 1em; }
+.loc { color: var(--text-muted); font-variant-numeric: oldstyle-nums; }
+
+/* TERM-8, BIB-4: the glossary page and the bibliography */
+.glossary-entry { margin: 0 0 1.4em; }
+.glossary-entry p { margin: 0.3em 0; text-indent: 0; }
+.glossary-entry dfn { font-style: normal; font-weight: 600; }
+.glossary-entry .aliases, .glossary-entry .see-also, .glossary-entry .used-in { color: var(--text-muted); font-size: 0.9em; }
+.glossary-entry:target { background: color-mix(in srgb, var(--selection) 45%, transparent); }
+.bib-table td.cited, .bib-table th.cited, .bib-table td.year { font-variant-numeric: lining-nums tabular-nums; }
+@container page (width < 39em) { .bib-table .type, .bib-table .year { display: none; } }
 
 /* ── Table sorting and pinned headers (TABLE-4/5) ──────────────────────── */
 .table-wrap th button.sort {
@@ -1482,3 +1539,5 @@ section h4 { font-size: 0.85em; line-height: 1.75; }          /* run in, on the 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+.popup-title a { color: inherit; text-decoration: none; }
+.popup-title a:hover, .popup-title a:focus-visible { color: var(--accent); }

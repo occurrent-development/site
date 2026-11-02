@@ -463,9 +463,9 @@ notebook/demo/ when `od-test-kind' is \"entry\")."
   (let* ((root (expand-file-name ".." (file-name-directory (locate-library "occurrent"))))
          (files (append (mapcar (lambda (f) (expand-file-name f root))
                                 '("pages/index.html.pm" "pages/essays.html.pm" "pages/notebook.html.pm"
-                                  "pages/specimen.html.pm" "pages/colophon.html.pm"
+                                  "pages/specimen.html.pm" "pages/glossary.html.pm" "pages/bibliography.html.pm" "pages/changelog.html.pm"
                                   "essays/placeholder/placeholder.html.pm"
-                                  "tests/lists.html.pm" "tests/citations.html.pm" "tests/asides.html.pm"
+                                  "tests/lists.html.pm" "tests/citations.html.pm" "tests/asides.html.pm" "tests/essays/link-a/link-a.html.pm"
                                   "tests/notebook/sectioned-entry/sectioned-entry.html.pm"))
                         (directory-files (expand-file-name "glossary" root) t "\\.pm\\'"))))
     (dolist (f files)
