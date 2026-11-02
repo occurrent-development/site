@@ -7,6 +7,7 @@ the test fills them in.
 """
 
 import pathlib
+import shutil
 import sys
 import tempfile
 import unittest
@@ -83,6 +84,8 @@ class Covers(unittest.TestCase):
         self.assertNotIn("file", refs.strip_private(self.entries["withCover2001"]))
 
 
+# pandoc is a dependency of `make refresh` only (BUILD-2); CI's `make` has none
+@unittest.skipUnless(shutil.which("pandoc"), "pandoc is needed only by `make refresh`")
 class Facts(unittest.TestCase):
     """BIB-10: one parse, pandoc's CSL record, with the titles as stored."""
 
