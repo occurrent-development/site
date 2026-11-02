@@ -1496,14 +1496,26 @@
 ;; the section named once at the head of each run of entries in it. A
 ;; quotation gives its locator and the passage in full, then a → to its
 ;; mark; a bare citation its context, clamped to two lines with More, then
-;; its locator and →; bare citations sharing a paragraph are one entry,
-;; the context once and each citation's locator and → after it.
+;; one link to its mark whose text is its locator (Page 23) or, with no
+;; locator, its note (Reference 7), the → the link's own mark; bare
+;; citations sharing a paragraph are one entry, the context once and each
+;; citation's link after it, · between. (Until 2026-11-03 the locator was
+;; plain text and the → a separate link after it, which read as a clutter
+;; of arrows on a phone: Page 23 → · Page 24 → · →.)
 (define (cited-in key)
   (define records (cites-of key))
+  (define (mark-href r) (string-append (hash-ref r 'from) "#" (format "~a" (hash-ref r 'mark))))
   (define (to-mark r)
-    `(a ((class "link xref to-mark") (href ,(string-append (hash-ref r 'from) "#" (format "~a" (hash-ref r 'mark))))
+    `(a ((class "link xref to-mark") (href ,(mark-href r))
          (aria-label ,(format "Where it is cited in ~a" (post-title (hash-ref r 'from)))))
         (span ((class "nw")) ,WJ ,(mark 'xref))))
+  ;; the link for a bare citation: locator or note number as its text
+  (define (mark-link r)
+    (define l (hash-ref r 'loc ""))
+    (define text (if (equal? l "") (format "Reference ~a" (hash-ref r 'note)) (typeset-string l)))
+    `(a ((class "link xref to-mark") (href ,(mark-href r))
+         (aria-label ,(format "~a, where it is cited in ~a" text (post-title (hash-ref r 'from)))))
+        ,@(with-mark (list text) 'xref)))
   (define (loc r) (let ([l (hash-ref r 'loc "")]) (if (equal? l "") null `((span ((class "loc")) ,(typeset-string l)) " "))))
   (define (quote? r) (string? (hash-ref r 'text #f)))
   ;; runs of consecutive bare citations in one paragraph
@@ -1529,7 +1541,7 @@
                                 '((details ((class "context-more")) (summary (span ((class "more")) "More") (span ((class "less")) "Less"))))
                                 null)
                           (p ((class "cite-marks"))
-                             ,@(add-between (for/list ([g (in-list group)]) `(span ((class "cite-mark")) ,@(loc g) ,(to-mark g)))
+                             ,@(add-between (for/list ([g (in-list group)]) `(span ((class "cite-mark")) ,(mark-link g)))
                                             '(span ((class "sep")) " · "))))
                      out))])))
   (define (section-title from sec)

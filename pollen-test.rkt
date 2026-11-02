@@ -939,10 +939,10 @@
   (define q (findf (λ (x) (has-class* x "quoted")) (find-all cited txexpr?)))
   (check-regexp-match #px"^Page[  ]23 “made up, with ‘kinds’ of people”" (text q))
   (check-not-false (findf (λ (h) (regexp-match? #rx"^/citations#ref-" h)) (hrefs q)))
-  ;; a bare citation: its context, clamped, then its locator and →
+  ;; a bare citation: its context, clamped, then one link to its mark, its locator or note as the text
   (check-not-false (findf (λ (x) (and (has-class* x "context-entry") (by-class x "cite-marks"))) (find-all cited txexpr?))))
 
-(test-case "BIB-9: citations sharing a paragraph are one entry, each locator and → after the context"
+(test-case "BIB-9: citations sharing a paragraph are one entry, one link (locator or note) to each mark after the context"
   (define cited (in-graph (λ () (by-id (reference-page "hackingLoopingEffectsHuman1996") "cited-in"))))
   (define entries (find-all cited (λ (x) (has-class* x "cite-entry"))))
   (define shared (findf (λ (e) (regexp-match? #rx"Twice in one paragraph" (text e))) entries))

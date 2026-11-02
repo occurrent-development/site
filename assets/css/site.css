@@ -1012,7 +1012,7 @@ a.back:hover, a.back:focus-visible { color: var(--accent); }
 .term-entry dfn { font-style: normal; font-weight: 600; }
 .term-entry .see-also { color: var(--text-muted); font-size: 0.95em; }
 /* BIB-5: the → after a note or an entry goes to the work's page */
-a.to-ref, a.to-mark { margin-left: 0.1em; }
+a.to-ref, .passage a.to-mark { margin-left: 0.1em; }   /* the bare → after a passage; a locator link needs none */
 
 /* ── Around the essays (Phase 3) ─────────────────────────────────────── */
 /* VAL-4, BIB-1: Backlinks and Cited in. Each context is clamped to about
@@ -1047,9 +1047,13 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
 .cover img { display: block; height: 14em; width: auto; box-shadow: 0 0 0 1px var(--rule); }
 .ref-header .cover { margin-top: 0.3em; }          /* the h1's cap height */
 .reference::after { content: ""; display: block; clear: both; }
-/* tier S: a 14em cover beside a 1.6em title leaves the title two words a
-   line, so on the page (not in the card) it is smaller there */
-@container page (width < 39em) { .ref-header .cover img { height: 9em; } }
+/* tier S: a cover beside the title leaves the title two words a line, so
+   on the page (not in the card) the cover is not floated there: it stands
+   above the title, at its full height, and the title runs the full measure
+   beneath it (the cover is first in the header's markup, BIB-7) */
+@container page (width < 39em) {
+  .ref-header .cover { float: none; margin: 0 0 1.1em; }
+}
 /* IMG-4: covers are never inverted, only dimmed */
 :root[data-theme="dark"] .cover img { filter: brightness(0.85); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cover img { filter: brightness(0.85); } }
@@ -1526,12 +1530,19 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .scratch-controls .scratch-yes { color: var(--accent); }
 .scratch-status { margin-left: auto; font-style: italic; }
 
-/* POP-5: on touch devices, a sheet anchored to the bottom. */
+/* POP-5: on touch devices, a sheet anchored to the bottom. It opens to at
+   least half the viewport, however short its content, so a one-line note
+   is not a sliver at the foot of the screen under the thumb; the content
+   sits at the top of the sheet and the space is below it (the body is not
+   stretched: the flex column leaves it at its own height). */
 .popup.is-popin {
   position: fixed;
   left: 0; right: 0; bottom: 0; top: auto;
   width: auto;
+  min-height: 50vh;
+  min-height: 50dvh;
   max-height: 60vh;
+  max-height: 60dvh;
   border-radius: 8px 8px 0 0;
   border-width: 1px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
