@@ -99,7 +99,8 @@
 ;; picture or an inline SVG with its own alt and its own data-invert, so a
 ;; photograph and a drawing are classified apart (IMG-4); the letters, and
 ;; the letters before per-panel credits, are left empty for the root pass
-;; to fill (IMG-7's numbering), so the source never carries them.
+;; to fill (IMG-7's numbering), so the source never carries them. #:columns
+;; 1 stacks the panels, each at the column's full width (sizes 1).
 (define (make-panels body #:id id #:title title #:licence licence #:credit credit #:columns columns)
   (define what (format "◊panels ~s" id))
   (define-values (panels rest) (partition (λ (x) (and (txexpr? x) (eq? (get-tag x) 'od-panel))) body))
@@ -109,10 +110,11 @@
                  what n (if (= n 1) "" "s")))
   (when (> n 6)
     (build-error "~a has ~a panels; six at most: make it two figures (IMG-9)" what n))
-  (when (and columns (not (memv columns '(2 3))))
-    (build-error "~a: #:columns is 2 or 3 (IMG-9)" what))
-  (when (and columns (< n 4))
-    (warn "~a: #:columns is for four panels or more; ~a sit in one row" what n))
+  (when (and columns (not (memv columns '(1 2 3))))
+    (build-error "~a: #:columns is 1, 2 or 3 (IMG-9)" what))
+  ;; 1 is a vertical stack for any number of panels; 2 and 3 make a grid
+  (when (and columns (> columns 1) (< n 4))
+    (warn "~a: #:columns ~a is for four panels or more; ~a sit in one row" what columns n))
   (check-licence what licence)
   (define cols (or columns (min n 3)))
   (define (opt p k) (and (attrs-have-key? p k) (attr-ref p k)))

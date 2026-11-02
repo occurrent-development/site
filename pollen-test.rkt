@@ -407,9 +407,22 @@
   (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "own"
                                     (panel "pages/img/landscape.jpg" #:alt "a" #:licence "cover")
                                     (panel "pages/img/landscape.jpg" #:alt "b")))))
-  (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "own" #:columns 4
-                                    (panel "pages/img/landscape.jpg" #:alt "a")
-                                    (panel "pages/img/landscape.jpg" #:alt "b"))))))
+  (for ([c (in-list '(0 4))])
+    (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "own" #:columns c
+                                      (panel "pages/img/landscape.jpg" #:alt "a")
+                                      (panel "pages/img/landscape.jpg" #:alt "b")))) (format "#:columns ~a" c))))
+
+(test-case "IMG-9 (1.21): #:columns 1 stacks the panels, each at the column's width, lettered as ever"
+  (define doc (fixture "panels/stack.html.pm"))
+  (define fig (by-id doc "s"))
+  (define grid (car (find-all fig (λ (x) (has-class* x "panels")))))
+  (check-equal? (attr-ref grid 'data-columns) "1")
+  (define panels (find-all fig (λ (x) (has-class* x "panel"))))
+  (check-equal? (map (λ (p) (text-of (car (find-all p (λ (x) (has-class* x "panel-letter")))))) panels)
+                '("A" "B"))
+  (check-equal? (attr-ref (car (find-all (car panels) (tag? 'img))) 'sizes)
+                "(min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)")   ; the full column
+  (check-equal? (text-of (car (find-all fig (λ (x) (has-class* x "exhibit-caption"))))) "The caption."))
 
 (test-case "EDIT-10: Org's table separators: |---+---| under the header, others ignored"
   (define t (table #:id "o" #:title "T" "| a | b |" "\n" "|---+---|" "\n" "| 1 | 2 |" "\n" "|---+---|" "\n" "| 3 | 4 |" "\n"))

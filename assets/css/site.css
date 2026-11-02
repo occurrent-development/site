@@ -773,13 +773,15 @@ figure.figure .figure-svg { color: var(--text); }
    panels a quarter narrower); the letter is the figure label's size (0.78em,
    so "B" and "Figure 3" read as one voice) and sits 0.35em above the image,
    flush with its left edge, so it belongs to the panel below and not to the
-   sub-caption of the row above. */
+   sub-caption of the row above. data-columns 1 (#:columns 1, spec 1.21) is
+   the vertical stack at every tier, gap and all, as below tier M. */
 .panels {
   display: grid;
   grid-template-columns: repeat(var(--panel-columns, 3), minmax(0, 1fr));
   gap: 1.25em 1em;
   align-items: start;
 }
+.panels[data-columns="1"] { --panel-columns: 1; gap: 1.5em; }
 .panels[data-columns="2"] { --panel-columns: 2; }
 .panel { min-width: 0; }
 .panel-letter {
