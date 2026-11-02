@@ -1047,13 +1047,15 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
 .cover img { display: block; height: 14em; width: auto; box-shadow: 0 0 0 1px var(--rule); }
 .ref-header .cover { margin-top: 0.3em; }          /* the h1's cap height */
 .reference::after { content: ""; display: block; clear: both; }
-/* tier S: a cover beside the title leaves the title two words a line, so
-   on the page (not in the card) the cover is not floated there: it stands
-   above the title, at its full height, and the title runs the full measure
-   beneath it (the cover is first in the header's markup, BIB-7) */
+/* A cover beside the title leaves the title two words a line wherever the
+   measure is short: at tier S on the page, and in the card at every width
+   (a popup is 22em wide, a popin the width of a phone). There the cover is
+   not floated: it stands above the title at its full height and the title
+   runs the full measure beneath it (the cover is first in the markup, BIB-7). */
 @container page (width < 39em) {
   .ref-header .cover { float: none; margin: 0 0 1.1em; }
 }
+.ref-card .cover { float: none; margin: 0 0 0.75em; }
 /* IMG-4: covers are never inverted, only dimmed */
 :root[data-theme="dark"] .cover img { filter: brightness(0.85); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cover img { filter: brightness(0.85); } }
@@ -1530,19 +1532,21 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .scratch-controls .scratch-yes { color: var(--accent); }
 .scratch-status { margin-left: auto; font-style: italic; }
 
-/* POP-5: on touch devices, a sheet anchored to the bottom. It opens to at
-   least half the viewport, however short its content, so a one-line note
-   is not a sliver at the foot of the screen under the thumb; the content
-   sits at the top of the sheet and the space is below it (the body is not
-   stretched: the flex column leaves it at its own height). */
+/* POP-5: on touch devices, a sheet anchored to the bottom. Its top is
+   always at the middle of the screen, however short or long its content:
+   a one-line note is not a sliver at the foot of the screen under the
+   thumb, the title bar and its × are always in the same place, and a long
+   card scrolls inside. The content sits at the top of the sheet and the
+   space is below it (the body is a flex item that shrinks but does not
+   grow, so it keeps its own height and scrolls when taller). `dvh` where the browser has it, so the sheet's top
+   follows the browser's own toolbars; `vh` for the rest. */
 .popup.is-popin {
   position: fixed;
   left: 0; right: 0; bottom: 0; top: auto;
   width: auto;
-  min-height: 50vh;
-  min-height: 50dvh;
-  max-height: 60vh;
-  max-height: 60dvh;
+  height: 50vh;
+  height: 50dvh;
+  max-height: none;
   border-radius: 8px 8px 0 0;
   border-width: 1px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
