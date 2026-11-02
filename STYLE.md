@@ -103,8 +103,8 @@ The whole thing on one screen. Each line is expanded below.
 - **Define a term when a smart reader outside the field would misread it**, not merely when they might not know it. *Continuant* needs a definition; *neurodevelopmental* does not.
 - **One sense, one term.** A word used in a different sense is a separate glossary entry (`canalisation`, `canalisation-waddington`; `TERM-1`).
 - **Mark the first use** in a post with `◊term`; later uses are plain unless a reader arriving by anchor would need the definition again.
-- **The definition** (`glossary/<id>.pm`) opens with one sentence that stands alone in a popup; `◊more` holds the rest. Cite inside it freely (unnumbered, `CITE-7`).
-- **House terms.** *Essay* and *entry* (never *post* in prose, though `SPEC.md` uses it as the type name); *Notebook* for the second kind; *aside*, *margin note*, *note* (a citation), *definition*, *reference page*; *Edited* for the date git supplies, *revised* for a changelog line (`REV-1`); *contents* not *table of contents*; *reading bar* not *toolbar*.
+- **The definition** (`glossary/<id>.pm`) opens with one sentence that stands alone in a popup; every paragraph after the first is the More, shown when the reader asks for it (no tag marks it, `TERM-2`). Cite inside it freely (unnumbered, `CITE-7`).
+- **House terms.** *Essay* and *entry* (never *post* in prose, though `SPEC.md` uses it as the type name); *Blog* for the second kind; *aside*, *margin note*, *note* (a citation), *definition*, *reference page*; *Edited* for the date git supplies, *revised* for a changelog line (`REV-1`); *contents* not *table of contents*; *reading bar* not *toolbar*.
 
 ---
 
@@ -193,7 +193,7 @@ Then, in the body: `◊epistemic` (essays only), `◊abstract` (essays; optional
 
 ### 6.3 Slugs and URLs
 
-- **A slug is the URL** (`/<slug>` for essays, `/notebook/<slug>` for entries, `D14`) and is chosen once. Lowercase ASCII, hyphenated, no stop words the title can spare, no dates (dates belong to files, §7): `the-show-where-lilith-comes-back` is at the long end; `autism-and-moles` is the shape to aim for.
+- **A slug is the URL** (`/<slug>` for essays, `/blog/<slug>` for entries, `D14`) and is chosen once. Lowercase ASCII, hyphenated, no stop words the title can spare, no dates (dates belong to files, §7): `the-show-where-lilith-comes-back` is at the long end; `autism-and-moles` is the shape to aim for.
 - **Unique** across essays, entries, pages and reserved paths (`KIND-1`).
 - **Glossary ids** and **reference keys** are URLs too (`/glossary#<id>` for now; `/references/<key>`). Glossary ids follow slug rules; reference keys are Better BibTeX's, case-preserved, pinned (`BIB-2`).
 - **Anchors** (`#id`) are permanent (`VAL-3`). Rename nothing that has been deployed without a line in `_redirects`.
@@ -218,7 +218,7 @@ The general filename pattern is `YYYY[-MM[-DD]]-SURNAME1[-SURNAME2...][-TOOL[-TO
 
 **Here**, the pattern applies to *files*, not pages:
 
-- **Pages are slugs** (§6.3), never dated. The pattern governs everything else you name by hand: images in `essays/<slug>/img/` and `notebook/<slug>/img/`, CSVs beside an essay, shared images in `img/`, anything in `support/`, and any document offered for download.
+- **Pages are slugs** (§6.3), never dated. The pattern governs everything else you name by hand: images in `essays/<slug>/img/` and `blog/<slug>/img/`, CSVs beside an essay, shared images in `img/`, anything in `support/`, and any document offered for download.
 - **Surname.** Your own photograph, figure or data: `lucas`. A figure redrawn after someone else's: their surname, and the credit says "after" (`IMG-6`). No identifiable author: the closest entity (`nswhealth`, `abs`), else `anonymous`.
 - **Tool and topic.** `2026-10-14-lucas-omnigraffle-taxonomy-mammals.svg`; `2026-lucas-photo-retina.jpg`; `2026-abs-census-table-age.csv`. A generated image names the model and date (§7.4).
 - **Exceptions to lowercase**, and the only ones: Better BibTeX keys, which are case-preserved and pinned (`BIB-2`) and so name `refs/covers/<key>.jpg` and `/references/<key>`; and files the build writes with a content hash (`assets/fonts/*.woff2`, `assets/img/*`), which are never hand-named and never committed where generated. Everything a person types is lowercase.

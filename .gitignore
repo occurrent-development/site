@@ -8,14 +8,14 @@ compiled/
 /index.html
 /pages/*.html
 /essays/**/*.html
-/notebook/**/*.html
+/blog/**/*.html
 /assets/fonts/*.woff2
 /assets/fonts/fonts.rktd
 
 # Never published (BUILD-3a): each essay's support/ folder, before and after
 # publication, and these filename patterns anywhere as a second guard
 essays/*/support/
-notebook/*/support/
+blog/*/support/
 *-Notes.md
 *.docx
 *.graffle

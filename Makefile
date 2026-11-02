@@ -23,11 +23,11 @@ PORT    ?= 8080
 
 FONTS_SRC := $(wildcard assets/fonts/*.otf)
 # Emacs's lock files (.#name, a dangling link while a buffer is modified) are not sources.
-SOURCES   := $(shell find . -name '*.pm' -not -name '.\#*' -not -path './public/*' -not -path './essays/*/support/*' -not -path './notebook/*/support/*') \
+SOURCES   := $(shell find . -name '*.pm' -not -name '.\#*' -not -path './public/*' -not -path './essays/*/support/*' -not -path './blog/*/support/*') \
              template.html.p pollen.rkt typography.rkt
 FONTS     := assets/fonts/fonts.rktd
 IMAGES    := assets/img/images.json
-IMG_SRC   := $(shell find pages essays notebook -path '*/img/*' -type f 2>/dev/null) \
+IMG_SRC   := $(shell find pages essays blog -path '*/img/*' -type f 2>/dev/null) \
              $(wildcard refs/covers/*.jpg refs/covers.local/*.jpg)
 
 # Files that must never reach public/ (BUILD-3a).
@@ -66,7 +66,7 @@ $(IMAGES): $(IMG_SRC) $(SOURCES) tools/images.py
 # The indexes, the home page and the pages built from the link graph
 # (glossary, bibliography, changelog) list every post, so they are rebuilt
 # whenever anything is.
-INDEXES := pages/index.html.pm pages/essays.html.pm pages/notebook.html.pm \
+INDEXES := pages/index.html.pm pages/about.html.pm pages/essays.html.pm pages/blog.html.pm \
            pages/glossary.html.pm pages/bibliography.html.pm pages/changelog.html.pm
 # BUILD-4: the link graph is written first, by one walk over every post
 # (tools/validate.rkt); every page is then rendered from it. data/links.json
@@ -110,5 +110,5 @@ refresh:
 clean:
 	$(RACO) pollen reset
 	rm -rf public
-	rm -f index.html pages/*.html essays/*/*.html notebook/*/*.html assets/fonts/*.woff2 $(FONTS)
+	rm -f index.html pages/*.html essays/*/*.html blog/*/*.html assets/fonts/*.woff2 $(FONTS)
 	rm -rf assets/img build data/anchors.json data/links.json data/links.local.json data/publish.txt

@@ -3,6 +3,6 @@
 ◊define-meta[title]{Older entry}
 ◊define-meta[status]{published}
 ◊define-meta[published]{2026-10-03}
-◊define-meta[tags]{site, notebook}
+◊define-meta[tags]{site, blog}
 
-Listed in the notebook index.
+Listed in the blog index.

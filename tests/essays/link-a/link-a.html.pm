@@ -13,6 +13,9 @@ A links to ◊link["/link-b#second"]{the second section of B}, and cites a work
 
 A links within itself, to ◊link["#later"]{this section}, which is not a backlink.
 
+◊; TERM-9: a term with this page's sense of it, for Used in.
+A marks ◊term["occurrent"]{occurrent ◊sense{the fixture's own sense, with ◊em{emphasis}}}.
+
 ◊changelog{
 2026-10-05: Added the section on what comes later.
 }

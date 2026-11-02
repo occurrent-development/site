@@ -1,7 +1,8 @@
 #lang pollen
 pages/index.html
+pages/about.html
 pages/essays.html
-pages/notebook.html
+pages/blog.html
 pages/glossary.html
 pages/bibliography.html
 pages/changelog.html

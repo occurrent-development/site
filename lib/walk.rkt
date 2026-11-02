@@ -9,6 +9,7 @@
          racket/match
          txexpr
          pollen/core
+         (only-in pollen/template ->html)
          "util.rkt")
 
 (provide walk-page graph-of)
@@ -190,7 +191,18 @@
                   'kind (symbol->string (or (post-kind src) 'essay))
                   'published (or (meta-text metas 'published) "")
                   'sections sections)
-          (reverse links) (reverse cites) (remove-duplicates (reverse terms)) changes))
+          (reverse links) (reverse cites)
+          ;; TERM-8, TERM-9: each term the page marks, with the page's sense of
+          ;; it as HTML when it has one (from the Terms store)
+          (for/list ([id (in-list (remove-duplicates (reverse terms)))])
+            (define entry (let ([s (endmatter "terms")])
+                            (and s (findf (λ (x) (equal? (attr-ref x 'id #f) (string-append "term-" id))) (find-all s txexpr?)))))
+            (define sense (and entry (findf (λ (x) (class? x "term-sense")) (find-all entry txexpr?))))
+            (define em (and sense (findf (λ (x) (and (txexpr? x) (eq? (get-tag x) 'em))) (get-elements sense))))
+            (if em
+                (hasheq 'id id 'sense (->html (filter values (map (λ (k) (clean k)) (get-elements em)))))
+                (hasheq 'id id)))
+          changes))
 
 ;; Pages' records → the graph's JSON shape (lib/graph.rkt).
 (define (graph-of walked)

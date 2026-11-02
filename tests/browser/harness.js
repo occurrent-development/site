@@ -98,7 +98,7 @@ async function tests() {
                text: r("article"), menuTop: Math.round(rect(d.querySelector(".menu-rail .site-menu")).top) };
     };
     const want = geometry();
-    for (const path of ["/", "/essays", "/notebook", "/correspondence", "/placeholder"]) {
+    for (const path of ["/", "/essays", "/blog", "/correspondence", "/placeholder"]) {
       await load(path);
       const got = geometry();
       for (const k of Object.keys(want)) expect(got[k] === want[k], `${path}: ${k} ${got[k]}, the specimen's ${want[k]}`);
@@ -282,6 +282,24 @@ async function tests() {
     expect(!box.querySelector(".ref-loc"), "a locator shown where the citation has none");
   });
 
+  await test("TERM-9: a sensed term's popup: title, definition, this essay's sense, then the rest; other terms have none", async () => {
+    trig("term-looping-effect").click(); await settle(200);
+    let box = pinned()[0];
+    const body = box?.querySelector(".popup-term");
+    const parts = [...body.children].map((c) => c.className || c.tagName.toLowerCase());
+    expect(parts[0] === "definition" && parts[1] === "term-sense", `the order: ${parts}`);
+    const sense = body.querySelector(".term-sense");
+    expect(sense.querySelector(".sense-label")?.textContent === "In this essay:", "no label");
+    expect(w.getComputedStyle(sense.querySelector("em")).fontStyle === "italic", "the sense is not italic");
+    await closeAll();
+    trig("term-occurrent").click(); await settle(200);
+    box = pinned()[0];
+    expect(!box.querySelector(".term-sense"), "a term with no sense on this page shows one");
+    const order = [...box.querySelector(".popup-term").children].map((c) => c.className || c.tagName.toLowerCase());
+    expect(order.indexOf("definition") < order.indexOf("p") || order.includes("see-also"), `occurrent's parts: ${order}`);
+    await closeAll();
+  });
+
   await test("VAL-4: a backlink's context is two lines until More, which needs no script", async () => {
     const entry = d.querySelector("#backlinks .context-entry");
     expect(entry, "the specimen has no Backlinks");
@@ -395,6 +413,8 @@ async function tests() {
     expect(w.getComputedStyle(short).display !== "none" && w.getComputedStyle(long).display === "none", "the long name shows in S");
   });
 
+  await senseElsewhere();
+
   const out = document.getElementById("results");
   out.textContent = JSON.stringify(results);
   out.hidden = false;
@@ -415,6 +435,16 @@ async function done(body = "") {
 // On a touch device (the browser told it has no hover and a coarse
 // pointer): the bar at the bottom, taller, always there, its menu three
 // bars; no scratch pad; a definition as a popin (BAR-1, NAV-1, POP-5, POP-12).
+async function senseElsewhere() {
+  await load("/placeholder", 1680, 1050);
+  await test("TERM-9: the same term on another page, without a sense, has none in its popup", async () => {
+    trig("term-looping-effect").click(); await settle(200);
+    const box = d.querySelector(".popup");
+    expect(box?.querySelector(".popup-term .definition"), "no definition popup on the placeholder");
+    expect(!box.querySelector(".term-sense"), "the specimen's sense leaked onto another page");
+  });
+}
+
 async function touchTests() {
   await load("/specimen", 390, 844);
   await test("The browser is a touch device (the rest assume one)", async () => {
@@ -547,6 +577,20 @@ const SCENARIOS = {
     w.scrollTo({ top: s.offsetTop - 120, behavior: "instant" });
     await settle(300);
   },
+  // NAV-1: the menu open, wherever it stands on the page
+  async menuopen() {
+    const m = d.querySelector(".menu-rail .site-menu") || d.querySelector(".site-menu");
+    m.open = true;
+    await settle(200);
+  },
+  // TERM-8: a glossary entry's Used in
+  async usedin() {
+    const u = d.querySelector("#looping-effect") || d.querySelector(".glossary-entry");
+    w.scrollTo({ top: u.offsetTop - 60, behavior: "instant" });
+    await settle(300);
+  },
+  // the foot of the page (About's Start here)
+  async bottom() { w.scrollTo({ top: d.documentElement.scrollHeight, behavior: "instant" }); await settle(300); },
   // BIB-9: a work's Cited in
   async citedin() {
     const s = d.getElementById("cited-in");

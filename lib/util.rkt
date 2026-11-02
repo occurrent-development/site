@@ -67,12 +67,12 @@
 
 (define (essay-source? path) (regexp-match? #rx"(^|/)essays/" (format "~a" path)))
 
-;; KIND-1: a post is an essay or a notebook entry, and its kind comes from
+;; KIND-1: a post is an essay or a blog entry, and its kind comes from
 ;; its folder, never from a meta: 'essay, 'entry, or #f for a page.
 (define (post-kind path)
   (define s (format "~a" path))
   (cond [(regexp-match? #rx"(^|/)essays/" s) 'essay]
-        [(regexp-match? #rx"(^|/)notebook/" s) 'entry]
+        [(regexp-match? #rx"(^|/)blog/" s) 'entry]
         [else #f]))
 (define (post-source? path) (and (post-kind path) #t))
 
@@ -82,11 +82,11 @@
       (and (member status '("published" "revised" "superseded")) #t)))
 
 ;; Rendered file (relative to the project root) → public URL. Pages and
-;; essays are flattened to /<slug>, entries to /notebook/<slug> (D14); the
+;; essays are flattened to /<slug>, entries to /blog/<slug> (D14); the
 ;; About page, pages/index, is / (HOME-1).
 (define (output->url out)
   (cond [(member out '("index.html" "pages/index.html")) "/"]
-        [(regexp-match #px"^notebook/[^/]+/([a-z0-9-]+)\\.html$" out) => (λ (m) (string-append "/notebook/" (cadr m)))]
+        [(regexp-match #px"^blog/[^/]+/([a-z0-9-]+)\\.html$" out) => (λ (m) (string-append "/blog/" (cadr m)))]
         [(regexp-match #px"^(?:pages|essays/[^/]+)/([a-z0-9-]+)\\.html$" out) => (λ (m) (string-append "/" (cadr m)))]
         [else (string-append "/" (regexp-replace #rx"\\.html$" out ""))]))
 
@@ -125,11 +125,11 @@
   (values (format "~a/blob/~a/~a" repo branch path)
           (format "~a/commits/~a/~a" repo branch path)))
 
-;; KIND-1: slugs are unique across essays/ and notebook/, and never one of
+;; KIND-1: slugs are unique across essays/ and blog/, and never one of
 ;; the site's own paths. SLUGS is a list of (slug . source) pairs, the
 ;; pages' names among them; returns a list of error messages.
 (define reserved-slugs
-  '("essays" "notebook" "glossary" "bibliography" "references" "about" "colophon"
+  '("essays" "blog" "notebook" "glossary" "bibliography" "references" "about" "colophon"
     "correspondence" "changelog" "specimen" "data" "widgets" "_x"))
 (define (check-post-slugs posts pages)
   (define seen (make-hash))
@@ -140,5 +140,5 @@
       [(member slug reserved-slugs)
        (cons (format "~a: the slug ~s is reserved for the site's own pages (KIND-1)" src slug) errs)]
       [(hash-ref seen slug #f)
-       => (λ (other) (cons (format "~a: the slug ~s is already used by ~a; slugs are unique across essays and the notebook (KIND-1)" src slug other) errs))]
+       => (λ (other) (cons (format "~a: the slug ~s is already used by ~a; slugs are unique across essays and the blog (KIND-1)" src slug other) errs))]
       [else (hash-set! seen slug src) errs])))

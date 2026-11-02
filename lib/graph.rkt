@@ -10,7 +10,7 @@
 ;;   cites    key → [{from, section, mark, note, loc, para, context, text, block}]  (Cited in)
 ;;            text is the quoted words of a ◊cite with a body (BIB-9), else
 ;;            null; para numbers the paragraph on its page, for grouping
-;;   terms    url → [term id, …]                                (Used in, TERM-8)
+;;   terms    url → [{id, sense}]  (Used in, TERM-8; sense the page's HTML, absent when none, TERM-9)
 ;;   changes  [{from, date, text}]                              (/changelog, REV-3)
 ;; A context is an X-expression in JSON (["p", {…}, …]), as in the citation
 ;; cache, with the link or the circle marked (class graph-here).
@@ -28,7 +28,7 @@
          txexpr
          "util.rkt")
 
-(provide graph current-graph graph-posts post-info backlinks-to cites-of term-users changes
+(provide graph current-graph graph-posts post-info backlinks-to cites-of term-users term-sense changes
          json->txexpr index-order preview?)
 
 (define (preview?) (equal? (getenv "OD_PREVIEW") "1"))
@@ -62,7 +62,7 @@
 (define (post-info url) (hash-ref (graph-posts) (string->symbol url) #f))
 
 ;; "In the order of the index" (TERM-8, BIB-9): newest first, as /essays
-;; and /notebook list them.
+;; and /blog list them.
 (define (index-order urls)
   (sort (remove-duplicates urls) string>?
         #:key (λ (u) (let ([p (post-info u)]) (if p (hash-ref p 'published "") "")))))
@@ -72,8 +72,18 @@
              #:unless (equal? (hash-ref l 'from) url))   ; same-page links are not backlinks (VAL-4)
     l))
 (define (cites-of key) (hash-ref (part 'cites) (string->symbol key) null))
+;; terms: url → [{id, sense?}] (TERM-8, TERM-9)
+;; (a graph from before draft 1.19 has bare ids; read either until it is rewritten)
+(define (use u) (if (string? u) (hasheq 'id u) u))
+(define (term-uses url) (map use (hash-ref (part 'terms) (string->symbol url) null)))
 (define (term-users id)
-  (index-order (for/list ([(url ids) (in-hash (part 'terms))] #:when (member id ids)) (symbol->string url))))
+  (index-order (for/list ([(url uses) (in-hash (part 'terms))]
+                          #:when (findf (λ (u) (equal? (hash-ref (use u) 'id) id)) uses))
+                 (symbol->string url))))
+;; The page's sense of the term, as HTML, or #f.
+(define (term-sense url id)
+  (define u (findf (λ (u) (equal? (hash-ref u 'id) id)) (term-uses url)))
+  (and u (hash-ref u 'sense #f)))
 (define (changes) (hash-ref (graph) 'changes null))
 
 ;; JSON X-expression → txexpr, attributes kept as they were written.

@@ -184,7 +184,10 @@ function termItem(target) {
     dfn.remove();
     if (next && next.nodeType === 3) next.textContent = next.textContent.replace(/^\.\s*/, "");
   }
+  // TERM-9: title · definition · this page's sense · More · see-also
   const body = el("div", { class: "popup-term" }, c.querySelector(".definition"));
+  const sense = c.querySelector(".term-sense");
+  if (sense) body.append(sense);
   const more = c.querySelector(".term-more");
   if (more) {
     // TERM-3: More expands in place
@@ -220,6 +223,14 @@ const noteKeys = (t) => (t.dataset.targets || "").split(" ").filter((x) => x.sta
 
 async function item(target) {
   const src = byId(target);
+  if (target.startsWith("bib-")) {
+    // CITE-7: unnumbered, so titled Reference; the work's card (BIB-8), or
+    // its Bibliography entry when there is no card
+    const card = await cardFor(target.slice(4), { dataset: {} });
+    if (card) return { title: "Reference", head: null, body: card, ref: refUrl(target.slice(4)) };
+    if (!src) return null;
+    return { title: "Reference", head: null, body: el("p", {}, ...clean(src).childNodes) };
+  }
   if (!src && !target.startsWith("aside-")) return null;
   if (target.startsWith("note-")) {
     const n = target.slice(5);
@@ -235,10 +246,6 @@ async function item(target) {
       if (bib) body.append(el("p", { class: "popup-bib" }, ...clean(bib).childNodes));
     }
     return { title: `Reference ${n}`, head: `Reference ${n}`, body, ref: key && refUrl(key) };
-  }
-  if (target.startsWith("bib-")) {
-    // CITE-7: unnumbered, so no heading
-    return { title: "Reference", head: null, body: el("p", {}, ...clean(src).childNodes) };
   }
   if (target.startsWith("term-")) return termItem(target);
   if (target.startsWith("aside-")) {

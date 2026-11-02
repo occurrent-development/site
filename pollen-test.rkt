@@ -309,10 +309,10 @@
   (check-equal? (output->url "index.html") "/")
   (check-equal? (output->url "pages/about.html") "/about")
   (check-equal? (output->url "essays/placeholder/placeholder.html") "/placeholder")
-  ;; HOME-1: the About page is the root; D14: entries live under /notebook
+  ;; HOME-1: the About page is the root; D14: entries live under /blog
   (check-equal? (output->url "pages/index.html") "/")
   (check-equal? (output->url "pages/essays.html") "/essays")
-  (check-equal? (output->url "notebook/a-day/a-day.html") "/notebook/a-day"))
+  (check-equal? (output->url "blog/a-day/a-day.html") "/blog/a-day"))
 
 (test-case "INDEX-1: the essay index lists dated essays, newest first, with tags"
   (define idx (index #:kind "essay" #:pagetree "tests/index.ptree"))
@@ -592,24 +592,24 @@
   (define doc (root "Set in " (latex) ", " (em "and " (latex)) "." (aside "Even " (latex) ".")))
   (check-equal? (length (find-all doc (λ (x) (has-class* x "latex")))) 4))   ; the aside's two copies
 
-;; §13b: the notebook. Entries are posts of the second kind, set from the folder.
+;; §13b: the blog. Entries are posts of the second kind, set from the folder.
 (define (in-entry thunk)
-  (define here (path->string (build-path (current-directory) "tests" "notebook" "x" "x.html.pm")))
+  (define here (path->string (build-path (current-directory) "tests" "blog" "x" "x.html.pm")))
   (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-01" 'here-path here)])
     (thunk)))
 
 (test-case "KIND-1: the kind comes from the folder; a kind meta and a clashing slug fail"
   (check-equal? (post-kind "essays/a/a.html.pm") 'essay)
-  (check-equal? (post-kind "notebook/a/a.html.pm") 'entry)
+  (check-equal? (post-kind "blog/a/a.html.pm") 'entry)
   (check-false (post-kind "pages/colophon.html.pm"))
   (check-exn #rx"kind comes from its folder"
              (λ () (parameterize ([current-metas (hasheq 'title "T" 'kind "entry")]) (root "x"))))
-  (check-equal? (check-post-slugs '(("a" . "essays/a") ("b" . "notebook/b")) '("index")) '())
-  (check-equal? (length (check-post-slugs '(("a" . "essays/a") ("a" . "notebook/a")) '())) 1)
-  (check-equal? (length (check-post-slugs '(("about" . "notebook/about") ("glossary" . "essays/glossary")) '())) 2)
-  (check-equal? (length (check-post-slugs '(("essays" . "notebook/essays")) '("essays"))) 1)
+  (check-equal? (check-post-slugs '(("a" . "essays/a") ("b" . "blog/b")) '("index")) '())
+  (check-equal? (length (check-post-slugs '(("a" . "essays/a") ("a" . "blog/a")) '())) 1)
+  (check-equal? (length (check-post-slugs '(("about" . "blog/about") ("glossary" . "essays/glossary")) '())) 2)
+  (check-equal? (length (check-post-slugs '(("essays" . "blog/essays")) '("essays"))) 1)
   ;; the page wrapper says which kind, and nothing else does
-  (check-equal? (page-class (hasheq 'here-path "/x/notebook/a/a.html.pm")) "page kind-entry")
+  (check-equal? (page-class (hasheq 'here-path "/x/blog/a/a.html.pm")) "page kind-entry")
   (check-equal? (page-class (hasheq 'here-path "/x/essays/a/a.html.pm")) "page"))
 
 (test-case "KIND-2: an entry has no epistemic status; an abstract is allowed"
@@ -617,11 +617,11 @@
   (define doc (in-entry (λ () (root (abstract "Briefly.") "\n\n" "Text."))))
   (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all doc txexpr?)))
   ;; DRAFT-2 applies to entries
-  (check-false (published? "notebook/x/x.html.pm" "draft"))
-  (check-true (published? "notebook/x/x.html.pm" "published")))
+  (check-false (published? "blog/x/x.html.pm" "draft"))
+  (check-true (published? "blog/x/x.html.pm" "published")))
 
 (test-case "KIND-3: an entry has no contents at any section count, and the essay header without the epistemic line"
-  (define doc (fixture "notebook/sectioned-entry/sectioned-entry.html.pm"))
+  (define doc (fixture "blog/sectioned-entry/sectioned-entry.html.pm"))
   (check-equal? (find-all doc (λ (x) (has-class* x "toc"))) '())
   (check-equal? (length (find-all doc (λ (x) (and (eq? (get-tag x) 'section) (has-class* x "level-1"))))) 3)
   (define header (car (get-elements doc)))
@@ -632,15 +632,15 @@
   (check-equal? (length (find-all block (λ (x) (has-class* x "date")))) 2)
   (check-not-false (findf (λ (x) (has-class* x "abstract")) (find-all header txexpr?)))
   (check-not-false (has-class* (last (get-elements header)) "header-rule"))
-  ;; LAYOUT-1b, KIND-4: its tags link to the notebook's index
-  (check-equal? (attr-ref (car (find-all block (λ (x) (has-class* x "tag-link")))) 'href) "/notebook?tags=site")
+  ;; LAYOUT-1b, KIND-4: its tags link to the blog's index
+  (check-equal? (attr-ref (car (find-all block (λ (x) (has-class* x "tag-link")))) 'href) "/blog?tags=site")
   ;; an essay with the same sections has contents, and its tags go to /essays
   (define essay (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-01" 'tags "site" 'here-path (path->string (build-path (current-directory) "essays" "x" "x.html.pm")))])
                   (root (section #:id "a" "A") "\n\n" "x" "\n\n" (section #:id "b" "B") "\n\n" "y" "\n\n" (section #:id "c" "C") "\n\n" "z")))
   (check-not-false (findf (λ (x) (has-class* x "toc")) (find-all essay txexpr?)))
   (check-equal? (attr-ref (car (find-all essay (λ (x) (has-class* x "tag-link")))) 'href) "/essays?tags=site"))
 
-(test-case "KIND-4, INDEX-1a: the notebook index has three cells in every row: Title · Date · Tags"
+(test-case "KIND-4, INDEX-1a: the blog index has three cells in every row: Title · Date · Tags"
   (define idx (index #:kind "entry" #:pagetree "tests/index.ptree"))
   (check-equal? (map (λ (th) (string-trim (text th))) (find-all (car (find-all idx (tag? 'thead))) (tag? 'th)))
                 '("Title" "Published" "Tags"))
@@ -650,31 +650,42 @@
   (check-equal? (map (λ (c) (string-trim (text (first c)))) cells) '("Newer entry" "A sectioned entry" "Older entry"))
   (check-equal? (map classes (first cells)) '("title" "date-col published" "tags"))
   (check-equal? (attr-ref (car (find-all (second (third cells)) (tag? 'time))) 'datetime) "2026-10-03")
-  (check-equal? (string-trim (text (third (third cells)))) "site, notebook")
-  ;; (a fixture's URL keeps its tests/ prefix; a real entry's is /notebook/<slug>)
-  (check-regexp-match #rx"/notebook/newer-entry/newer-entry$" (attr-ref (car (find-all (first (first cells)) (tag? 'a))) 'href))
+  (check-equal? (string-trim (text (third (third cells)))) "site, blog")
+  ;; (a fixture's URL keeps its tests/ prefix; a real entry's is /blog/<slug>)
+  (check-regexp-match #rx"/blog/newer-entry/newer-entry$" (attr-ref (car (find-all (first (first cells)) (tag? 'a))) 'href))
   (check-not-false (attrs-have-key? (car (find-all idx (tag? 'table))) 'data-sortable))
   (check-true (fails? (λ () (index #:kind "blog" #:pagetree "tests/index.ptree")))))
 
-(test-case "HOME-1: ◊latest lists the newest posts of both kinds, one line each"
-  (define l (latest 3 #:pagetree "tests/index.ptree"))
-  (define items (find-all l (tag? 'li)))
-  (check-equal? (length items) 3)
-  (check-equal? (map (λ (li) (text (car (find-all li (tag? 'od-link))))) items)
-                '("Newer entry" "Newer" "A sectioned entry"))
-  (check-regexp-match #rx"notebook · 6 October 2026" (text (first items)))
-  (check-regexp-match #rx"essay · 5 October 2026" (text (second items))))
+(test-case "HOME-1: ◊recent is two columns, the newest posts of each kind, newest first"
+  (define r (recent 3 #:pagetree "tests/recent.ptree"))
+  (check-equal? (map (λ (x) (attr-ref x 'class)) (get-elements r)) '("recent-essays" "recent-blog"))
+  (define essays (car (get-elements r)))
+  (check-equal? (text (car (find-all essays (tag? 'h3)))) "Essays")
+  (define items (find-all essays (tag? 'li)))
+  (check-equal? (length items) 3)                          ; three of the four; the draft never
+  (check-equal? (map (λ (li) (regexp-replace* #rx"⁠| \\(link to another page\\)" (text (car (find-all li (tag? 'a)))) ""))
+                     items)
+                '("Newer" "Link B" "Link A"))
+  (check-equal? (map (λ (li) (regexp-replace* #rx" " (text (car (find-all li (λ (x) (has-class* x "date"))))) " ")) items)
+                '("5 Oct 2026" "4 Oct 2026" "3 Oct 2026"))
+  (check-not-false (member "/essays" (map (λ (a) (attr-ref a (quote href))) (find-all essays (tag? (quote a))))))
+  ;; a kind with nothing published: its heading and Nothing yet
+  (define blog (cadr (get-elements r)))
+  (check-equal? (text (car (find-all blog (tag? 'h3)))) "Blog")
+  (check-equal? (text (findf (λ (x) (has-class* x "empty")) (find-all blog txexpr?))) "Nothing yet"))
 
-(test-case "NAV-1: Home · Essays · Notebook; an essay marks Essays, an entry Notebook"
+(test-case "NAV-1: Home · About · Essays · Blog · Glossary · Bibliography; an essay marks Essays, an entry Blog"
   (define (menu here) (site-menu (hasheq 'here-path (path->string (build-path (current-directory) here)))))
-  (check-regexp-match #rx">Home<.*>Essays<.*>Notebook<" (menu "pages/index.html.pm"))
+  (check-regexp-match #rx">Home<.*>About<.*>Essays<.*>Blog<.*>Glossary<.*>Bibliography<" (menu "pages/index.html.pm"))
+  (check-regexp-match #rx"href=\"/about\" aria-current=\"page\"" (menu "pages/about.html.pm"))
+  (check-regexp-match #rx"href=\"/glossary\" aria-current=\"page\"" (menu "pages/glossary.html.pm"))
   (check-regexp-match #rx"href=\"/essays\" aria-current=\"page\"" (menu "essays/placeholder/placeholder.html.pm"))
-  (check-regexp-match #rx"href=\"/notebook\" aria-current=\"page\"" (menu "notebook/a/a.html.pm"))
+  (check-regexp-match #rx"href=\"/blog\" aria-current=\"page\"" (menu "blog/a/a.html.pm"))
   (check-regexp-match #rx"href=\"/\" aria-current=\"page\"" (menu "pages/index.html.pm")))
 
 (test-case "NAV-1, POP-12: Scratch is the menu's last item, hidden until scripts show it; the bar's copy has a short name"
   (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
-  (check-regexp-match #rx">Notebook<.*<li class=\"menu-scratch\" hidden=\"\"><button[^>]*aria-label=\"Scratch pad\"" (site-menu here))
+  (check-regexp-match #rx">Blog<.*<li class=\"menu-scratch\" hidden=\"\"><button[^>]*aria-label=\"Scratch pad\"" (site-menu here))
   (check-false (regexp-match? #rx"site-name-short" (site-menu here)))
   (check-regexp-match #rx"class=\"site-menu bar-menu\".*site-name-short" (site-menu here #:bar #t)))
 
@@ -786,7 +797,7 @@
   (define cfix (filter (λ (c) (equal? (hash-ref c 'from) "/citations")) mp))
   (check-true (for/and ([c (in-list cfix)]) (exact-nonnegative-integer? (hash-ref c 'para))))
   ;; TERM-8: the terms a page marks
-  (check-not-false (member "looping-effect" (hash-ref (part 'terms) '/citations)))
+  (check-not-false (member "looping-effect" (map (λ (u) (hash-ref u 'id)) (hash-ref (part 'terms) '/citations))))
   ;; REV-3
   (check-equal? (map (λ (c) (list (hash-ref c 'from) (hash-ref c 'date))) (part 'changes)) '(("/link-a" "2026-10-05"))))
 
@@ -819,7 +830,7 @@
                 '("2026-10-05" "2026-11-01"))
   (check-regexp-match #rx"REV-3" (message-of (λ () (changelog "Undated line."))))
   (check-regexp-match #rx"KIND-2"
-                      (message-of (λ () (as-post "e" #:kind "notebook" (λ () (root "Text." "\n\n" (changelog "2026-10-05: x."))))))))
+                      (message-of (λ () (as-post "e" #:kind "blog" (λ () (root "Text." "\n\n" (changelog "2026-10-05: x."))))))))
 
 (test-case "REV-3: /changelog lists every line on the site, newest first, each with its post"
   (define l (in-graph changelog-list))
@@ -921,7 +932,7 @@
 
 (test-case "NAV-1: Glossary and Bibliography join the menu, in order"
   (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
-  (check-regexp-match #rx">Home<.*>Essays<.*>Notebook<.*>Glossary<.*>Bibliography<.*Scratch" (site-menu here)))
+  (check-regexp-match #rx">Home<.*>Essays<.*>Blog<.*>Glossary<.*>Bibliography<.*Scratch" (site-menu here)))
 
 (test-case "BIB-3, BIB-8: a commentary: paragraphs on the page, the first in the card; anything else fails"
   (define dir (build-path "references"))
@@ -949,3 +960,73 @@
       (thunk)))
   (check-regexp-match #rx"BIB-3" (message-of (λ () (as-commentary "hackingMakingPeople2006" (λ () (root (section #:id "a" "A") "\n\n" "Text."))))))
   (check-regexp-match #rx"BIB-3" (message-of (λ () (as-commentary "noSuchWork1999" (λ () (root "Text.")))))))
+
+;; ---------------------------------------------------------------------------
+;; Phase 3c: the glossary
+
+(require (only-in "lib/glossary.rkt" current-glossary-dir term-ref))
+
+(test-case "TERM-2, D18: the first paragraph is the definition, the rest of the file the More"
+  (parameterize ([current-glossary-dir (path->complete-path (build-path "tests" "glossary"))])
+    (define three (term-ref "three-paragraphs"))
+    (check-equal? (text (txexpr 'p null (hash-ref three 'definition))) "The definition, in one paragraph.")
+    (check-equal? (map text (hash-ref three 'more))
+                  '("The first paragraph of the More." "The second paragraph of the More."))
+    (check-false (hash-ref (term-ref "one-paragraph") 'more)))
+  ;; the site's own terms are back after the fixture folder
+  (check-not-false (term-ref "occurrent"))
+  (check-equal? (length (hash-ref (term-ref "occurrent") 'more)) 1)   ; unwrapped from ◊more
+  ;; ◊more is gone
+  (check-true (fails? (λ () (eval '(more "x") (module->namespace (string->path (path->string (build-path (current-directory) "pollen.rkt")))))))))
+
+(test-case "TERM-2: a definition holds paragraphs only"
+  (define (as-term thunk)
+    (parameterize ([current-metas (hasheq 'here-path (path->string (build-path (current-directory) "glossary" "x.pm")))])
+      (thunk)))
+  (for ([bad (list (λ () (root (od-list "- a" "\n" "- b")))
+                   (λ () (root "Text" (aside "a") "."))
+                   (λ () (root (margin "a") "Text."))
+                   (λ () (root (table #:id "t" #:title "T" "| a |" "\n" "|---|" "\n" "| 1 |" "\n"))))])
+    (check-regexp-match #rx"TERM-2" (or (message-of (λ () (as-term bad))) "did not fail"))))
+
+(test-case "TERM-9: ◊sense is lifted out of the text into the Terms entry, labelled by kind"
+  (define doc (as-post "sensed" (λ () (root "A " (term "occurrent" "occurrent " (sense "here, a " (em "process") " " (cite "hackingMakingPeople2006" #:loc "p. 23"))) " word."))))
+  (define p (car (find-all doc (tag? 'p))))
+  (check-false (regexp-match? #rx"here, a" (text p)))   ; not in the running text
+  (define entry (by-id doc "term-occurrent"))
+  (define sn (by-class entry "term-sense"))
+  (check-regexp-match #rx"^In this essay: here, a process" (text sn))
+  ;; between the definition and the More
+  (check-equal? (map (λ (x) (attr-ref x 'class #f)) (filter txexpr? (get-elements entry)))
+                '("definition" "term-sense" "term-more" "see-also"))
+  ;; a citation in a sense is numbered like any other
+  (check-not-false (by-id doc "note-1"))
+  (define entry-doc (as-post "e" #:kind "blog" (λ () (root "A " (term "occurrent" "occurrent" (sense "noted")) "."))))
+  (check-regexp-match #rx"^In this entry:" (text (by-class (by-id entry-doc "term-occurrent") "term-sense"))))
+
+(test-case "TERM-9: one sense per term per page, at its first use, inside a ◊term only"
+  (check-regexp-match #rx"TERM-9" (message-of (λ () (as-post "x" (λ () (root "A " (sense "loose") "."))))))
+  (check-regexp-match #rx"TERM-9" (message-of (λ () (as-post "x" (λ () (root "A " (term "occurrent" "o") " and " (term "occurrent" #:mark #t "o" (sense "late")) "."))))))
+  (check-regexp-match #rx"TERM-9" (message-of (λ () (term "occurrent" "o" (sense "a") (sense "b")))))
+  (check-regexp-match #rx"TERM-9" (message-of (λ () (sense "with " (term "continuant" "a term")))))
+  (check-regexp-match #rx"TERM-9" (message-of (λ () (sense "one" "\n" "\n" "two"))))
+  ;; a page without a sense renders as before
+  (check-false (by-class (as-post "y" (λ () (root "A " (term "occurrent" "occurrent") "."))) "term-sense")))
+
+(test-case "TERM-8, TERM-9: Used in is a list of the term's backlinks, each with the post's sense"
+  (define g (in-graph glossary-list))
+  (define used (by-class (by-id g "occurrent") "used-in"))
+  (check-equal? (get-tag used) 'ul)
+  (define a (findf (λ (li) (member "/link-a" (hrefs li))) (find-all used (tag? 'li))))
+  (check-not-false a)
+  (define sn (by-class a "sense"))
+  (check-equal? (text sn) "the fixture’s own sense, with emphasis")
+  (check-not-false (findf (λ (e) (equal? (get-elements e) '("emphasis"))) (find-all sn (tag? 'em)))))
+
+(test-case "CITE-10, TERM-8: a page with no end matter; its unnumbered circles go to the work's page"
+  (define doc (parameterize ([current-metas (hasheq 'title "Glossary" 'endmatter "none"
+                                                    'here-path (path->string (build-path (current-directory) "pages" "glossary.html.pm")))])
+                (root (in-graph glossary-list))))
+  (check-equal? (find-all doc (λ (x) (has-class* x "endmatter"))) '())
+  (define circle (findf (λ (x) (has-class* x "circle-link")) (find-all doc txexpr?)))
+  (check-equal? (attr-ref circle 'href) "/references/hackingLoopingEffectsHuman1996"))

@@ -1,0 +1,7 @@
+#lang pollen
+◊; HOME-1 fixture: four published essays, a draft and no entries, for ◊recent.
+tests/essays/draft-essay/draft-essay.html
+tests/essays/listed/listed.html
+tests/essays/listed/newer.html
+tests/essays/link-a/link-a.html
+tests/essays/link-b/link-b.html

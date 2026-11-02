@@ -40,7 +40,7 @@ When this is built, fold the new IDs into `SPEC.md` §16 and point it here for d
 
 The highlighter, the completer and the checker all read **one table**, `od-vocabulary`, in `occurrent.el`.
 
-**VOCAB-1 (MUST)** Each entry gives: tag name; whether it takes a **positional argument** in `[...]` (`link`, `cite`, `term`, `anchor`, `ref`, `table-csv`, `figure`, `embed`, `sort-key`, `define-meta`); its allowed **keyword arguments**, marking which are **required**; whether it takes a **body** in `{...}` (`cite`, `anchor`, `ref`, `br`, `break`, `table-csv` do not); and whether it must start a line (**block**: `define-meta`, `section`, `subsection`, `subsubsection`, `summary`, `break`, `list`, `table`, `table-csv`, `figure`, `embed`, `epigraph`, `blockquote`, `changelog`, `more`). Seed it from SPEC §3.3 and the `provide` form in `pollen.rkt`:
+**VOCAB-1 (MUST)** Each entry gives: tag name; whether it takes a **positional argument** in `[...]` (`link`, `cite`, `term`, `anchor`, `ref`, `table-csv`, `figure`, `embed`, `sort-key`, `define-meta`); its allowed **keyword arguments**, marking which are **required**; whether it takes a **body** in `{...}` (`cite`, `anchor`, `ref`, `br`, `break`, `table-csv` do not); and whether it must start a line (**block**: `define-meta`, `section`, `subsection`, `subsubsection`, `summary`, `break`, `list`, `table`, `table-csv`, `figure`, `embed`, `epigraph`, `blockquote`, `changelog`). Seed it from SPEC §3.3 and the `provide` form in `pollen.rkt`:
 
 | Tag | Positional | Keywords | Body | Block |
 |---|---|---|---|---|
@@ -61,8 +61,8 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `table-csv` | path | as `table` | no | yes |
 | `sort-key` | value | — | yes | no |
 | `figure` | src | `#:id` (required) `#:title` (required) `#:alt` (required) `#:licence` (required) `#:credit` `#:invert` | caption | yes |
-| `more` | — | — | yes | yes (glossary only) |
-| `index` | — | `#:kind` (required: `"essay"` or `"entry"`) | no | yes (`/essays` and `/notebook` only; KIND-4) |
+| `sense` | — | — | yes | no (inside `◊term` only; TERM-9) |
+| `index` | — | `#:kind` (required: `"essay"` or `"entry"`) | no | yes (`/essays` and `/blog` only; KIND-4) |
 | `latest` | count | — | no | yes (the home page only; HOME-1) |
 | `embed` | name | `#:alt` `#:fallback` `#:sticky` | caption | yes (**not built**) |
 | `changelog` | — | — | yes | yes (**not built**) |
@@ -132,7 +132,7 @@ Principle (EMACS-5): **prose dominates; markup recedes; errors stand out.** Noth
 - `◊` followed by whitespace, a newline, or `{` with no name (a bare `◊{…}` is legal Scribble but never wanted here);
 - a keyword argument not allowed for that tag (`◊cite["k" #:page "3"]`), including `#:width` on a figure, table or embed (IMG-2), and `#:italic` with a value other than `#t` or `#f`;
 - a required keyword missing: `#:id` or `#:title` on `◊figure`, `◊table`, `◊table-csv`; `#:alt` or `#:licence` on `◊figure` (IMG-3, IMG-6, IMG-7). Highlight the tag name, since there is no argument to point at;
-- `◊more` outside a glossary file; `◊define-meta[term]` outside one; a glossary meta key in an essay (VOCAB-4);
+- `◊sense` outside a `◊term` (TERM-9); `◊define-meta[term]` outside a glossary file; a glossary meta key in an essay (VOCAB-4);
 - a heading without `#:id`; two elements in the same file with the same id, counting headings, figures, tables and anchors together (SECT-5, IMG-7), highlighting the second;
 - `◊p` (SPEC §3.1: paragraphs are never written as tags; it is also unbound, so it already fails the build);
 - a `◊margin` whose anchor MNOTE-6 does not allow, including one followed by nothing but whitespace before the end of its paragraph, list item or quoted paragraph (the "glosses nothing" case, MNOTE-6, 2026-10-20); the check is the same one `od-insert-margin` uses to warn (EDIT-8);
@@ -180,7 +180,7 @@ then applies DRAFT-E1 (§8) and opens the `.pm` file. `support/` is gitignored f
 - `od-insert-list` (`C-c o l`) inserts `◊list{` `- ` `}` with point after the marker; `C-u` makes it `1. `. With a region, each line of the region becomes an item.
 - `od-insert-summary` (`C-c o S`) inserts `◊summary{}` on the line after the nearest heading above point, `user-error` if there is none or it already has one.
 - `od-insert-anchor` (`C-c o A`) proposes an id from the word at point, checks it against the file's ids (the FL-6 collector), and inserts `◊anchor["id"]`.
-- `od-insert-more` (`C-c o M`) works only when `od-file-kind` is `glossary`; it inserts `◊more{` `}` after the short definition, point inside.
+- `od-insert-more` (`C-c o M`) is withdrawn (draft 1.19, D18): a term file's paragraphs after the first are its More, with no tag. `od-insert-term` with a prefix argument writes `◊sense{}` after the region and leaves point inside it; it refuses when the buffer already gives that term a sense (SPEC TERM-9).
 - `od-insert-latex` (`C-c o L`) inserts `◊latex{}` and leaves point after it; it is an empty-body tag, so a region is not wrapped (SPEC TYPE-17).
 - `od-insert-changelog` (`C-c o H`) and `od-insert-embed` (`C-c o W`) exist now and `user-error` with "not built yet (VOCAB-2)" until their flags flip; when built, the first appends a dated line (`YYYY-MM-DD: `) to the essay's `◊changelog{…}`, creating the block at the end of the file if absent, and the second offers the folders in `widgets/` and inserts `◊embed["name" #:alt "" #:fallback ""]{}` with point in `#:alt`.
 - `od-insert-margin` (`C-c o m`) gains a check: when point is at the end of a paragraph, list item or quoted paragraph (only whitespace before the block ends), it asks "A margin note here glosses nothing; insert at the start of this item/paragraph instead?" and, on yes, moves point there first (MNOTE-6, 2026-10-20).
@@ -267,7 +267,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-3 (MUST)** Dependencies: Emacs 29+, Magit (soft: the `od-publish` family is defined only when `magit` is loadable, and says so if not), `citar` (soft, as now). No `pollen-mode`, no `company`.
 
-**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. Draft 1.18 (2026-11-02, evening) withdrew `od-insert-q` before it was bound; `od-insert-cite` prompts for the quotation instead (SPEC §16, BIB-9). The full map, as of 2026-11-02:
+**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. Draft 1.18 (2026-11-02, evening) withdrew `od-insert-q` before it was bound; `od-insert-cite` prompts for the quotation instead (SPEC §16, BIB-9). Draft 1.19 (that night) withdrew `od-insert-more` and its key `C-c o M` (D18). The full map, as of 2026-11-02:
 
 | Key | Command | Key | Command |
 |---|---|---|---|
@@ -277,7 +277,7 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 | `d` | `od-deploy-status` | `F` | `od-insert-figure` |
 | `e` | `od-insert-link-essay` | `H` | `od-insert-changelog` |
 | `f` | `od-find-term` | `I` | `od-guide` |
-| `g` | `od-goto-section` | `M` | `od-insert-more` |
+| `g` | `od-goto-section` | | |
 | `i` | `od-insert-link-internal` | `N` | `od-new-essay` |
 | `k` | `od-check` | `P` | `od-publish` |
 | `l` | `od-insert-list` | `L` | `od-insert-latex` |

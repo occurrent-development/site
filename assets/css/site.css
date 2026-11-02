@@ -953,7 +953,13 @@ ul.cited-in, ul.cite-entries { list-style: none; margin: 0; padding: 0; }
 .glossary-entry { margin: 0 0 1.4em; }
 .glossary-entry p { margin: 0.3em 0; text-indent: 0; }
 .glossary-entry dfn { font-style: normal; font-weight: 600; }
-.glossary-entry .aliases, .glossary-entry .see-also, .glossary-entry .used-in { color: var(--text-muted); font-size: 0.9em; }
+.glossary-entry .aliases, .glossary-entry .see-also, .glossary-entry .used-in-label,
+.glossary-entry .used-in { color: var(--text-muted); font-size: 0.9em; }
+/* TERM-8: Used in, a list of the term's backlinks; a post's sense on its
+   own line inside its item, no bullet, no gap (TERM-9) */
+.glossary-entry .used-in-label { margin: 0.3em 0 0; }
+.glossary-entry .used-in { margin: 0.1em 0 0; }
+.used-in .sense { display: block; margin: 0; color: var(--text); }
 .glossary-entry:target { background: color-mix(in srgb, var(--selection) 45%, transparent); }
 .bib-table td.cited, .bib-table th.cited, .bib-table td.year { font-variant-numeric: lining-nums tabular-nums; }
 @container page (width < 39em) { .bib-table .type, .bib-table .year { display: none; } }
@@ -974,7 +980,7 @@ ul.cited-in, ul.cite-entries { list-style: none; margin: 0; padding: 0; }
 .sticky-head.is-shown { display: block; }
 .sticky-head table { border-collapse: collapse; }
 
-/* ── The indexes: essays and notebook entries as tables (INDEX-1…3, KIND-4) ── */
+/* ── The indexes: essays and blog entries as tables (INDEX-1…3, KIND-4) ── */
 .post-index { position: relative; }
 .post-index button {
   appearance: none; border: 0; background: none; padding: 0; margin: 0;
@@ -1069,11 +1075,15 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .table-wrap .index-table tbody tr:last-child { border-bottom: 0; }
 .table-wrap .index-table tbody { border-bottom: 1.5px solid var(--text); }
 
-/* HOME-1: the latest posts, one line each: title, then kind and date, muted */
-ul.latest { list-style: none; margin: 0.75em 0; padding: 0; text-align: left; }
-ul.latest li { margin: 0.2em 0; }
-.latest-meta { color: var(--text-muted); }
-p + ul.latest { margin-top: 0.5em; }
+/* HOME-1: the front page's two columns, Essays and Blog; one column at tier S */
+.recent { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--margin-gap); text-align: left; }
+.recent h3 { margin-top: 0.5em; }
+.recent ul { list-style: none; margin: 0; padding: 0; }
+.recent li { margin: 0 0 0.6em; }
+.recent .date { display: block; color: var(--text-muted); font-size: 0.85em; font-variant-numeric: lining-nums; }
+.recent .empty, .recent .all { color: var(--text-muted); text-indent: 0; }
+.recent .all { margin-top: 0.4em; }
+@container page (width < 39em) { .recent { grid-template-columns: 1fr; } }
 
 /* The full title of a truncated entry in the margin contents, on hover */
 .toc-full {
@@ -1302,6 +1312,13 @@ p + ul.latest { margin-top: 0.5em; }
 .popup-item-head { font-variant-caps: all-small-caps; letter-spacing: 0.05em; color: var(--text-muted); margin: 0 0 0.2em; }
 .popup-bib { color: var(--text-muted); }
 .popup .term-more { margin-top: 0.5em; }
+/* TERM-9: the page's sense, under the definition: the label muted and
+   roman, the sense italic, ◊em inside it roman again (LAYOUT-4c) */
+.popup .term-sense, .terms .term-sense, .used-in .sense { margin: 0.35em 0 0; }
+.term-sense em, .used-in .sense em { font-style: italic; }
+.term-sense em em, .used-in .sense em em { font-style: normal; }
+.sense-label { color: var(--text-muted); font-style: normal; }
+.popup .term-sense + p { margin-top: 0.35em; }
 .popup-more {
   appearance: none; border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; padding: 0;
 }

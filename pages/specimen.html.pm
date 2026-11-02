@@ -203,10 +203,10 @@ lines" #:subtitle "And a subtitle, in italic" #:published "2026-10-01"
 #:revised "2026-10-15" #:tags "site, typography" #:epistemic "A sample. Its
 block starts on the subtitle's baseline."]
 
-A notebook entry has the same header with less in it: no epistemic status,
+A blog entry has the same header with less in it: no epistemic status,
 so no gap, and no contents however many sections it has. With no subtitle,
 its block starts on the line a second line of the title would take. Its tags lead to
-the notebook's index rather than the essays'. This one is by a guest, so its
+the blog's index rather than the essays'. This one is by a guest, so its
 author line is not the site's; and it has never been edited, so its two dates
 agree:
 
@@ -292,7 +292,7 @@ the words around it, and takes the accent only on hover or focus.
 
 A circle opens something where the reader is, without moving the page: a
 definition, a note or an aside. The first time a defined word appears, such
-as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects},
+as ◊term["occurrent"]{occurrent} or ◊term["looping-effect"]{looping effects ◊sense{the narrow case of a diagnostic label changing the child it is given to.}},
 it carries a circle; later uses, like this second
 ◊term["occurrent"]{occurrent}, are plain text. ◊margin{A note at a sentence
 inside a paragraph} A definition opens over the

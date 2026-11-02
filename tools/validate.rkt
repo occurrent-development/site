@@ -88,11 +88,11 @@
 
 (define nodes (pagetree->list (get-pagetree "index.ptree")))
 
-;; Every post's source: essays/<slug>/<slug>.html.pm and notebook/<slug>/<slug>.html.pm.
+;; Every post's source: essays/<slug>/<slug>.html.pm and blog/<slug>/<slug>.html.pm.
 (define post-sources
-  (for*/list ([dir (in-list '("essays" "notebook"))] #:when (directory-exists? dir)
+  (for*/list ([dir (in-list '("essays" "blog"))] #:when (directory-exists? dir)
               [f (in-directory dir (λ (d) (not (regexp-match? #rx"/support$" (path->string d)))))]
-              #:when (regexp-match? #px"^(?:essays|notebook)/[^/]+/[^/.][^/]*\\.html\\.pm$" (path->string f)))   ; not Emacs's .# lock files
+              #:when (regexp-match? #px"^(?:essays|blog)/[^/]+/[^/.][^/]*\\.html\\.pm$" (path->string f)))   ; not Emacs's .# lock files
     f))
 
 ;; A post's status. A draft that does not build yet (DRAFT-E1: a draft is
@@ -263,7 +263,7 @@
             (warn "published anchor ~a#~a has gone; links to it from elsewhere will break" url id))))))
 
 ;; TERM-6: unused terms
-(define used (remove-duplicates (append* (hash-values (hash-ref published-graph 'terms)))))
+(define used (remove-duplicates (map (λ (u) (hash-ref u 'id)) (append* (hash-values (hash-ref published-graph 'terms))))))
 (for ([f (in-list (if (directory-exists? "glossary") (directory-list "glossary") null))]
       #:when (regexp-match? #rx"\\.pm$" (path->string f)))
   (define id (path->string (path-replace-extension f #"")))
@@ -335,7 +335,7 @@
             'author (or (meta-text metas 'author) (site-value 'author))
             'abstract abstract)))
 (define (kind-category k)
-  `(category ((term ,(if (eq? k 'entry) "notebook" "essay")) (label ,(if (eq? k 'entry) "Notebook entry" "Essay")))))
+  `(category ((term ,(if (eq? k 'entry) "blog" "essay")) (label ,(if (eq? k 'entry) "Blog entry" "Essay")))))
 (define feed-entries
   (append
    (for/list ([p (in-list feed-posts)])
@@ -372,7 +372,7 @@
      (xexpr->string
       `(feed ((xmlns "http://www.w3.org/2005/Atom") (xml:lang "en-AU"))
              (title "Occurrent Development")
-             (subtitle "Essays and notebook entries")
+             (subtitle "Essays and blog entries")
              (link ((rel "self") (type "application/atom+xml") (href ,(string-append site "/feed.xml"))))
              (link ((rel "alternate") (type "text/html") (href ,(string-append site "/"))))
              (id ,(string-append site "/"))

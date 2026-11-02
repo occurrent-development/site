@@ -3,6 +3,6 @@ tests/lists.html
 tests/essays/draft-essay/draft-essay.html
 tests/essays/listed/listed.html
 tests/essays/listed/newer.html
-tests/notebook/older-entry/older-entry.html
-tests/notebook/newer-entry/newer-entry.html
-tests/notebook/sectioned-entry/sectioned-entry.html
+tests/blog/older-entry/older-entry.html
+tests/blog/newer-entry/newer-entry.html
+tests/blog/sectioned-entry/sectioned-entry.html

@@ -49,9 +49,10 @@ Every push builds on GitHub Actions (`.github/workflows/deploy.yml`). Pushes to 
 - `pollen.rkt`: tag functions, the root pass (paragraphs, section tree, TOC) and template helpers.
 - `typography.rkt`: the typographic rules table.
 - `template.html.p`: the single page template.
-- `index.html.pm`: the home page. Its table of essays is built from every page in `index.ptree` that has a `published` date.
+- `pages/index.html.pm`: the front page, a paragraph and `◊recent[3]`, the newest essays and blog entries built from the posts' metas.
 - `essays/<slug>/<slug>.html.pm`: one folder per essay, each listed in `index.ptree` (the build fails otherwise) and served at `/<slug>`. Tags are a meta line, `◊define-meta[tags]{philosophy, site}`; `C-c o T` in Emacs picks from the tags already in use.
-- `pages/`: about, specimen, colophon. `/specimen` is the test bed for every CSS change.
+- `blog/<slug>/<slug>.html.pm`: blog entries, the second kind of post, the same shape as an essay's folder and served at `/blog/<slug>`.
+- `pages/`: about, the essay and blog indexes, the glossary, the bibliography, the changelog, correspondence and the specimen. `/specimen` is the test bed for every CSS change. A page that should have no end matter sets `◊define-meta[endmatter]{none}` (the glossary and the front page).
 - `assets/`: CSS; `js/site.js` (popups, margin, reading bar, theme and text size) and `js/tables.js` (sorting, pinned headers), both plain ES modules; icons; the Libertinus fonts (OFL; see `assets/fonts/README.md`).
 - `lib/`: citations, glossary, lists, tables, figures and marks.
 - `glossary/`: one file per term; never a page.

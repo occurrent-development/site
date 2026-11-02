@@ -169,7 +169,7 @@ function tagFilter(index) {
   index.append(panel);
 
   // INDEX-3: said only when the chosen tags leave no row, not of an empty list
-  const noun = location.pathname.startsWith("/notebook") ? "entry" : "essay";
+  const noun = location.pathname.startsWith("/blog") ? "entry" : "essay";
   const none = Object.assign(document.createElement("p"), { className: "tag-none", textContent: `No ${noun} has all of these tags.` });
   none.hidden = true;
   index.append(none);

@@ -47,6 +47,8 @@
   (let* ((e (od--tag name))
          (pos (pcase (plist-get (cdr e) :pos)
                 ('nil nil) ('key (if (eq name 'define-meta) "title" "\"k\"")) (_ "\"x\""))))
+    (if (eq name 'sense)
+        "A ◊term[\"occurrent\"]{word ◊sense{some text}} here.\n"   ; TERM-9: only inside a term
     (concat (when (eq name 'ref)
               "◊figure[\"a.png\" #:id \"x\" #:title \"T\" #:alt \"a\" #:licence \"own\"]{c}\n\n")
             "◊" (symbol-name name)
@@ -60,7 +62,7 @@
                   (t "{some\ntext over\nthree lines}"))
             ;; a margin note must gloss something (MNOTE-6)
             (if (eq name 'margin) "Text it glosses." "")
-            "\n")))
+            "\n"))))
 
 (ert-deftest od-test-every-tag ()
   "Every tag fontifies its name as markup, or as an error when not built."
@@ -124,11 +126,30 @@
   (od-test-errors-are "◊define-meta[term]{x}\n" '("term")))
 
 (ert-deftest od-test-only-where-allowed ()
-  (od-test-with "◊more{Longer text.}"
+  (od-test-with "◊index[#:kind \"essay\"]"
     (setq od-file-kind-override 'essay) (font-lock-flush) (font-lock-ensure)
-    (should (equal (od-test-errors) '("◊more")))
-    (setq od-file-kind-override 'glossary) (font-lock-flush) (font-lock-ensure)
+    (should (equal (od-test-errors) '("◊index")))
+    (setq od-file-kind-override 'index) (font-lock-flush) (font-lock-ensure)
     (should (equal (od-test-errors) nil))))
+
+(ert-deftest od-test-sense-inside-term ()
+  "TERM-9: ◊sense inside ◊term is clean; anywhere else it is an error; ◊more is gone (D18)."
+  (od-test-errors-are "A ◊term[\"occurrent\"]{occurrent ◊sense{what it means here}} word." nil)
+  (od-test-errors-are "A ◊sense{loose} word." '("◊sense"))
+  (od-test-errors-are "◊more{Longer text.}" '("◊more")))
+
+(ert-deftest od-test-insert-term-sense ()
+  "TERM-9: with a prefix, od-insert-term writes ◊sense{} and leaves point in it."
+  (od-test-with "A word here."
+    (transient-mark-mode 1)
+    (search-forward "word") (set-mark (match-beginning 0)) (activate-mark)
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "occurrent"))
+              ((symbol-function 'od--term-candidates) (lambda () '(("occurrent" . "occurrent")))))
+      (od-insert-term t)
+      (insert "here")
+      (should (equal (buffer-string) "A ◊term[\"occurrent\"]{word ◊sense{here}} here."))
+      (goto-char (point-max))
+      (should-error (od-insert-term t) :type 'user-error))))
 
 (ert-deftest od-test-lists ()
   (od-test-errors-are "◊list{\n- one\n  - two\n1. three\n   1. four\n}" nil)
@@ -227,7 +248,7 @@
 
 (defmacro od-test-with-repo (&rest body)
   "Run BODY in a fresh clone holding a draft post, essays/demo/ (or
-notebook/demo/ when `od-test-kind' is \"entry\")."
+blog/demo/ when `od-test-kind' is \"entry\")."
   (declare (indent 0))
   `(let* ((top (make-temp-file "od-test" t))
           (origin (expand-file-name "origin.git" top))
@@ -304,7 +325,7 @@ notebook/demo/ when `od-test-kind' is \"entry\")."
 
 
 ;;; 2026-10-20 and 2026-10-21: a command for every tag, #:italic, margin
-;;; anchors, the notebook (VOCAB-5, LAYOUT-4c, MNOTE-6, KIND-6)
+;;; anchors, the blog (VOCAB-5, LAYOUT-4c, MNOTE-6, KIND-6)
 
 (ert-deftest od-test-every-tag-has-a-key ()
   "Every built tag names a command that exists and is bound under C-c o (VOCAB-5)."
@@ -433,16 +454,16 @@ The key is picked as \"k\"."
 
 (ert-deftest od-test-file-kinds ()
   (let ((root (expand-file-name ".." (file-name-directory (locate-library "occurrent")))))
-    (dolist (c '(("essays/a/a.html.pm" . essay) ("notebook/a/a.html.pm" . entry)
-                 ("notebook/a/support/x.pm" . nil) ("pages/index.html.pm" . home)
-                 ("pages/essays.html.pm" . index) ("pages/notebook.html.pm" . index)
+    (dolist (c '(("essays/a/a.html.pm" . essay) ("blog/a/a.html.pm" . entry)
+                 ("blog/a/support/x.pm" . nil) ("pages/index.html.pm" . home)
+                 ("pages/essays.html.pm" . index) ("pages/blog.html.pm" . index)
                  ("pages/colophon.html.pm" . page) ("glossary/x.pm" . glossary)))
       (should (eq (od-file-kind (expand-file-name (car c) root)) (cdr c))))))
 
 (ert-deftest od-test-new-entry-is-hidden ()
   (let ((od-test-kind "entry"))
     (od-test-with-repo
-      (should (string-match-p "/notebook/demo/demo\\.html\\.pm\\'" buffer-file-name))
+      (should (string-match-p "/blog/demo/demo\\.html\\.pm\\'" buffer-file-name))
       (should-not (string-match-p "epistemic" (buffer-string)))
       (should (equal (od-test-git default-directory "status" "--porcelain") ""))
       (should (eq (od-file-kind) 'entry)))))
@@ -453,15 +474,15 @@ The key is picked as \"k\"."
       (od-test-publishing
        (od-publish)
        (let ((staged (split-string (od-test-git (od-root) "diff" "--cached" "--name-only") "\n" t)))
-         (should (member "notebook/demo/demo.html.pm" staged))
+         (should (member "blog/demo/demo.html.pm" staged))
          (should (member "index.ptree" staged)))
        (with-temp-buffer
          (insert-file-contents (expand-file-name "index.ptree" (od-root)))
-         (should (= 1 (how-many "^notebook/demo/demo\\.html$" (point-min) (point-max)))))))))
+         (should (= 1 (how-many "^blog/demo/demo\\.html$" (point-min) (point-max)))))))))
 
 (ert-deftest od-test-link-groups ()
-  (should (equal (mapcar #'od--url-group '("/placeholder" "/notebook/a-day" "/" "/essays" "/specimen"))
-                 '("Essays" "Notebook" "Pages" "Pages" "Pages"))))
+  (should (equal (mapcar #'od--url-group '("/placeholder" "/blog/a-day" "/" "/essays" "/specimen"))
+                 '("Essays" "Blog" "Pages" "Pages" "Pages"))))
 
 ;;; One key everywhere: C-c o P publishes a draft and commits anything else
 
@@ -504,11 +525,11 @@ The key is picked as \"k\"."
 (ert-deftest od-test-site-files-are-clean ()
   (let* ((root (expand-file-name ".." (file-name-directory (locate-library "occurrent"))))
          (files (append (mapcar (lambda (f) (expand-file-name f root))
-                                '("pages/index.html.pm" "pages/essays.html.pm" "pages/notebook.html.pm"
+                                '("pages/index.html.pm" "pages/essays.html.pm" "pages/blog.html.pm"
                                   "pages/specimen.html.pm" "pages/glossary.html.pm" "pages/bibliography.html.pm" "pages/changelog.html.pm"
                                   "essays/placeholder/placeholder.html.pm"
                                   "tests/lists.html.pm" "tests/citations.html.pm" "tests/asides.html.pm" "tests/essays/link-a/link-a.html.pm"
-                                  "tests/notebook/sectioned-entry/sectioned-entry.html.pm"))
+                                  "tests/blog/sectioned-entry/sectioned-entry.html.pm"))
                         (directory-files (expand-file-name "glossary" root) t "\\.pm\\'"))))
     (dolist (f files)
       (with-temp-buffer

@@ -27,7 +27,8 @@
          "lib/lists.rkt"
          "lib/tables.rkt"
          "lib/figures.rkt"
-         "lib/graph.rkt")
+         "lib/graph.rkt"
+         (only-in xml string->xexpr))
 
 (provide root
          ;; headings (§8)
@@ -36,13 +37,13 @@
          em strong sc code blockquote epigraph br anchor latex
          (rename-out [section-break break])
          ;; annotations (§4–7)
-         link cite term aside margin more
+         link cite term sense aside margin
          ;; the essay header's text (LAYOUT-1, SRC-4a)
          abstract epistemic
          ;; lists, tables, figures (§3.4, §9)
          (rename-out [od-list list]) table table-csv sort-key figure ref
          ;; the home page (§13a); the specimen's sample header (THEME-7)
-         index latest header-sample
+         index recent header-sample
          ;; revisions (REV-3) and the pages built from the link graph (Phase 3):
          ;; the glossary (TERM-8), the bibliography (BIB-4), the site-wide
          ;; changelog (REV-3) and a work's reference page (BIB-1)
@@ -80,7 +81,7 @@
   (define block-tags
     '(root address article aside blockquote body div dl dt dd figure figcaption
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
-      od-summary od-more od-abstract od-epistemic od-changelog))
+      od-summary od-abstract od-epistemic od-changelog))
   (define cache-watchlist
     (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css site-data
           links links-local)))
@@ -227,10 +228,26 @@
          (txexpr 'od-q attrs (map singles xs)))]))
 
 ;; ◊term[id]{text}: a glossary term (§6).
-(define (term id #:mark [force #f] . text)
+(define (term id #:mark [force #f] . xs)
   (check-id id 'term)
-  (when (null? text) (build-error "◊term ~s has no text" id))
-  (txexpr 'od-term `((ref ,id) ,@(if force '((force "1")) null)) text))
+  ;; TERM-9: a ◊sense among the children is the page's gloss on its use of
+  ;; the term; it is lifted out of the running text and kept on the term
+  (define-values (senses text) (partition (tag? 'od-sense) xs))
+  (when (> (length senses) 1) (build-error "◊term ~s has more than one ◊sense (TERM-9)" id))
+  (when (regexp-match? #px"^\\s*$" (text-of text)) (build-error "◊term ~s has no text" id))
+  (txexpr 'od-term `((ref ,id) ,@(if force '((force "1")) null))
+          (append (let ([t (match text [(list a ... (? string? s)) (append a (list (string-trim s #:left? #f)))] [_ text])])
+                    (filter (λ (e) (not (equal? e ""))) t))
+                  senses)))
+
+;; TERM-9: ◊term["id"]{text ◊sense{…}}, what this page means by the term.
+;; One paragraph; ◊em, ◊cite and ◊link inside, no terms, asides or margin notes.
+(define (sense . xs)
+  (forbid xs '(od-term od-aside od-margin od-sense) "◊sense (TERM-9)")
+  (when (regexp-match? #px"\n\\s*\n" (text-of xs))
+    (build-error "◊sense is one paragraph, not several (TERM-9)"))
+  (when (regexp-match? #px"^\\s*$" (text-of xs)) (build-error "◊sense is empty (TERM-9)"))
+  (txexpr 'od-sense null xs))
 
 ;; SRC-4a: the abstract and the epistemic status are written in the body, so
 ;; they may wrap and hold markup; the root pass moves them into the header.
@@ -267,7 +284,6 @@
            (syntax/loc stx (make-aside arg ...))))]
     [_ (identifier? stx) #'make-aside]))
 (define (margin . xs) (txexpr 'od-margin null xs))    ; §7.2
-(define (more . xs) (txexpr 'od-more null (paragraphs xs))) ; glossary only
 
 ;; ---------------------------------------------------------------------------
 ;; Lists, tables, figures (§3.4, §9)
@@ -476,7 +492,7 @@
 (define (forbid elems tags where)
   (for ([x (in-list (find-all elems (apply tag? tags)))])
     (build-error "~a cannot contain ◊~a" where
-                 (case (get-tag x) [(od-aside) "aside"] [(od-margin) "margin"] [(od-more) "more"]
+                 (case (get-tag x) [(od-aside) "aside"] [(od-margin) "margin"] [(od-sense) "sense"]
                    [(od-cite) "cite"] [(od-term) "term"] [(od-link) "link"]
                    [(od-abstract) "abstract"] [(od-epistemic) "epistemic"] [else (get-tag x)]))))
 
@@ -532,7 +548,6 @@
 (define (no-margin-context x)
   (cond [((tag? 'od-aside) x) "an aside"]
         [((tag? 'od-summary) x) "a ◊summary"]
-        [((tag? 'od-more) x) "a definition"]
         [((tag? 'od-abstract 'od-epistemic) x) "the essay header"]
         [(heading? x) "a heading"]
         [((tag? 'figure 'figcaption) x) "a caption"]
@@ -636,12 +651,12 @@
      (define m (link-meta href))
      (define href* (if (and (hash-ref m 'dead #f) (hash-ref m 'wayback #f)) (hash-ref m 'wayback) href))
      `(a ((class "link ext") (href ,href*) ,@data ,@meta) ,@(with-mark kids 'ext))]
-    [(or (regexp-match? #px"^/(?:notebook/)?[a-z0-9-]*(#[a-z0-9-]+)?$" href)   ; KIND-5: entries too
+    [(or (regexp-match? #px"^/(?:blog/)?[a-z0-9-]*(#[a-z0-9-]+)?$" href)   ; KIND-5: entries too
          (regexp-match? #px"^/references/[A-Za-z0-9_:.-]+$" href))           ; BIB-2: the key, case kept
      `(a ((class "link xref") (href ,href)) ,@(with-mark kids 'xref))]
     [(regexp-match? #px"^#[a-z0-9-]+$" href)
      `(a ((class "link same") (href ,href)) ,@(with-mark kids 'od-dir))]
-    [else (build-error "◊link target ~s is not http(s)://…, /slug, /notebook/slug, either with #id, /references/key, or #id" href)]))
+    [else (build-error "◊link target ~s is not http(s)://…, /slug, /blog/slug, either with #id, /references/key, or #id" href)]))
 
 ;; BIB-5: a work's page, from its References and Bibliography entries: a → alone,
 ;; named, as the ↩ beside it is.
@@ -678,7 +693,9 @@
   (append-map (λ (e) (if ((tag? 'od-splice) e) (get-elements e) (list e))) els))
 
 ;; The numbering walk and end matter (steps 4–6, CITE-1/2/10).
-(define (annotate doc-elems)
+;; ENDMATTER? #f: the page sets none (CITE-10: the glossary and the home
+;; page); an unnumbered citation's circle then links to the work's page.
+(define (annotate doc-elems #:endmatter? [endmatter? #t])
   (define note-n 0)
   (define aside-n 0)
   (define notes '())        ; (n elems)
@@ -687,6 +704,7 @@
   (define bib-keys (make-hash))
   (define term-order '())
   (define term-seen (make-hash))
+  (define senses (make-hash))   ; TERM-9: id → this page's sense, walked
 
   (define (walk x)
     (match x
@@ -696,7 +714,8 @@
        (define key (attr-ref x 'key))
        (bib-entry key)
        (hash-set! bib-keys key #t)
-       `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")))]
+       `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")
+                        ,@(if endmatter? null `((href ,(string-append "/references/" key))))))]
       [(? (tag? 'od-cite))
        (set! note-n (add1 note-n))
        (define n note-n)
@@ -738,11 +757,19 @@
        (term-ref id)
        (define first? (not (hash-ref term-seen id #f)))
        (when first? (hash-set! term-seen id #t) (set! term-order (cons id term-order)))
-       (define kids (map walk (get-elements x)))
+       (define-values (sense-els text-els) (partition (tag? 'od-sense) (get-elements x)))
+       ;; TERM-9: one sense per term per page, at its first use; its citations
+       ;; are numbered here, at its place in the argument
+       (when (pair? sense-els)
+         (unless first? (build-error "◊sense for ~s is on a later use of the term; it belongs at its first use, the one with the circle (TERM-9)" id))
+         (when (hash-ref senses id #f) (build-error "a second ◊sense for ~s on this page (TERM-9)" id))
+         (hash-set! senses id (splice (map walk (get-elements (car sense-els))))))
+       (define kids (map walk text-els))
        (if (or first? (attrs-have-key? x 'force))  ; TERM-5
            (term-link id kids)
            `(span ((class "term")) ,@kids))]
       [(? (tag? 'od-link)) (resolve-link x (map walk (get-elements x)))]
+      [(? (tag? 'od-sense)) (build-error "◊sense belongs inside ◊term (TERM-9)")]
       ;; BIB-9: “text” and its citation's circle, closing mark bound to the last word
       [(? (tag? 'od-q))
        (define kids (map walk (get-elements x)))
@@ -789,7 +816,8 @@
               (bib-entry key)
               (hash-set! bib-keys key #t)
               (unless (member key cited) (set! cited (append cited (list key))))
-              `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")))]
+              `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")
+                        ,@(if endmatter? null `((href ,(string-append "/references/" key))))))]
              [(? (tag? 'od-term))   ; TERM-7
               (define tid (attr-ref x 'ref))
               (term-ref tid)
@@ -807,6 +835,14 @@
          (define entry
            `(div ((class "term-entry") (id ,(string-append "term-" id)))
                  (p ((class "definition")) (dfn ,(hash-ref t 'term)) ". " ,@definition)
+                 ;; TERM-9: this page's sense, between the definition and the More
+                 ,@(let ([sn (hash-ref senses id #f)])
+                     (if sn
+                         `((p ((class "term-sense"))
+                              (span ((class "sense-label"))
+                                    ,(if (eq? (post-kind (or (source-path) "")) 'entry) "In this entry:" "In this essay:"))
+                              " " (em ,@sn)))
+                         null))
                  ,@(if more `((div ((class "term-more")) ,@more)) null)
                  ;; without scripts, the works the definition cites, in full
                  ,@(if (null? cited) null
@@ -861,7 +897,7 @@
                              `(ul ((class "bibliography"))
                                   ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
                                       `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k) "\u00A0" ,(reference-link k)))))))))
-  (append body end))
+  (append body (if endmatter? end null)))
 
 ;; A first-use term: its text links to its definition, with a circle.
 (define (term-link id kids)
@@ -952,7 +988,8 @@
                m)))
        (define visible (filter (λ (m) (not (ann? m))) shown))
        (define circle
-         `(a ((class "circle-link") (href ,(string-append "#" (attr-ref (car anns) 'target)))
+         `(a ((class "circle-link")
+              (href ,(if (attrs-have-key? (car anns) 'href) (attr-ref (car anns) 'href) (string-append "#" (attr-ref (car anns) 'target))))
               ,@(if cid `((id ,cid)) null)
               (aria-label ,label) (data-targets ,targets) (data-kinds ,kinds))
              ,(circle-span)))
@@ -1121,7 +1158,7 @@
       (build-error "◊define-meta[~a] is now ◊~a{…}, written in the body (SRC-4a)" k k)))
   ;; KIND-1: the kind comes from the folder, never from a meta
   (when (and (current-metas) (select-from-metas 'kind (current-metas)))
-    (build-error "◊define-meta[kind] is not allowed: a post's kind comes from its folder, essays/ or notebook/ (KIND-1)"))
+    (build-error "◊define-meta[kind] is not allowed: a post's kind comes from its folder, essays/ or blog/ (KIND-1)"))
   ;; VAL-1: posts need their meta fields.
   (define p (source-path))
   (when (and p (post-source? p))
@@ -1136,8 +1173,13 @@
 (define (glossary-root elems)
   (define flat (prepare elems))
   (check-headings-top-level flat)
-  (forbid flat '(od-aside od-margin od-abstract od-epistemic) "a glossary definition")
-  (when (pair? (find-all flat heading?)) (build-error "a glossary definition cannot contain headings"))
+  ;; TERM-2: paragraphs, ◊em, ◊cite and ◊term; a definition is reference
+  ;; material, not an essay
+  (forbid flat '(od-aside od-margin od-abstract od-epistemic od-sense) "a glossary definition (TERM-2)")
+  (when (pair? (find-all flat heading?)) (build-error "a glossary definition cannot contain headings (TERM-2)"))
+  (for ([x (in-list (find-all flat (λ (x) (or ((tag? 'ul 'ol 'table 'figure) x) (has-class? x "exhibit")))))])
+    (build-error "a glossary definition cannot contain ~a (TERM-2): paragraphs only, with ◊em, ◊cite and ◊term"
+                 (case (get-tag x) [(ul ol) "a list"] [(table) "a table"] [else "a figure or table"])))
   (check-quotes (txexpr 'root null flat)))
 
 (define (page-root elems)
@@ -1148,17 +1190,16 @@
   ;; REV-3: the changelog leaves the text for the end matter; KIND-2: an entry has none
   (define-values (changelogs flat) (partition (tag? 'od-changelog) flat*))
   (when (and entry? (pair? changelogs))
-    (build-error "◊changelog is for essays: a notebook entry is not revised, and a change of mind is a new entry (KIND-2)"))
+    (build-error "◊changelog is for essays: a blog entry is not revised, and a change of mind is a new entry (KIND-2)"))
   (when (> (length changelogs) 1) (build-error "◊changelog appears more than once; keep every line in one (REV-3)"))
   (for ([x (in-list flat)] #:when (txexpr? x))
     (forbid (list x) '(od-changelog) "a paragraph or another tag"))
   ;; KIND-2: an entry records what was thought on a date; it states no epistemic status
   (when (and entry? epistemic-el)
-    (build-error "◊epistemic is for essays: a notebook entry has no epistemic status (KIND-2)"))
+    (build-error "◊epistemic is for essays: a blog entry has no epistemic status (KIND-2)"))
   (for ([el (in-list (list abstract-el epistemic-el))] #:when (and el (pair? (find-all el (tag? 'od-margin)))))
     (build-error "~a (it is inside the essay header)" margin-anchor-error))
   (check-headings-top-level flat)
-  (forbid flat '(od-more) "an essay")
   (for ([a (in-list (find-all flat (tag? 'od-aside)))])
     (forbid (get-elements a) '(od-aside od-margin) "◊aside"))
   (define lifted (place-margin-notes flat))
@@ -1178,11 +1219,16 @@
   ;; TOC-1: after the abstract (in the header) and any epigraph, before the text.
   (define-values (epigraphs body)
     (splitf-at nested (λ (x) (has-class? x "epigraph"))))
+  ;; CITE-10, TERM-8, HOME-1: a page may set ◊define-meta[endmatter]{none}
+  (define endmatter? (not (equal? (let ([v (and (current-metas) (select-from-metas 'endmatter (current-metas)))])
+                                    (and v (string-trim (format "~a" v))))
+                                  "none")))
   (define annotated (append (annotate (append (if header (list (car numbered)) null)
-                                              epigraphs (if toc (list toc) null) body))
+                                              epigraphs (if toc (list toc) null) body)
+                                      #:endmatter? endmatter?)
                             ;; CITE-10: … Bibliography · Backlinks · Changelog
-                            (backlinks-section)
-                            (if (pair? changelogs) (list (changelog-section (car changelogs))) null)))
+                            (if endmatter? (backlinks-section) null)
+                            (if (and endmatter? (pair? changelogs)) (list (changelog-section (car changelogs))) null)))
   (define doc (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated)))))))
   (check-unique-ids doc)
   (check-quotes doc)
@@ -1212,7 +1258,7 @@
 ;; KIND-5: each listed post is marked with its kind.
 (define (kind-label url)
   (define info (post-info url))
-  `(span ((class "kind")) ,(if (and info (equal? (hash-ref info 'kind #f) "entry")) "notebook" "essay")))
+  `(span ((class "kind")) ,(if (and info (equal? (hash-ref info 'kind #f) "entry")) "blog" "essay")))
 
 ;; One entry of Backlinks or Cited in (VAL-4, BIB-1): the linking post and
 ;; section, then the context, collapsed to about two lines; More expands it,
@@ -1293,7 +1339,7 @@
   (for ([x (in-list flat)] #:unless (or ((tag? 'p) x) (blank? x)))
     (build-error "references/~a.pm: a commentary is paragraphs only, with ◊term, ◊link, ◊em, ◊sc and ◊cite inside (BIB-3); found ~a"
                  key (if (txexpr? x) (format "◊~a" (get-tag x)) (format "~s" x))))
-  (forbid flat '(od-aside od-margin od-more od-q od-changelog) (format "references/~a.pm (BIB-3)" key))
+  (forbid flat '(od-aside od-margin od-sense od-q od-changelog) (format "references/~a.pm (BIB-3)" key))
   (for ([l (in-list (find-all flat (tag? 'od-link)))] #:when (regexp-match? #rx"^#" (attr-ref l 'href)))
     (build-error "references/~a.pm: a commentary cannot link within a page" key))
   (check-quotes (txexpr 'root null flat)))
@@ -1487,11 +1533,18 @@
                                               `(od-link ((href ,(string-append "#" s))) ,(hash-ref (term-ref s) 'term)))
                                             ", "))))
                   ,@(if (null? users) null
-                        `((p ((class "used-in")) "Used in: "
-                             ,@(add-between (for/list ([u (in-list users)])
-                                              `(span (a ((class "link xref") (href ,u)) ,@(with-mark (list (post-title u)) 'xref))
-                                                     " " ,(kind-label u)))
-                                            ", "))))))))
+                        ;; TERM-8: the term's backlinks, each with the post's sense (TERM-9)
+                        `((p ((class "used-in-label")) "Used in")
+                          (ul ((class "list used-in") (data-depth "1"))
+                              ,@(for/list ([u (in-list users)])
+                                  (define sn (term-sense u id))
+                                  `(li (a ((class "link xref") (href ,u)) ,@(with-mark (list (post-title u)) 'xref))
+                                       " " ,(kind-label u)
+                                       ,@(if sn `((span ((class "sense")) (em ,@(html->elements sn)))) null))))))))))
+
+;; A sense recorded in the graph as HTML (VAL-2), back into elements.
+(define (html->elements html)
+  (get-elements (string->xexpr (string-append "<span>" html "</span>"))))
 
 ;; --- The bibliography page (BIB-4) ----------------------------------------
 
@@ -1530,7 +1583,7 @@
 ;; page that carries a date, which only the specimen does (INDEX-1, THEME-7).
 ;; The pages that list posts are never listed, and are skipped unread: each
 ;; would otherwise require the others, and itself, while it is being built.
-(define index-pages '("pages/index.html" "pages/essays.html" "pages/notebook.html" "index.html"))
+(define index-pages '("pages/index.html" "pages/about.html" "pages/essays.html" "pages/blog.html" "index.html"))
 
 (define (index-entries ptree [kind #f])
   (for*/list ([node (in-list (pagetree->list (get-pagetree (project-file ptree))))]
@@ -1600,7 +1653,7 @@
   `(div ((class "post-index"))
         (div ((class "table-wrap size-normal"))
              (div ((class "table-scroll") (tabindex "0") (role "region")
-                   (aria-label ,(if (eq? k 'essay) "Essays" "Notebook")))
+                   (aria-label ,(if (eq? k 'essay) "Essays" "Blog")))
                   ,(table-element header (make-list n #f) (map cells entries)
                                   #:class "index-table" #:sortable #t
                                   #:row-attrs (for/list ([e (in-list entries)])
@@ -1608,22 +1661,35 @@
                                   #:head-attrs (append (make-list (sub1 n) #f) '(((data-nosort "") (data-tag-filter ""))))
                                   #:col-classes classes)))))
 
-;; HOME-1: ◊latest[3], the newest published posts of both kinds, one line
-;; each: title, kind and date, in the text face; no table, no tags.
-(define (latest [n 3] #:pagetree [ptree "index.ptree"])
-  (unless (exact-positive-integer? n) (build-error "◊latest takes a count, as in ◊latest[3]"))
-  (define entries (newest-first (filter (λ (e) (hash-ref e 'post?)) (index-entries ptree))))
-  (define shown (take entries (min n (length entries))))
-  `(ul ((class "latest"))
-       ,@(for/list ([e (in-list shown)])
-           `(li ,(link (hash-ref e 'url) (hash-ref e 'title))
-                (span ((class "latest-meta"))
-                      ,(if (eq? (hash-ref e 'kind) 'entry) " · notebook · " " · essay · ")
-                      (time ((datetime ,(hash-ref e 'published))) ,(format-date (hash-ref e 'published))))))))
+;; HOME-1: ◊recent[3], the front page's two columns: the newest published
+;; posts of each kind (posts only: the specimen is in the essay index but is
+;; not an essay), newest first, each its title as a cross-essay link and its
+;; short date beneath, then a link to the kind's index; "Nothing yet" when a
+;; kind has none. The headings are level-2 headings (h3) inside their own
+;; sections, so they take the site's level-2 style without entering any
+;; contents. #:pagetree is for the tests.
+(define (recent [n 3] #:pagetree [ptree "index.ptree"])
+  (unless (exact-positive-integer? n) (build-error "◊recent takes a count, as in ◊recent[3]"))
+  (define posts (filter (λ (e) (hash-ref e 'post?)) (index-entries ptree)))
+  (define (column kind cls heading index all)
+    (define es (newest-first (filter (λ (e) (eq? (hash-ref e 'kind) kind)) posts)))
+    `(section ((class ,cls))
+              (h3 ,heading)
+              ,(if (null? es)
+                   '(p ((class "empty")) "Nothing yet")
+                   `(ul ,@(for/list ([e (in-list (take es (min n (length es))))])
+                            `(li (a ((class "link xref") (href ,(hash-ref e 'url)))
+                                    ,@(with-mark (list (typeset-string (hash-ref e 'title))) 'xref))
+                                 (span ((class "date"))
+                                       (time ((datetime ,(hash-ref e 'published))) ,(format-date-short (hash-ref e 'published))))))))
+              (p ((class "all")) (a ((class "link xref") (href ,index)) ,@(with-mark (list all) 'xref)))))
+  `(div ((class "recent"))
+        ,(column 'essay "recent-essays" "Essays" "/essays" "All essays")
+        ,(column 'entry "recent-blog" "Blog" "/blog" "All entries")))
 
-;; NAV-1: the menu at the top left. Items live here, once: Home · Essays ·
-;; Notebook · Glossary (TERM-8) · Bibliography (BIB-4), then Scratch.
-(define menu-items '(("Home" "/") ("Essays" "/essays") ("Notebook" "/notebook")
+;; NAV-1: the menu at the top left. Items live here, once: Home · About ·
+;; Essays · Blog · Glossary (TERM-8) · Bibliography (BIB-4), then Scratch.
+(define menu-items '(("Home" "/") ("About" "/about") ("Essays" "/essays") ("Blog" "/blog")
                      ("Glossary" "/glossary") ("Bibliography" "/bibliography")))
 
 ;; NAV-1, BAR-1: BAR? makes the reading bar's copy, which on tier S shows a
@@ -1636,8 +1702,8 @@
                                        (find-relative-path (current-project-root) (string->path (format "~a" here)))
                                        #""))))
   (define url (and rel (output->url rel)))
-  ;; an essay marks Essays, an entry Notebook
-  (define current (case (and rel (post-kind rel)) [(essay) "/essays"] [(entry) "/notebook"] [else url]))
+  ;; an essay marks Essays, an entry Blog
+  (define current (case (and rel (post-kind rel)) [(essay) "/essays"] [(entry) "/blog"] [else url]))
   (->html
    `(details ((class ,(if bar? "site-menu bar-menu" "site-menu")))
              (summary ,@(if bar? '(((aria-label "Site menu"))) null)
@@ -1726,8 +1792,9 @@
 
 (define (page-title metas)
   (define title (select-from-metas 'title metas))
-  (if title
-      (string-append (if (string? title) title (text-of title)) " · Occurrent Development")
+  (define t (and title (string-trim (if (string? title) title (text-of title)))))
+  (if (and t (not (equal? t "Occurrent Development")))   ; HOME-1: the front page is the site's name
+      (string-append t " · Occurrent Development")
       "Occurrent Development"))
 
 (define months
@@ -1851,13 +1918,18 @@
   (define title (meta 'title))
   (define abs (non-empty abstract-el))
   (define epi (non-empty epistemic-el))
+  ;; HOME-1: the front page shows no title (the site's name in the menu is
+  ;; its title) and no closing rule; a screen reader still gets the h1
+  (define home? (regexp-match? #rx"(^|/)pages/index\\.html\\.pm$" (format "~a" (or (and metas (select-from-metas (quote here-path) metas)) ""))))
   (and title
        (txexpr 'header `((class ,(string-append (if abs "essay-header" "essay-header no-abstract")
-                                                 (if (meta 'reference) " ref-header" ""))))
+                                                 (if (meta 'reference) " ref-header" "")
+                                                 (if home? " home-header" ""))))
                ;; BIB-7: a work's page has its cover first, at the title's right
                (append
                 (let ([c (and (meta 'reference) (reference-cover (meta 'reference)))]) (if c (list c) null))
-               (header-parts (typeset `(h1 ,title))
+               (filter (λ (x) (not (and home? (has-class? x "header-rule"))))
+               (header-parts (if home? `(h1 ((class "vh")) ,title) (typeset `(h1 ,title)))
                              (meta 'subtitle)
                              (meta 'published)
                              (revised-date (select-from-metas 'here-path metas))
@@ -1875,7 +1947,7 @@
                                               (and (file-exists? f) f))
                                             (select-from-metas 'here-path metas)))
                              #:index (if (eq? (post-kind (format "~a" (or (select-from-metas 'here-path metas) ""))) 'entry)
-                                         "/notebook" "/essays"))))))
+                                         "/blog" "/essays")))))))
 
 ;; LAYOUT-1a: "Abstract", a small heading run into its first paragraph.
 (define (abstract-paragraphs ps)
@@ -1890,7 +1962,7 @@
 
 ;; THEME-7: a sample header inside the specimen, to show the forms the page's
 ;; own header does not (no abstract, say). Its title is not an h1.
-;; #:kind "entry" shows a notebook entry's header (KIND-3, THEME-7).
+;; #:kind "entry" shows a blog entry's header (KIND-3, THEME-7).
 (define (header-sample #:title [title #f] #:subtitle [subtitle #f] #:published [published #f]
                        #:revised [revised #f] #:tags [tags #f] #:epistemic [epistemic #f]
                        #:author [author #f] #:kind [kind "essay"] . abstract)
@@ -1908,4 +1980,4 @@
                         (and epistemic (list (clean epistemic)))
                         (and abs (abstract-paragraphs (list `(p ,abs))))
                         #:author (or (clean author) (site-value 'author))
-                        #:index (if (equal? kind "entry") "/notebook" "/essays"))))
+                        #:index (if (equal? kind "entry") "/blog" "/essays"))))

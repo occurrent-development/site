@@ -10,23 +10,33 @@
          pollen/core
          "util.rkt")
 
-(provide term-ref glossary-ids glossary-source?)
+(provide term-ref glossary-ids glossary-source? current-glossary-dir)
 
-(define (glossary-dir) (project-file "glossary"))
+;; The tests point this at a folder of fixture terms (tests/glossary/).
+(define current-glossary-dir (make-parameter #f))
+(define (glossary-dir) (or (current-glossary-dir) (project-file "glossary")))
 
+;; A term file: a .pm in a folder named glossary (the site's, or a fixture's).
 (define (glossary-source? path)
   (and path (let-values ([(dir name _) (split-path (simplify-path path))])
-              (equal? (simplify-path dir) (simplify-path (path->directory-path (glossary-dir)))))))
+              (and (path? dir)
+                   (let-values ([(_up folder _d) (split-path dir)])
+                     (and (path? folder) (equal? (path->string folder) "glossary")))))))
 
 (define (meta-string metas key)
   (define v (select-from-metas key metas))
   (and v (string-normalize-spaces (if (string? v) v (text-of v)))))
 
-;; id → hash of term, aliases, see-also, added, definition, more
+;; id → hash of term, aliases, see-also, added, definition, more. TERM-2: the
+;; first paragraph is the definition and every element after it is the More
+;; (D18: no tag marks it; before draft 1.19 a second plain paragraph was read
+;; into a field nothing used and dropped).
 (define terms #f)
+(define terms-dir #f)
 
 (define (load-all!)
   (define dir (glossary-dir))
+  (set! terms-dir dir)
   (define files (if (directory-exists? dir)
                     (filter (λ (p) (regexp-match? #rx"\\.pm$" (path->string p))) (directory-list dir))
                     null))
@@ -43,7 +53,7 @@
     (unless term (build-error "glossary/~a needs ◊define-meta[term]" f))
     (unless (and added (regexp-match? #px"^\\d{4}-\\d{2}-\\d{2}$" added))
       (build-error "glossary/~a needs ◊define-meta[added]{YYYY-MM-DD}" f))
-    (define-values (mores body) (partition (λ (x) (and (txexpr? x) (eq? (get-tag x) 'od-more))) (get-elements doc)))
+    (define body (filter txexpr? (get-elements doc)))
     (unless (and (pair? body) (txexpr? (car body)) (eq? (get-tag (car body)) 'p)
                  (positive? (words (car body))))
       (build-error "glossary/~a: the first paragraph (the definition) is empty" f))
@@ -53,8 +63,7 @@
                                 (if a (filter (λ (s) (> (string-length s) 0)) (map string-trim (string-split a ";"))) null))
                      'see-also (let ([s (meta-string metas 'see-also)]) (if s (string-split s) null))
                      'definition (get-elements (car body))
-                     'rest (cdr body)
-                     'more (if (pair? mores) (get-elements (car mores)) #f))))
+                     'more (if (pair? (cdr body)) (cdr body) #f))))
   ;; TERM-6: dangling see-also, and aliases claimed twice
   (define claimed (make-hash))
   (for ([(id t) (in-hash table)])
@@ -68,11 +77,13 @@
       (hash-set! claimed k id)))
   (set! terms table))
 
+(define (fresh!) (unless (and terms (equal? terms-dir (glossary-dir))) (load-all!)))
+
 (define (glossary-ids)
-  (unless terms (load-all!))
+  (fresh!)
   (sort (hash-keys terms) string<?))
 
 (define (term-ref id)
-  (unless terms (load-all!))
+  (fresh!)
   (or (hash-ref terms id #f)
       (build-error "unknown term ~s (no file glossary/~a.pm)" id id)))

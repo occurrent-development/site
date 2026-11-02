@@ -2,7 +2,7 @@
 
 ◊define-meta[title]{Essays}
 
-This website hosts an ever-expanding collection of my essays, broadly dealing with the philosophy and practice of developmental paediatrics. You can read more about me, and this website ◊link["/"]{here}.
+This website hosts an ever-expanding collection of my essays, broadly dealing with the philosophy and practice of developmental paediatrics. You can read more about me, and this website ◊link["/about"]{here}.
 
 
 
