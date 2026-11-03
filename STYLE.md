@@ -1,6 +1,6 @@
 # occurrentdevelopment.com — Manual of Style
 
-Status: draft 1.1 · Owner: Ryan · Last revised: 2026-11-02 (afternoon) · Modelled on [gwern.net/style-guide](https://gwern.net/style-guide)
+Status: draft 1.2 · Owner: Ryan · Last revised: 2026-11-03 · Modelled on [gwern.net/style-guide](https://gwern.net/style-guide)
 
 This is the house style for everything on the site and in its repository: prose, markup, metadata, files, and the look of the thing. `SPEC.md` is the build brief and says what the build *enforces*; this manual says what a writer *chooses*. Where a rule here is also a requirement there, the ID follows it in parentheses (`TYPE-16`).
 
@@ -179,16 +179,14 @@ An **essay** is something you will revise; an **entry** is something you said on
 
 ### 6.2 Metadata
 
-Metas in this order, one per line, at the top of the file:
+Metas in this order, one per line, at the top of the file. Required and optional mean the same for essays and entries:
 
-| Meta | Essay | Entry | Rule |
-|---|---|---|---|
-| `title` | required | required | Title case as a work's title; ≤ ~8 words. The site name is not part of it |
-| `subtitle` | optional | optional | Sentence case; says what the title doesn't |
-| `status` | required | required | `draft` or `published` (`DRAFT-2`); nothing else |
-| `published` | required | required | `YYYY-MM-DD`; the date of first publication, never moved |
-| `tags` | optional | optional | lowercase, comma-separated, from the tags already in use (`C-c o T`); a new tag is a decision, not a typo |
-| `author` | optional | optional | only when not the site default (`LAYOUT-1e`) |
+- **`title`** (required). Title case as a work's title; ≤ ~8 words. The site name is not part of it.
+- **`subtitle`** (optional). Sentence case; says what the title doesn't.
+- **`status`** (required). `draft` or `published` (`DRAFT-2`); nothing else.
+- **`published`** (required). `YYYY-MM-DD`; the date of first publication, never moved.
+- **`tags`** (optional). Lowercase, comma-separated, from the tags already in use (`C-c o T`); a new tag is a decision, not a typo.
+- **`author`** (optional). Only when not the site default (`LAYOUT-1e`).
 
 Then, in the body: `◊epistemic` (essays only), `◊abstract` (essays; optional in entries), `◊audio` if any, then the text. `kind`, `abstract` and `epistemic` are never metas (`KIND-1`, `SRC-4a`). The Edited date, the source and history links, the PDF link and every number are derived; nothing of that is typed.
 
@@ -238,20 +236,18 @@ The general filename pattern is `YYYY[-MM[-DD]]-SURNAME1[-SURNAME2...][-TOOL[-TO
 
 **CSV:** our preferred "spreadsheet" or "tabular format". CSVs must be UTF-8 and comma-separated, and must read cleanly into LibreOffice and R.
 
-**Here**, the full list. Anything not on it is a SPEC change:
+**Here**, the full list. Anything not on it is a SPEC change. Each item gives the source (what you commit), what the build serves, and the rule:
 
-| Kind | Source (what you commit) | Served (what the build makes) | Rule |
-|---|---|---|---|
-| Prose | `.pm` (Pollen), `.md` (repository documents) | `.html` | §6; `.org` is not used in the repository (§9) |
-| Raster image | `.jpg` (photographs), `.png` (screenshots, line art with flat colour) | `.avif`, `.webp`, and the source format, in variants (`IMG-1`) | No WebP or AVIF *sources*: they are outputs. No HEIC, TIFF, BMP, GIF (a GIF is a video) |
-| Vector image | `.svg`, hand-cleaned, `currentColor` for strokes | inlined (`IMG-5`) | No `.pdf` figures; export to SVG |
-| Document | `.pdf` | as is | PDF/A where the tool offers it. Never `.docx`, `.doc`, `.djvu`, `.epub` for anything published |
-| Data | `.csv`, UTF-8, comma-separated, header row, one table per file | rendered by `◊table-csv` | No `.xlsx`, `.tsv`, `.ods`. Dates ISO, decimals with a full stop, no thousands separators |
-| Audio | `.mp3`, mono, 64–80 kbps, −19 LUFS / −1 dBTP (`AUDIO-2`) | as is, from R2 | Never committed (`AUDIO-1`). No `.m4a`, `.ogg`, `.wav` served |
-| Video | `.mp4` (H.264 + AAC) | as is | Only inside an interactive figure's fallback; no autoplay, no loop |
-| Fonts | `.otf` upstream (`TYPE-9a`) | `.woff2` subsets | No other format served |
-| Archive | `.tar.xz` | as is | Rarely; prefer the files |
-| Code | `.rkt`, `.py`, `.js`, `.css`, `.el`, `Makefile` | — | §8 |
+- **Prose.** Source `.pm` (Pollen) for pages and `.md` for repository documents; served as `.html`. §6; `.org` is not used in the repository (§9).
+- **Raster image.** Source `.jpg` (photographs) or `.png` (screenshots, line art with flat colour); served as `.avif`, `.webp` and the source format, in variants (`IMG-1`). No WebP or AVIF *sources*: they are outputs. No HEIC, TIFF, BMP, GIF (a GIF is a video).
+- **Vector image.** Source `.svg`, hand-cleaned, `currentColor` for strokes; inlined (`IMG-5`). No `.pdf` figures; export to SVG.
+- **Document.** Source `.pdf`; served as is. PDF/A where the tool offers it. Never `.docx`, `.doc`, `.djvu`, `.epub` for anything published.
+- **Data.** Source `.csv`, UTF-8, comma-separated, header row, one table per file; rendered by `◊table-csv`. No `.xlsx`, `.tsv`, `.ods`. Dates ISO, decimals with a full stop, no thousands separators.
+- **Audio.** Source `.mp3`, mono, 64–80 kbps, −19 LUFS / −1 dBTP (`AUDIO-2`); served as is, from R2. Never committed (`AUDIO-1`). No `.m4a`, `.ogg`, `.wav` served.
+- **Video.** Source `.mp4` (H.264 + AAC); served as is. Only inside an interactive figure's fallback; no autoplay, no loop.
+- **Fonts.** Source `.otf` upstream (`TYPE-9a`); served as `.woff2` subsets. No other format served.
+- **Archive.** `.tar.xz`, served as is. Rarely; prefer the files.
+- **Code.** `.rkt`, `.py`, `.js`, `.css`, `.el`, `Makefile`; nothing served. §8.
 
 **Images (`IMG-1`, `IMG-4`)**: a source is never above ~2 MB and never below the largest variant the build will make of it; the build warns. Commit the source, never the variants.
 
@@ -291,7 +287,7 @@ The general filename pattern is `YYYY[-MM[-DD]]-SURNAME1[-SURNAME2...][-TOOL[-TO
 - **One file per subject**, named in capitals at the root (`SPEC`, `BACKLOG`, `STYLE`, `COMPAT`, `HANDOVERS`, which holds every phase's handover as a section), with a status line under the title: `Status: … · Owner: … · Last revised: YYYY-MM-DD`.
 - **Rules carry ids** where they are enforced (`SPEC`) and plain headings where they are judgement (here). Cross-reference by id, never by page or section number, which move.
 - **Revision notes** inline in italics, as `SPEC.md` does: *Revised 2026-10-26: …*. A document is a living document like an essay; its history is git's.
-- **Markdown style**: ATX headings; one blank line between blocks; tables for anything with two dimensions; em dashes without surrounding spaces; code spans for every identifier, path, tag and key; no HTML except where Markdown cannot do it.
+- **Markdown style**: ATX headings; one blank line between blocks; a table only when every cell fits in about 40 characters, so a row stays on one line in an editor, and a row whose cell is a sentence is instead a list item with a bold lead-in (the metas in §6.2 are the shape); em dashes without surrounding spaces; code spans for every identifier, path, tag and key; no HTML except where Markdown cannot do it.
 
 ---
 
@@ -327,4 +323,4 @@ For Claude Code sessions and any other model asked to draft, edit or review pros
 
 ---
 
-*Revision notes.* 1.1 (2026-11-02, afternoon): panel figures in §5.4, with SPEC `IMG-9`. 1.0 (2026-11-02): first draft, from `SPEC.md` §17 and gwern.net's style guide; the file-naming and filetype rules of §7.1–7.2 are taken from that guide with local adaptations marked **Here**. Open: the serial comma (`D5`), ventilated prose as practice (§6.1), the rename script (§7.1).
+*Revision notes.* 1.2 (2026-11-03): the tables of §6.2 and §7.2, whose cells were sentences, became lists; the rule for that in §9, because no editor wraps text inside a pipe-table cell. 1.1 (2026-11-02, afternoon): panel figures in §5.4, with SPEC `IMG-9`. 1.0 (2026-11-02): first draft, from `SPEC.md` §17 and gwern.net's style guide; the file-naming and filetype rules of §7.1–7.2 are taken from that guide with local adaptations marked **Here**. Open: the serial comma (`D5`), ventilated prose as practice (§6.1), the rename script (§7.1).
