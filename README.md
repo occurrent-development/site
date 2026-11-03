@@ -6,15 +6,13 @@ Source for the site. `SPEC.md` is the build brief; `BACKLOG.md` lists what is de
 
 Needs Racket with the `pollen` package; Python 3 with `fonttools`, `brotli` and Pillow (`pip install -r tools/requirements.txt`); `avifenc` (libavif) for figures; and pandoc for `make refresh`.
 
-| Command | Does |
-|---|---|
-| `make` | Runs the tests, subsets the fonts, writes the link graph, renders every page and assembles `public/`. Works offline. |
-| `make test` | Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`), and the covers step of `make refresh` (`tools/refs_test.py`). |
-| `make test-browser` | The interactive layer in headless Chrome against the built site (`tools/browser_test.py`, `tests/browser/`); part of `make`, skipped without Chrome. `--browser firefox` or `--browser safari` runs it elsewhere by hand; `--shots DIR` saves the specimen screenshots. |
-| `make serve` | Pollen's project server on http://localhost:8080 (pages at `/pages/<name>.html`, a work's page at `/build/references/<key>.html`). Previews drafts with their own backlinks and citations (below). |
-| `make refresh` | Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, copies each cited work's cover (a `cover.jpg` attached to the item in Zotero) to `refs/covers/`, classifies new figures for dark mode into `data/invert.json`, and asks the Wayback Machine to keep a copy of each new external URL (`data/link-meta.json`). Run it after adding a citation, a cover, a figure or a link; commit the changed files. |
-| `make refresh-cites` | The citation part of `make refresh` alone (entries, notes, covers): pandoc and local files, no network. `C-c o p` in Emacs runs it for you when a page cites a work at a locator not yet in the cache, then restarts the server. |
-| `make clean` | Removes everything generated. |
+- `make`: Runs the tests, subsets the fonts, writes the link graph, renders every page and assembles `public/`. Works offline.
+- `make test`: Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`), and the covers step of `make refresh` (`tools/refs_test.py`).
+- `make test-browser`: The interactive layer in headless Chrome against the built site (`tools/browser_test.py`, `tests/browser/`); part of `make`, skipped without Chrome. `--browser firefox` or `--browser safari` runs it elsewhere by hand; `--shots DIR` saves the specimen screenshots.
+- `make serve`: Pollen's project server on http://localhost:8080 (pages at `/pages/<name>.html`, a work's page at `/build/references/<key>.html`). Previews drafts with their own backlinks and citations (below).
+- `make refresh`: Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, copies each cited work's cover (a `cover.jpg` attached to the item in Zotero) to `refs/covers/`, classifies new figures for dark mode into `data/invert.json`, and asks the Wayback Machine to keep a copy of each new external URL (`data/link-meta.json`). Run it after adding a citation, a cover, a figure or a link; commit the changed files.
+- `make refresh-cites`: The citation part of `make refresh` alone (entries, notes, covers): pandoc and local files, no network. `C-c o p` in Emacs runs it for you when a page cites a work at a locator not yet in the cache, then restarts the server.
+- `make clean`: Removes everything generated.
 
 ### The link graph, and why `make serve` can be stale
 
