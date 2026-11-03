@@ -955,7 +955,7 @@
   (check-false (by-id page "quoted"))
   (check-false (by-class page "ref-entry"))            ; no Chicago entry on the page
   (define cited (by-id page "cited-in"))
-  (check-equal? (map (λ (li) (car (hrefs li))) (find-all cited (λ (x) (has-class* x "cited-post"))))
+  (check-equal? (map (λ (li) (attr-ref li 'data-post)) (find-all cited (λ (x) (has-class* x "cited-post"))))
                 '("/link-b" "/link-a" "/citations"))
   ;; a quotation: its locator, the passage in full, a → to its mark
   (define q (findf (λ (x) (has-class* x "quoted")) (find-all cited txexpr?)))
@@ -964,13 +964,16 @@
   ;; a bare citation: its context, clamped, then one link to its mark, its locator or note as the text
   (check-not-false (findf (λ (x) (and (has-class* x "context-entry") (by-class x "cite-marks"))) (find-all cited txexpr?))))
 
-(test-case "BIB-9: citations sharing a paragraph are one entry, one link (locator or note) to each mark after the context"
+(test-case "BIB-9: citations sharing a paragraph are one entry; a bare citation has no link of its own, a located one links by its locator"
   (define cited (in-graph (λ () (by-id (reference-page "hackingLoopingEffectsHuman1996") "cited-in"))))
   (define entries (find-all cited (λ (x) (has-class* x "cite-entry"))))
   (define shared (findf (λ (e) (regexp-match? #rx"Twice in one paragraph" (text e))) entries))
   (check-not-false shared)
   (check-equal? (length (filter (λ (e) (regexp-match? #rx"Twice in one paragraph" (text e))) entries)) 1)
-  (check-equal? (length (find-all shared (λ (x) (has-class* x "to-mark")))) 2))
+  (check-equal? (length (find-all shared (λ (x) (has-class* x "to-mark")))) 0)   ; both bare
+  ;; the post is named plain, never a link (its sections are the links)
+  (define post (findf (λ (x) (has-class* x "context-from")) (find-all cited txexpr?)))
+  (check-equal? (hrefs post) null))
 
 (test-case "BIB-8: one function builds the page's head and the card, both fields, no Chicago entry"
   (define head (in-graph (λ () (car (get-elements (reference-page "hackingMakingPeople2006"))))))

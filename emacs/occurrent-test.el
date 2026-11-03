@@ -460,6 +460,7 @@ The key is picked as \"k\"."
   (declare (indent 1))
   `(let ((queue ,answers))
      (cl-letf (((symbol-function 'od--select-key) (lambda (&rest _) "k"))
+               ((symbol-function 'od--offer-reference) #'ignore)   ; the tests must not make files in the repository
                ((symbol-function 'read-string) (lambda (&rest _) (pop queue)))
                ((symbol-function 'completing-read)
                 (lambda (_p _c &optional _r _m _i _h def) (let ((a (pop queue))) (if (equal a "") def a)))))
@@ -491,6 +492,27 @@ The key is picked as \"k\"."
     (od-test-cite-answers '("p. 9" "block quotation" "" "italic") (od-insert-cite))
     (insert "Quoted.")
     (should (equal (buffer-string) "Before.\n\n◊cite[\"k\" #:block #t #:italic #t #:loc \"p. 9\"]{Quoted.}\n\nAfter.\n"))))
+
+(ert-deftest od-test-reference-stub ()
+  "BIB-3: citing a work makes its empty commentary file once, and offers it for review."
+  (let* ((root (file-name-as-directory (make-temp-file "od-ref" t)))
+         (asked nil) (opened nil))
+    (cl-letf (((symbol-function 'od-root) (lambda () root))
+              ((symbol-function 'y-or-n-p) (lambda (p) (push p asked) t))
+              ((symbol-function 'find-file-other-window) (lambda (f) (push f opened))))
+      (od--offer-reference "aWork2001")
+      (let ((file (expand-file-name "references/aWork2001.pm" root)))
+        (should (file-exists-p file))
+        (should (equal (with-temp-buffer (insert-file-contents file) (buffer-string)) od--reference-stub))
+        (should (equal opened (list file)))
+        (should (= (length asked) 1))
+        ;; a second citation of the same work neither asks nor opens
+        (od--offer-reference "aWork2001")
+        (should (= (length asked) 1))
+        ;; and a file the author wrote is never overwritten
+        (with-temp-file file (insert "#lang pollen\n\nMine.\n"))
+        (od--offer-reference "aWork2001")
+        (should (string-match-p "Mine" (with-temp-buffer (insert-file-contents file) (buffer-string))))))))
 
 (ert-deftest od-test-cite-body-not-an-error ()
   "BIB-9: ◊cite with or without a body, and #:block, are clean."

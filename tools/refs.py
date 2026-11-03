@@ -399,6 +399,33 @@ def facts(csl):
             "year": str(year), "type": TYPES.get(kind, kind.replace("-", " ").capitalize())}
 
 
+REFERENCES = ROOT / "references"
+STUB = """#lang pollen
+
+◊; Commentary on this work (BIB-3). Leave it empty and the work's page shows its
+◊; facts and where it is cited, nothing more. The first paragraph is the one the
+◊; popup card shows, so write it to stand on its own.
+"""
+
+
+def ensure_commentary_stubs(public_keys):
+    """An empty references/<key>.pm for every cited work that has none, a draft's
+    too, so there is always a file to write in (the Emacs citation command
+    makes it at the point of citing; this catches the rest). The build leaves a
+    commentary for a work no published page cites yet alone (tools/validate.rkt).
+    Never overwrites or deletes."""
+    made = []
+    for key in public_keys:
+        path = REFERENCES / f"{key}.pm"
+        if not path.exists():
+            REFERENCES.mkdir(exist_ok=True)
+            path.write_text(STUB, encoding="utf-8")
+            made.append(key)
+    for key in made:
+        print(f"refs: references/{key}.pm (an empty commentary)")
+    return made
+
+
 def main():
     found, public = cited()
     if not found:
@@ -413,6 +440,7 @@ def main():
     local_keys = [k for k in found if k not in public_keys]
     sources = write_bib(public_keys, local_keys)
     refresh_covers(sources, public_keys, local_keys)
+    ensure_commentary_stubs(list(found))
     notes, bib_entries = run_pandoc(found)
     raw = split_entries(BIB.read_text(encoding="utf-8"))
     if LOCAL_BIB.exists():

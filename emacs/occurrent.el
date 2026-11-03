@@ -115,6 +115,46 @@ Leave point after AFTER, or inside when there was nothing to wrap."
 
 ;;; Citations ----------------------------------------------------------------
 
+(defconst od--reference-stub
+  "#lang pollen
+
+◊; Commentary on this work (BIB-3). Leave it empty and the work's page shows its
+◊; facts and where it is cited, nothing more. The first paragraph is the one the
+◊; popup card shows, so write it to stand on its own.
+"
+  "What an empty references/<key>.pm holds; tools/refs.py writes the same.")
+
+(defun od--reference-file (key)
+  "The commentary file for the work KEY (BIB-3)."
+  (od--file "references" (concat key ".pm")))
+
+(defun od--ensure-reference-file (key)
+  "Create references/KEY.pm, an empty commentary, unless it exists.
+Non-nil when it was made. It is made for a draft's citation too, so the
+commentary can be written while the essay is, and the build leaves it
+alone until a published page cites the work (tools/validate.rkt)."
+  (let ((file (od--reference-file key)))
+    (unless (file-exists-p file)
+      (make-directory (file-name-directory file) t)
+      (with-temp-file file (insert od--reference-stub))
+      t)))
+
+(defun od--offer-reference (key)
+  "After citing KEY: make its commentary file if it has none, and ask to review it.
+Never blocks a citation: outside the repository it does nothing."
+  (when (condition-case nil (od--ensure-reference-file key) (error nil))
+    (when (y-or-n-p (format "Made references/%s.pm, an empty commentary on the work. Review it now? " key))
+      (save-selected-window
+        (find-file-other-window (od--reference-file key))))))
+
+(defun od-new-reference ()
+  "Open the commentary file for a work of the Zotero library, making it if need be (BIB-3)."
+  (interactive)
+  (let* ((key (od--select-key))
+         (made (od--ensure-reference-file key)))
+    (find-file-other-window (od--reference-file key))
+    (when made (message "Made references/%s.pm" key))))
+
 (defun od--zotero-bib ()
   "Return the Zotero export (BUILD-3).
 That is `od-zotero-bib', or ZOTERO_BIB in the site's local.mk."
@@ -203,6 +243,7 @@ either side.  A quotation without a locator is warned about."
       (when region (forward-char 1)))
      (t (when region (goto-char (max (point) (mark))) (deactivate-mark))
         (insert (format "◊cite[%s]" kws))))
+    (od--offer-reference key)
     (cond ((and (not (equal kind "reference")) (string-empty-p loc))
            (message "A quotation should carry a locator (BIB-9): add #:loc"))
           ((not (od--cite-form-cached-p key loc))
@@ -2695,6 +2736,7 @@ title. A blog entry renames the same way, under /blog/."
     (define-key m (kbd "C-c ;") #'od-insert-lozenge)
     ;; writing: each lower-case key is a menu or a wrap (EMACS-7)
     (define-key m (kbd "C-c o c") #'od-insert-cite)
+    (define-key m (kbd "C-c o e") #'od-new-reference)    ; a work's commentary file (BIB-3)
     (define-key m (kbd "C-c o g") #'od-glossary)         ; insert, new, open
     (define-key m (kbd "C-c o l") #'od-insert-link)      ; this page, this site, other site
     (define-key m (kbd "C-c o i") #'od-insert-element)   ; section, figure, panels, table, summary, aside, margin, break, rule

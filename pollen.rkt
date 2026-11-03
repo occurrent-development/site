@@ -1309,7 +1309,10 @@
   (define numbered (number-exhibits (if header (cons header lifted) lifted)))
   (define-values (nested toc-entries)
     (nest-sections (mark-intro (if header (cdr numbered) numbered))))
-  (define toc (and (not entry?) (make-toc toc-entries)))   ; KIND-3: entries have no contents
+  ;; BIB-1: a work's page (◊define-meta[reference]) has no contents, whatever its sections
+  (define ref-key (let ([v (and (current-metas) (select-from-metas 'reference (current-metas)))])
+                    (and v (not (equal? (string-trim (format "~a" v)) "")) (string-trim (format "~a" v)))))
+  (define toc (and (not entry?) (not ref-key) (make-toc toc-entries)))   ; KIND-3: entries have no contents
   ;; LAYOUT-1c, §17: the header closes itself, so a break straight after it
   ;; is a style error
   (when (and header (pair? nested) (has-class? (car nested) "break"))
@@ -1321,7 +1324,13 @@
   (define endmatter? (not (equal? (let ([v (and (current-metas) (select-from-metas 'endmatter (current-metas)))])
                                     (and v (string-trim (format "~a" v))))
                                   "none")))
-  (define annotated (append (annotate (append (if header (list (car numbered)) null)
+  ;; BIB-7: the cover, first in the article, so that it floats beside the header
+  ;; (tier M), stands above it (S) or sits in the left margin, following the page (L, XL)
+  (define ref-cover
+    (let ([c (and ref-key (reference-cover ref-key))])
+      (and c `(div ((class "ref-cover") (style ,(attr-ref c 'style))) ,c))))
+  (define annotated (append (annotate (append (if ref-cover (list ref-cover) null)
+                                              (if header (list (car numbered)) null)
                                               epigraphs (if toc (list toc) null) body)
                                       #:endmatter? endmatter?)
                             ;; CITE-10: … Bibliography · Backlinks · Changelog
@@ -1538,10 +1547,11 @@
     `(a ((class "link xref to-mark") (href ,(mark-href r))
          (aria-label ,(format "Where it is cited in ~a" (post-title (hash-ref r 'from)))))
         (span ((class "nw")) ,WJ ,(mark 'xref))))
-  ;; the link for a bare citation: locator or note number as its text
+  ;; the link for a citation with a locator, the locator as its text; a bare
+  ;; citation has none (its number is not shown anywhere, and the section links)
   (define (mark-link r)
     (define l (hash-ref r 'loc ""))
-    (define text (if (equal? l "") (format "Reference ~a" (hash-ref r 'note)) (typeset-string l)))
+    (define text (typeset-string l))
     `(a ((class "link xref to-mark") (href ,(mark-href r))
          (aria-label ,(format "~a, where it is cited in ~a" text (post-title (hash-ref r 'from)))))
         ,@(with-mark (list text) 'xref)))
@@ -1569,9 +1579,11 @@
                           ,@(if (> (string-length (text-of ctx)) 170)
                                 '((details ((class "context-more")) (summary (span ((class "more")) "More") (span ((class "less")) "Less"))))
                                 null)
-                          (p ((class "cite-marks"))
-                             ,@(add-between (for/list ([g (in-list group)]) `(span ((class "cite-mark")) ,(mark-link g)))
-                                            '(span ((class "sep")) " · "))))
+                          ,@(let ([located (filter (λ (g) (not (equal? (hash-ref g 'loc "") ""))) group)])
+                              (if (null? located) null
+                                  `((p ((class "cite-marks"))
+                                       ,@(add-between (for/list ([g (in-list located)]) `(span ((class "cite-mark")) ,(mark-link g)))
+                                                      '(span ((class "sep")) " · ")))))))
                      out))])))
   (define (section-title from sec)
     (and (string? sec)
@@ -1585,9 +1597,9 @@
                  ['() (reverse out)]
                  [(cons r _) (define-values (same rest) (splitf-at rs (λ (x) (equal? (hash-ref x 'section) (hash-ref r 'section)))))
                              (loop rest (cons same out))])))
-           `(li ((class "cited-post"))
-                (p ((class "context-from"))
-                   (a ((class "link xref") (href ,url)) ,@(with-mark (list (post-title url)) 'xref))
+           `(li ((class "cited-post") (data-post ,url))
+                (p ((class "context-from"))      ; the post, plain: its sections are the links
+                   ,(post-title url)
                    " " ,(kind-label url))
                 ,@(append* (for/list ([run (in-list runs)])
                              (define sec (hash-ref (car run) 'section))
@@ -2058,15 +2070,9 @@
   (and title
        (txexpr 'header `((class ,(string-append (if abs "essay-header" "essay-header no-abstract")
                                                  (if (meta 'reference) " ref-header" "")
-                                                 (if home? " home-header" "")))
-                         ;; BIB-7: the cover's width/height, inherited by the cover and
-                         ;; by the metadata block beside it (both sit in the right margin)
-                         ,@(let* ([c (and (meta 'reference) (reference-cover (meta 'reference)))]
-                                  [st (and c (attr-ref c 'style #f))])
-                             (if st `((style ,st)) null)))
-               ;; BIB-7: a work's page has its cover first, at the title's right
+                                                 (if home? " home-header" ""))))
+               ;; BIB-7: the cover is not in the header: it is the page's own element (ref-cover)
                (append
-                (let ([c (and (meta 'reference) (reference-cover (meta 'reference)))]) (if c (list c) null))
                (filter (λ (x) (not (and home? (has-class? x "header-rule"))))
                (header-parts (if home? (masthead title) (typeset `(h1 ,title)))
                              (meta 'subtitle)

@@ -1051,21 +1051,25 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
   width: min(var(--cover-max), calc(var(--cover-h) * var(--cover-ar, 0.7)));
 }
 .cover img { display: block; width: 100%; height: auto; box-shadow: 0 0 0 1px var(--rule); }
-.ref-header .cover { margin-top: 0.3em; --cover-max: 50%; }   /* the h1's cap height; the title and fields keep half the measure */
+/* The work's page sets the cover in its own wrapper, first in the article
+   (BIB-7): beside the title at tier M, never more than half the measure; above
+   it at S; in the left margin at L and XL, where it follows the page. */
+.ref-cover { float: right; margin: 0.3em 0 0.75em 1.25em; width: min(50%, calc(28em * var(--cover-ar, 0.7))); }
+.ref-cover .cover { float: none; margin: 0; width: 100%; }
 .reference::after { content: ""; display: block; clear: both; }
-/* Tiers L and XL: the cover stands in the right margin, its top on the
-   title's, so the title and the fields have the whole measure. It is 28em
-   tall unless the margin is narrower, then as wide as the margin; the
-   metadata block (source links, when there are any) moves down beneath it. */
+/* Tiers L and XL: the cover stands in the left margin, flush with the gap
+   before the column, its top on the title's top, and follows the page as the
+   contents do: the wrapper is as tall as the article, the picture sticks
+   below the bar. 28em tall unless the margin is narrower, then as wide as
+   the margin. */
 @container page (min-width: 66.5em) {
-  .ref-header {
-    --cover-w: min(var(--margin), calc(28em * var(--cover-ar, 0.7)));
+  .ref-cover {
+    --cover-w: min(var(--left-margin), calc(28em * var(--cover-ar, 0.7)));
+    position: absolute; top: 0; bottom: 0; float: none; margin: 0;
+    left: calc(-1 * (var(--margin-gap) + var(--cover-w))); width: var(--cover-w);
+    overflow-anchor: none;
   }
-  .ref-header .cover {
-    position: absolute; top: 0.3em; left: calc(var(--measure) + var(--margin-gap));
-    float: none; margin: 0; width: var(--cover-w);
-  }
-  .ref-header:has(.cover) .header-meta { top: calc(0.3em + var(--cover-w) / var(--cover-ar, 0.7) + 1.5em); }
+  .ref-cover .cover { position: sticky; top: 3.6rem; margin-top: 0.3em; }
 }
 /* A cover beside the title leaves the title two words a line wherever the
    measure is short: at tier S on the page, and in the card at every width
@@ -1073,7 +1077,7 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
    not floated: it stands above the title at its full height and the title
    runs the full measure beneath it (the cover is first in the markup, BIB-7). */
 @container page (width < 39em) {
-  .ref-header .cover { float: none; margin: 0 0 1.1em; --cover-max: 100%; }
+  .ref-cover { float: none; margin: 0 0 1.1em; width: min(100%, calc(28em * var(--cover-ar, 0.7))); }
 }
 .ref-card .cover { float: none; margin: 0 0 0.75em; }
 /* IMG-4: covers are never inverted, only dimmed */
@@ -1102,8 +1106,11 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
 /* BIB-9: one Cited in */
 ul.cited-in, ul.cite-entries { list-style: none; margin: 0; padding: 0; }
 .cited-post { margin: 0 0 1.2em; }
-.cited-section { margin: 0.4em 0 0.2em; text-indent: 0; }
-.cite-entry { margin: 0 0 0.7em 1em; }
+/* the post plain; its sections one step in; their entries one more (2026-11-04) */
+.cited-section { margin: 0.4em 0 0.2em 1.25em; text-indent: 0; }
+.cited-post > .cite-entries { margin-left: 1.25em; }
+.cited-section + .cite-entries { margin-left: 2.5em; }
+.cite-entry { margin: 0 0 0.7em; }
 .cite-entry .passage { margin: 0; text-indent: 0; }
 .cite-marks { margin: 0.1em 0 0; text-indent: 0; }
 .loc { color: var(--text-muted); font-variant-numeric: oldstyle-nums; }

@@ -23,6 +23,34 @@ def fixture_entries():
     return refs.split_entries(text)
 
 
+class Stubs(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.saved = refs.REFERENCES
+        refs.REFERENCES = pathlib.Path(self.tmp.name) / "references"
+        self.addCleanup(lambda: setattr(refs, "REFERENCES", self.saved))
+
+    def test_an_empty_commentary_for_each_new_public_key(self):
+        made = refs.ensure_commentary_stubs(["aWork2001", "another2002"])
+        self.assertEqual(made, ["aWork2001", "another2002"])
+        text = (refs.REFERENCES / "aWork2001.pm").read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("#lang pollen"))
+        self.assertNotIn("\n\n\n", text)
+
+    def test_the_stub_is_the_one_emacs_makes(self):
+        el = (refs.ROOT / "emacs" / "occurrent.el").read_text(encoding="utf-8")
+        for line in refs.STUB.strip().splitlines():
+            self.assertIn(line, el)
+
+    def test_never_overwrites_a_commentary(self):
+        refs.REFERENCES.mkdir()
+        mine = refs.REFERENCES / "aWork2001.pm"
+        mine.write_text("#lang pollen\n\nMy view.\n", encoding="utf-8")
+        self.assertEqual(refs.ensure_commentary_stubs(["aWork2001"]), [])
+        self.assertIn("My view.", mine.read_text(encoding="utf-8"))
+
+
 class Covers(unittest.TestCase):
     def setUp(self):
         self.entries = fixture_entries()
