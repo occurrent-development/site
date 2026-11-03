@@ -41,7 +41,7 @@
    ],
    "."
   ],
-  "order": 1,
+  "order": 2,
   "doi": "10.1093/acprof:oso/9780198524021.003.0012",
   "url": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012",
   "csl": {
@@ -107,7 +107,7 @@
    ],
    ". Second edition. Graphics press, 2001."
   ],
-  "order": 5,
+  "order": 6,
   "doi": null,
   "url": null,
   "csl": {
@@ -139,6 +139,72 @@
   ],
   "year": "2001",
   "type": "Book"
+ },
+ "dickinsonEmilyDickinsonComplete1960a": {
+  "full": {
+   "": [
+    "Emily Dickinson, “Tell All the Truth but Tell It Slant— (1263),” in ",
+    [
+     "em",
+     {},
+     "Emily Dickinson: The Complete Poems"
+    ],
+    ", 5. print, ed. Thomas Herbert Johnson (Little, Brown Comp, 1960)."
+   ]
+  },
+  "short": {
+   "": [
+    "Dickinson, “Tell All the Truth but Tell It Slant— (1263).”"
+   ]
+  },
+  "bib": [
+   "Dickinson, Emily. “Tell All the Truth but Tell It Slant— (1263).” In ",
+   [
+    "em",
+    {},
+    "Emily Dickinson: The Complete Poems"
+   ],
+   ", 5. print, edited by Thomas Herbert Johnson. Little, Brown Comp, 1960."
+  ],
+  "order": 0,
+  "doi": null,
+  "url": null,
+  "csl": {
+   "ISBN": "978-0-316-18414-4",
+   "author": [
+    {
+     "family": "Dickinson",
+     "given": "Emily"
+    }
+   ],
+   "container-title": "Emily Dickinson: The Complete Poems",
+   "edition": "5. print",
+   "editor": [
+    {
+     "family": "Johnson",
+     "given": "Thomas Herbert"
+    }
+   ],
+   "id": "dickinsonEmilyDickinsonComplete1960a",
+   "issued": {
+    "date-parts": [
+     [
+      1960
+     ]
+    ]
+   },
+   "language": "en-US",
+   "publisher": "Little, Brown Comp",
+   "publisher-place": "Boston",
+   "title": "Tell All the Truth but Tell It Slant— (1263)",
+   "type": "chapter"
+  },
+  "title": "Tell All the Truth but Tell It Slant— (1263)",
+  "authors": [
+   "Dickinson"
+  ],
+  "year": "1960",
+  "type": "Chapter"
  },
  "pirsigZenArtMotorcycle1991": {
   "full": {
@@ -208,7 +274,7 @@
    ],
    ". Vintage, 1991."
   ],
-  "order": 4,
+  "order": 5,
   "doi": null,
   "url": null,
   "csl": {
@@ -291,7 +357,7 @@
    ],
    " 28, no. 16 (2006)."
   ],
-  "order": 0,
+  "order": 1,
   "doi": null,
   "url": null,
   "csl": {
@@ -356,7 +422,7 @@
    ],
    " Harvard University Press, 2000."
   ],
-  "order": 2,
+  "order": 3,
   "doi": null,
   "url": null,
   "csl": {

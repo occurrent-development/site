@@ -840,9 +840,10 @@
   ;; #:block #t: set as ◊blockquote is, the attribution written from the entry, the circle at its end
   (define bq (findf (λ (x) (has-class* x "quote")) (find-all doc (tag? 'blockquote))))
   (define footer (car (find-all bq (tag? 'footer))))
-  ;; the title alone: author and locator are in the card (BIB-8)
-  (check-regexp-match #px"^The Social Construction of What\\?" (text footer))
-  (check-false (regexp-match? #rx"Hacking|31" (text footer)))
+  ;; the author, a line break, then the title (2026-11-04); the locator is in the card (BIB-8)
+  (check-regexp-match #px"^Ian Hacking[^\n]*The Social Construction of What\\?" (text footer))
+  (check-equal? (length (find-all footer (tag? 'br))) 1)
+  (check-false (regexp-match? #rx"31" (text footer)))
   ;; MARK-3 binds the circle to the title's last word, so the em is in two parts
   (check-equal? (apply string-append (map text (find-all footer (tag? 'em)))) "The Social Construction of What?")
   (check-equal? (attr-ref (by-class footer "circle-link") 'aria-label) "reference 7")

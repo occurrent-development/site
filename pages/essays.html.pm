@@ -2,13 +2,13 @@
 
 ◊define-meta[title]{Essays}
 
-◊cite["dickinsonEmilyDickinsonComplete1960a" #:block #t #:italic #t]{Tell all the truth but tell it slant---
-Success in Circuit lies
-Too bright for our infirm Delight
-The Truth's superb surprise
-As Lightning to the Children eased
-With explanation kind
-The Truth must dazzle gradually
+◊cite["dickinsonEmilyDickinsonComplete1960a" #:block #t #:italic #t]{Tell all the truth but tell it slant---◊br{}
+Success in Circuit lies◊br{}
+Too bright for our infirm Delight◊br{}
+The Truth's superb surprise◊br{}
+As Lightning to the Children eased◊br{}
+With explanation kind◊br{}
+The Truth must dazzle gradually◊br{}
 Or every man be blind---}
 
 

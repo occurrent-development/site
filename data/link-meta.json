@@ -1,1 +1,20 @@
-{}
+{
+ "https://docs.racket-lang.org/pollen/": {
+  "wayback": "https://web.archive.org/web/20261005005902/https://docs.racket-lang.org/pollen/"
+ },
+ "https://en.wikipedia.org/wiki/H-index": {
+  "wayback": "https://web.archive.org/web/20261024144944/https://en.wikipedia.org/wiki/H-index"
+ },
+ "https://matthewbutterick.com/": {
+  "wayback": "https://web.archive.org/web/20261007170620/https://matthewbutterick.com/"
+ },
+ "https://practicaltypography.com/": {
+  "wayback": "https://web.archive.org/web/20261026211719/https://practicaltypography.com/"
+ },
+ "https://www.edwardtufte.com/": {
+  "wayback": "https://web.archive.org/web/20261026041653/https://www.edwardtufte.com/"
+ },
+ "https://www.gnu.org/software/emacs/": {
+  "wayback": "https://web.archive.org/web/20261024062943/http://www.gnu.org/software/emacs/"
+ }
+}
