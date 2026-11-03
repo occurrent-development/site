@@ -200,7 +200,8 @@
   (check-equal? (attr-ref (car openers) 'aria-label) "reference 1, reference 2")
   (check-equal? (attr-ref (cadr openers) 'aria-label) "definition, reference 3")
   ;; D8: without JS a shared circle links to its first item
-  (check-equal? (attr-ref (car openers) 'href) "#note-1")
+  ;; (CITE-10: a numbered circle's href is its work's Bibliography entry)
+  (check-equal? (attr-ref (car openers) 'href) "#bib-hackingMakingPeople2006")
   (check-equal? (attr-ref (cadr openers) 'href) "#term-occurrent"))
 
 (define (marks-in doc) (map classes (find-all doc (λ (x) (regexp-match? #rx"^mark " (classes x))))))
@@ -485,7 +486,7 @@
   (check-not-false (findf (λ (x) (has-class* x "epistemic")) (find-all header txexpr?)))
   (check-equal? (length (find-all header (tag? 'em))) 1)
   ;; the abstract's citation is note 1, the body's note 2
-  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#note-1")
+  (check-equal? (attr-ref (car (find-all header (λ (x) (has-class* x "circle-link")))) 'href) "#bib-hackingMakingPeople2006")
   (check-equal? (map (λ (p) (classes p)) (filter (tag? 'p) (cdr (get-elements doc)))) '("intro")))
 
 (test-case "SRC-4a: once each, at the top level; the old meta lines fail"

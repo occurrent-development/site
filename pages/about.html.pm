@@ -42,7 +42,3 @@ I take design inspiration from:
 - ◊link["https://matthewbutterick.com/"]{Matthew Butterick}. The minimalism of this site, particularly links, references his web design. See his free typography book ◊link["https://practicaltypography.com/"]{◊em{Practical Typography}}. Butterick also created Pollen, with which the site is built.
 - ◊link["https://gwern.net/"]{Gwern Branwen}. The more sophisticated mechanics of this site (informative link marks, pinnable popups, and viewable source code) are all inspired by Gwern's work. His website is a laboratory for web design in support of long-form writing.
 }
-
-◊break{}
-
-Start here: ◊link["/placeholder"]{Placeholder}.
