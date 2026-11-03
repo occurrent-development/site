@@ -2058,7 +2058,12 @@
   (and title
        (txexpr 'header `((class ,(string-append (if abs "essay-header" "essay-header no-abstract")
                                                  (if (meta 'reference) " ref-header" "")
-                                                 (if home? " home-header" ""))))
+                                                 (if home? " home-header" "")))
+                         ;; BIB-7: the cover's width/height, inherited by the cover and
+                         ;; by the metadata block beside it (both sit in the right margin)
+                         ,@(let* ([c (and (meta 'reference) (reference-cover (meta 'reference)))]
+                                  [st (and c (attr-ref c 'style #f))])
+                             (if st `((style ,st)) null)))
                ;; BIB-7: a work's page has its cover first, at the title's right
                (append
                 (let ([c (and (meta 'reference) (reference-cover (meta 'reference)))]) (if c (list c) null))

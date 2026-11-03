@@ -1039,8 +1039,8 @@ ul.contexts, ul.changelog { list-style: none; margin: 0; padding: 0; }
 ul.changelog li { margin: 0.3em 0; }
 ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted); }
 
-/* BIB-7, BIB-10: the cover at the right of the title, 28em tall, its top on
-   the title's top; the fields beneath the title at its left, every value at
+/* BIB-7, BIB-10: the cover at the right of the title (in the right margin at
+   tiers L and XL, below), 28em tall, its top on the title's top; the fields beneath the title at its left, every value at
    one tab stop. The same head on the work's page and in its card. The box
    is as wide as 28em of height asks for (--cover-ar, the picture's
    width/height, set by the build), but never wider than --cover-max of the
@@ -1053,6 +1053,20 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
 .cover img { display: block; width: 100%; height: auto; box-shadow: 0 0 0 1px var(--rule); }
 .ref-header .cover { margin-top: 0.3em; --cover-max: 50%; }   /* the h1's cap height; the title and fields keep half the measure */
 .reference::after { content: ""; display: block; clear: both; }
+/* Tiers L and XL: the cover stands in the right margin, its top on the
+   title's, so the title and the fields have the whole measure. It is 28em
+   tall unless the margin is narrower, then as wide as the margin; the
+   metadata block (source links, when there are any) moves down beneath it. */
+@container page (min-width: 66.5em) {
+  .ref-header {
+    --cover-w: min(var(--margin), calc(28em * var(--cover-ar, 0.7)));
+  }
+  .ref-header .cover {
+    position: absolute; top: 0.3em; left: calc(var(--measure) + var(--margin-gap));
+    float: none; margin: 0; width: var(--cover-w);
+  }
+  .ref-header:has(.cover) .header-meta { top: calc(0.3em + var(--cover-w) / var(--cover-ar, 0.7) + 1.5em); }
+}
 /* A cover beside the title leaves the title two words a line wherever the
    measure is short: at tier S on the page, and in the card at every width
    (a popup is 22em wide, a popin the width of a phone). There the cover is
