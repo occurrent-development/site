@@ -1161,7 +1161,13 @@ function alignContents() {
     labelDrop = null;
     return;
   }
-  if (!label.classList.contains("is-title")) labelDrop = firstBaseline(label) - toc.getBoundingClientRect().top;
+  if (!label.classList.contains("is-title")) {
+    const first = labelDrop == null;
+    labelDrop = firstBaseline(label) - toc.getBoundingClientRect().top;
+    // the heading was held at "Contents" until this was measured (showTocHeading):
+    // look again at where the list is, now that it will be moved
+    if (first) setupTocHeading.rewatch?.();
+  }
   const y = datum(header);
   if (y == null || labelDrop == null) return;
   const now = parseFloat(toc.style.top) || 0;
@@ -1193,7 +1199,11 @@ function setupTocHeading() {
     // where the list sticks: its `top`, in pixels
     const at = parseFloat(getComputedStyle(inner).top) || 0;
     io = new IntersectionObserver(([e]) => {
-      showTocHeading(tier() === "XL" && !e.isIntersecting && e.boundingClientRect.top < at);
+      // Not before the heading's baseline has been measured (alignContents):
+      // the title replaces "Contents", and the measure needs "Contents". If the
+      // observer ran first, on a slow machine, the list stayed where it began,
+      // stuck at the top and titled, and was never aligned to the datum.
+      showTocHeading(tier() === "XL" && labelDrop != null && !e.isIntersecting && e.boundingClientRect.top < at);
     }, { rootMargin: `${-at}px 0px 0px 0px` });
     io.observe(tocSentinel);
   };
