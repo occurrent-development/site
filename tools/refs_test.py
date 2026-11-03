@@ -42,16 +42,16 @@ class Covers(unittest.TestCase):
         self.assertTrue(copy.exists())
         with Image.open(copy) as img:
             self.assertEqual(img.format, "JPEG")
-            self.assertEqual(img.size, (100, 150))   # never enlarged; the longest side stops at 1200
+            self.assertEqual(img.size, (100, 150))   # never enlarged; the longest side stops at 1600
 
-    def test_downsizes_to_1200(self):
+    def test_downsizes_to_1600(self):
         from PIL import Image
         big = self.out / "cover.jpg"
-        Image.new("RGB", (1600, 2400), (10, 20, 30)).save(big)
+        Image.new("RGB", (2400, 3200), (10, 20, 30)).save(big)
         dest = self.out / "small.jpg"
         refs.write_cover(big, dest)
         with Image.open(dest) as img:
-            self.assertEqual(img.size, (800, 1200))
+            self.assertEqual(img.size, (1200, 1600))
 
     def test_no_image_attachment_no_cover_no_error(self):
         refs.refresh_covers(self.entries, ["noImage2002"], [])

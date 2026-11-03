@@ -204,11 +204,14 @@
                     (hash-ref (the-manifest) (string->symbol (format "refs/covers.local/~a.jpg" key)) #f)))
   (and entry
        (let* ([w (hash-ref entry 'width)] [h (hash-ref entry 'height)]
-              ;; about 7em tall at the text size (CSS), so about this wide
-              [sz (format "~apx" (ceiling (* 150 (/ w h))))])
+              ;; 28em tall at the text size (CSS), about 450 px, so about this wide
+              ;; (less where the width is capped, in a card)
+              [ar (/ w h)]
+              [sz (format "min(~apx, 90vw)" (ceiling (* 450 ar)))])
          (define srcs (hash-ref entry 'sources))
          (define fb (hash-ref srcs 'jpg))
-         `(picture ((class "cover") (data-licence "cover"))
+         `(picture ((class "cover") (data-licence "cover")
+                    (style ,(format "--cover-ar:~a" (/ (round (* 10000 ar)) 10000.0))))
                    (source ((type "image/avif") (srcset ,(srcset (hash-ref srcs 'avif))) (sizes ,sz)))
                    (source ((type "image/webp") (srcset ,(srcset (hash-ref srcs 'webp))) (sizes ,sz)))
                    (img ((src ,(hash-ref (first fb) 'url)) (srcset ,(srcset fb)) (sizes ,sz)

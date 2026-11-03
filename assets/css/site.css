@@ -1039,12 +1039,19 @@ ul.contexts, ul.changelog { list-style: none; margin: 0; padding: 0; }
 ul.changelog li { margin: 0.3em 0; }
 ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted); }
 
-/* BIB-7, BIB-10: the cover at the right of the title, 14em tall, its top on
+/* BIB-7, BIB-10: the cover at the right of the title, 28em tall, its top on
    the title's top; the fields beneath the title at its left, every value at
-   one tab stop. The same head on the work's page and in its card. */
-.cover { display: block; line-height: 0; float: right; margin: 0 0 0.75em 1.25em; }
-.cover img { display: block; height: 14em; width: auto; box-shadow: 0 0 0 1px var(--rule); }
-.ref-header .cover { margin-top: 0.3em; }          /* the h1's cap height */
+   one tab stop. The same head on the work's page and in its card. The box
+   is as wide as 28em of height asks for (--cover-ar, the picture's
+   width/height, set by the build), but never wider than --cover-max of the
+   space it is in, and the image fills the box, so it is never distorted. */
+.cover {
+  --cover-h: 28em; --cover-max: 100%;
+  display: block; line-height: 0; float: right; margin: 0 0 0.75em 1.25em;
+  width: min(var(--cover-max), calc(var(--cover-h) * var(--cover-ar, 0.7)));
+}
+.cover img { display: block; width: 100%; height: auto; box-shadow: 0 0 0 1px var(--rule); }
+.ref-header .cover { margin-top: 0.3em; --cover-max: 50%; }   /* the h1's cap height; the title and fields keep half the measure */
 .reference::after { content: ""; display: block; clear: both; }
 /* A cover beside the title leaves the title two words a line wherever the
    measure is short: at tier S on the page, and in the card at every width
@@ -1052,7 +1059,7 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
    not floated: it stands above the title at its full height and the title
    runs the full measure beneath it (the cover is first in the markup, BIB-7). */
 @container page (width < 39em) {
-  .ref-header .cover { float: none; margin: 0 0 1.1em; }
+  .ref-header .cover { float: none; margin: 0 0 1.1em; --cover-max: 100%; }
 }
 .ref-card .cover { float: none; margin: 0 0 0.75em; }
 /* IMG-4: covers are never inverted, only dimmed */
@@ -1068,7 +1075,7 @@ ul.changelog time { font-variant-numeric: lining-nums; color: var(--text-muted);
 .ref-fields .lining { font-variant-numeric: lining-nums; }
 .ref-card .ref-title {
   font-family: var(--sans); font-weight: 600; font-size: 0.95em; line-height: 1.3;
-  margin: 0 0 0.5em; text-wrap: balance;
+  margin: 0 0 0.5em; text-wrap: wrap;   /* not balance: balanced, a two-line title takes the cover's width */
 }
 .ref-card p { margin: 0 0 0.5em; text-indent: 0; }
 .ref-loc { color: var(--text-muted); }

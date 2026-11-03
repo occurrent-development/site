@@ -9,7 +9,7 @@ intrinsic size. SVG sources are inlined by the build, so only their size is
 recorded. Runs offline (BUILD-2) and only re-encodes what changed.
 
 Covers (BIB-7), refs/covers/<key>.jpg from `make refresh`, get variants too,
-at the small widths a card needs (COVER_WIDTHS), under the key
+at the widths a 28em cover needs on 1× to 3× screens (COVER_WIDTHS), under the key
 refs/covers/<key>.jpg; refs/covers.local/ holds those only drafts cite.
 
 Run from the repository root: python3 tools/images.py
@@ -31,7 +31,7 @@ OUT = ROOT / "assets" / "img"
 MANIFEST = OUT / "images.json"
 SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support"}  # BUILD-3a: an essay's support/ is never read
 WIDTHS = [480, 800, 1200, 1600, 2400]
-COVER_WIDTHS = [160, 320, 640, 960]
+COVER_WIDTHS = [320, 480, 640, 960, 1280]
 WARN_BYTES = 2 * 1024 * 1024
 FIGURE = re.compile(r'◊(?:figure|panel)\[\s*"([^"]+)"')   # not ◊panels[, which has no source
 

@@ -49,7 +49,7 @@ COVERS = ROOT / "refs" / "covers"
 # Covers of works only drafts cite stay local too, as their entries do (CITE-5a).
 LOCAL_COVERS = ROOT / "refs" / "covers.local"
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic", ".heif"}
-COVER_SIDE = 1200   # a 14em cover on a 3× phone (BIB-7)
+COVER_SIDE = 1600   # a 28em cover (about 450 px tall) on a 3× phone (BIB-7)
 
 
 def norm_loc(loc):
