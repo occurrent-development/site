@@ -424,6 +424,8 @@ Build DRAFT-E1 unless Ryan says otherwise.
 
 **PUB-7 (SHOULD)** `od-publish` prints, before staging, what will change in the index: the new row's title, date and tags, so a wrong `tags` line is caught before it reaches the home page.
 
+**REN-1 (MUST)** `od-rename-post` (`C-c o R`), from a post: a new title, a new slug, or both. It does everything a rename touches, since a slug is more than a folder name. For a **draft**: the folder and the `.pm` file are renamed together (the build expects `essays/<slug>/<slug>.html.pm`), the draft's line in `.git/info/exclude` follows it (DRAFT-E1: otherwise the renamed folder is an ordinary untracked directory one `git add -A` away from the public repository), every `◊link` to the old URL, with or without `#id`, is rewritten across essays, blog, pages, glossary and references (never `support/`), the folder's `compiled/` cache is dropped, and the check runs. For a **published** post the same is done with `git mv`, its `index.ptree` line is rewritten, a permanent redirect `/<old> /<new> 301` is appended to `_redirects` (Cloudflare serves it, so the old URL keeps working wherever it was shared), and everything touched is staged with a `[meta]` commit proposed, so the Edited date stays (REV-1); it refuses when the post, `index.ptree` or `_redirects` have uncommitted changes, and asks before moving a published URL. The title alone changes only the meta line (and the first line of `support/notes.md` when it was the old title). `revised-date` in `pollen.rkt` now passes `--follow`, so a renamed post keeps its edit history. *Added 2026-11-03 at Ryan's request; `od-test-rename-draft` and `od-test-rename-published` cover both cases.*
+
 ---
 
 ### 9. Loading and layout

@@ -1919,7 +1919,8 @@
        (let* ([out (with-output-to-string
                      (λ () (parameterize ([current-error-port (open-output-nowhere)])
                              (system* git "-C" (path->string (current-project-root))
-                                      "log" "--format=%cs %s" "--" (format "~a" source)))))]
+                                      ;; --follow: a renamed post keeps its history (REN-1)
+                                      "log" "--follow" "--format=%cs %s" "--" (format "~a" source)))))]
               [line (for/first ([l (in-list (string-split out "\n"))]
                                 #:unless (regexp-match? #rx"\\[(typo|meta)\\]" l))
                       l)])

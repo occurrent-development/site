@@ -1170,6 +1170,15 @@ changelog and no contents; everything else is the same.
 5. Leave it as long as you like. Drafts are not in git, so they are not
    backed up by it: keep the Mac's backup running.
 
+6. Changed your mind about the title or the slug? {od-rename-post}, from
+   the post. It renames the folder and the file, keeps the draft hidden
+   from git, rewrites every ◊link to the old URL across the site, drops
+   the folder's cache and runs the check. It works on a published post
+   too: the move is a git mv, a permanent redirect from the old URL goes
+   into _redirects, and everything is staged with a Meta commit proposed,
+   so the Edited date stays. Note: a slug is still meant to be permanent
+   once published; the redirect is the apology, not a licence.
+
 * 2. Publishing an essay
 
 1. {od-check} first, and fix anything it reports.
@@ -2376,6 +2385,178 @@ changed, then commit and push after one confirmation."
           "NO_COLOR=1 GH_FORCE_TTY= gh run view \"$id\" 2>&1 | cat; exit $ok; }")
   "The shell command `od-deploy-status' runs: wait for the run, then summarise it.")
 
+;;; Renaming a post (REN-1) ------------------------------------------------
+
+(defun od--post-sources ()
+  "Every .pm source that can link to a post: posts, pages, glossary, references.
+Never a post's support/ folder (BUILD-3a)."
+  (let ((root (od-root)) (files nil))
+    (dolist (folder '("essays" "blog"))
+      (dolist (dir (and (file-directory-p (od--file folder))
+                        (directory-files (od--file folder) t "\\`[^.]")))
+        (when (file-directory-p dir)
+          (setq files (append files (directory-files dir t "\\.pm\\'"))))))
+    (dolist (folder '("pages" "glossary" "references"))
+      (when (file-directory-p (od--file folder))
+        (setq files (append files (directory-files (od--file folder) t "\\.pm\\'")))))
+    (cl-remove-if (lambda (f) (string-match-p "/support/" (file-relative-name f root))) files)))
+
+(defun od--rewrite-links (old-url new-url)
+  "Point every ◊link at OLD-URL (with or without #id) to NEW-URL instead.
+Return the files changed, relative to the root (REN-1)."
+  (let ((rx (concat "\\(◊link\\[\"\\)" (regexp-quote old-url) "\\([\"#]\\)")) (changed nil))
+    (dolist (file (od--post-sources))
+      (let ((buf (find-buffer-visiting file)))
+        (with-current-buffer (or buf (find-file-noselect file))
+          (save-excursion
+            (goto-char (point-min))
+            (when (re-search-forward rx nil t)
+              (goto-char (point-min))
+              (while (re-search-forward rx nil t)
+                (replace-match (concat "\\1" new-url "\\2") t))
+              (save-buffer)
+              (push (file-relative-name file (od-root)) changed)))
+          (unless buf (kill-buffer)))))
+    (nreverse changed)))
+
+(defun od--ptree-rename (old new folder)
+  "Change FOLDER/OLD/OLD.html to FOLDER/NEW/NEW.html in index.ptree, if listed."
+  (let ((file (od--file "index.ptree"))
+        (old-line (format "%s/%s/%s.html" folder old old))
+        (new-line (format "%s/%s/%s.html" folder new new)))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (when (re-search-forward (concat "^" (regexp-quote old-line) "$") nil t)
+        (replace-match new-line t t)
+        (write-region nil nil file nil 'silent)))))
+
+(defun od--redirect-add (old-path new-path)
+  "Append a permanent redirect from OLD-PATH to NEW-PATH to _redirects (REN-1).
+Cloudflare serves it, so the old URL keeps working everywhere it was shared."
+  (let ((file (od--file "_redirects")) (line (format "%s %s 301" old-path new-path)))
+    (with-temp-buffer
+      (when (file-exists-p file) (insert-file-contents file))
+      (goto-char (point-min))
+      (unless (re-search-forward (concat "^" (regexp-quote line) "$") nil t)
+        (goto-char (point-max))
+        (unless (bolp) (insert "\n"))
+        (insert line "\n")
+        (write-region nil nil file nil 'silent)))))
+
+(defun od--check-new-slug (slug folder)
+  "Stop unless SLUG can name a new post in FOLDER (the checks `od-new-essay' makes)."
+  (unless (od--valid-id-p slug) (user-error "A slug is lowercase and hyphenated"))
+  (when (member slug od-reserved-slugs) (user-error "The slug %s is reserved for the site's own pages (KIND-1)" slug))
+  (dolist (f '("essays" "blog"))
+    (when (file-exists-p (od--file f slug))
+      (user-error "%s/%s already exists: slugs are unique across essays and the blog (KIND-1)" f slug)))
+  (when (file-exists-p (od--file "pages" (concat slug ".html.pm")))
+    (user-error "A page is already called %s" slug))
+  (ignore folder))
+
+;;;###autoload
+(defun od-rename-post ()
+  "Give this post a new title, a new slug, or both (REN-1).
+
+A draft (one git cannot see, DRAFT-E1): the folder and the file are
+renamed, the draft's line in .git/info/exclude follows it, every ◊link
+to the old URL across the site is rewritten, the folder's compiled/
+cache is dropped, and the check runs.
+
+A published post: the same, by `git mv', with a permanent redirect from
+the old URL added to _redirects, so links shared elsewhere keep working
+(a slug is permanent once published, KIND-1; this is the one way to
+change it). Everything touched is staged and Magit opens with a Meta
+commit proposed, so the post's Edited date stays (REV-1); nothing is
+committed or pushed for you.
+
+The title alone changes only the meta line (and the first line of
+support/notes.md, when it was the old title); the slug alone leaves the
+title. A blog entry renames the same way, under /blog/."
+  (interactive)
+  (unless (od--post-p) (user-error "Not an essay or blog entry"))
+  (when (buffer-modified-p) (user-error "Save the post first"))
+  (let* ((folder (od--folder))
+         (old-slug (od--slug))
+         (old-title (or (od--meta "title") ""))
+         (published (od--tracked-p))
+         (new-title (string-trim (read-string "Title: " old-title)))
+         (new-slug (string-trim (read-string
+                                 (format "Slug (the URL, %s): " (if (equal folder "blog") "/blog/<slug>" "/<slug>"))
+                                 (if (equal new-title old-title) old-slug (od-slugify new-title)))))
+         (title-changed (not (equal new-title old-title)))
+         (slug-changed (not (equal new-slug old-slug)))
+         (old-path (concat (if (equal folder "blog") "/blog/" "/") old-slug))
+         (new-path (concat (if (equal folder "blog") "/blog/" "/") new-slug))
+         (old-dir (od--file folder old-slug))
+         (new-dir (od--file folder new-slug))
+         (new-file (expand-file-name (concat new-slug ".html.pm") new-dir))
+         (changed nil))
+    (when (string-empty-p new-title) (user-error "A post needs a title"))
+    (unless (or title-changed slug-changed) (user-error "Nothing to change"))
+    (when slug-changed (od--check-new-slug new-slug folder))
+    (when published
+      (od--require-magit)
+      (od--check-identity)
+      (od--check-branch)
+      (when slug-changed
+        (unless (yes-or-no-p (format "%s is published. Move it to %s and redirect the old URL for good? " old-path new-path))
+          (user-error "Not renamed")))
+      (unless (equal (od--git "status" "--porcelain" "--untracked-files=no" "--"
+                             (format "%s/%s" folder old-slug) "index.ptree" "_redirects")
+                     "")
+        (user-error "Commit or discard the changes to this post, index.ptree and _redirects first")))
+    ;; the title
+    (when title-changed
+      (od--set-meta "title" new-title)
+      (save-buffer)
+      (let ((notes (expand-file-name "support/notes.md" old-dir)))
+        (when (file-exists-p notes)
+          (with-temp-buffer
+            (insert-file-contents notes)
+            (goto-char (point-min))
+            (when (looking-at (concat (regexp-quote old-title) "$"))
+              (replace-match new-title t t)
+              (write-region nil nil notes nil 'silent))))))
+    ;; the slug: folder, file, the draft guard or git, the cache
+    (when slug-changed
+      (let ((old-file buffer-file-name) (buf (current-buffer)))
+        (if published
+            (progn
+              (od--git "mv" "--" (format "%s/%s" folder old-slug) (format "%s/%s" folder new-slug))
+              (od--git "mv" "--" (format "%s/%s/%s.html.pm" folder new-slug old-slug)
+                       (format "%s/%s/%s.html.pm" folder new-slug new-slug)))
+          (rename-file old-dir new-dir)
+          (rename-file (expand-file-name (concat old-slug ".html.pm") new-dir) new-file)
+          (od--exclude old-slug nil folder)
+          (od--exclude new-slug t folder))
+        (let ((cache (expand-file-name "compiled" new-dir)))
+          (when (file-directory-p cache) (delete-directory cache t)))
+        (od--ptree-rename old-slug new-slug folder)
+        (setq changed (od--rewrite-links old-path new-path))
+        (when published (od--redirect-add old-path new-path))
+        (set-buffer-modified-p nil)
+        (find-file new-file)
+        (kill-buffer buf)
+        (ignore old-file)))
+    (message "Renamed: %s%s%s"
+             (if title-changed (format "title → %s" new-title) "")
+             (if (and title-changed slug-changed) "; " "")
+             (if slug-changed
+                 (format "%s → %s%s" old-path new-path
+                         (if changed (format " (links rewritten in %s)" (string-join changed ", ")) ""))
+               ""))
+    (when published
+      (od--stage (append (list (format "%s/%s" folder new-slug) "index.ptree" "_redirects")
+                         (and slug-changed (list (format "%s/%s" folder old-slug)))
+                         changed))
+      (od--propose-message (format "[meta] %s: renamed%s%s" new-title
+                                   (if title-changed (format " from “%s”" old-title) "")
+                                   (if slug-changed (format " (%s → %s)" old-path new-path) "")))
+      (magit-status-setup-buffer (od-root)))
+    (od-check)))
+
 (defun od-deploy-status (&optional url)
   "Watch the latest deploy; when it succeeds, open URL (PUB-5)."
   (interactive)
@@ -2419,6 +2600,7 @@ changed, then commit and push after one confirmation."
     (define-key m (kbd "C-c o k") #'od-check)
     (define-key m (kbd "C-c o P") #'od-publish)
     (define-key m (kbd "C-c o C") #'od-commit)
+    (define-key m (kbd "C-c o R") #'od-rename-post)
     (define-key m (kbd "C-c o d") #'od-deploy-status)
     ;; the rest of the vocabulary (EDIT-8, SPEC EMACS-6)
     (define-key m (kbd "C-c o Q") #'od-insert-epigraph)

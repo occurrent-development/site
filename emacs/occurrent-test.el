@@ -309,6 +309,72 @@ blog/demo/ when `od-test-kind' is \"entry\")."
     (should (file-exists-p (expand-file-name "support/notes.md" default-directory)))
     (should (equal (od-test-git default-directory "status" "--porcelain") ""))))
 
+(ert-deftest od-test-rename-draft ()
+  "REN-1: a draft's title and slug change together; the exclude line, index.ptree
+and every ◊link follow; the old folder is gone."
+  (od-test-with-repo
+    (let ((root (od-root)))
+      ;; another post that links to the draft, with and without a fragment
+      (make-directory (expand-file-name "essays/other" root) t)
+      (with-temp-file (expand-file-name "essays/other/other.html.pm" root)
+        (insert "#lang pollen\n◊define-meta[title]{Other}\n\nSee ◊link[\"/demo\"]{it} and ◊link[\"/demo#intro\"]{its start}; not ◊link[\"/demonstration\"]{this}.\n"))
+      (cl-letf (((symbol-function 'read-string)
+                 (lambda (prompt &optional initial &rest _)
+                   (cond ((string-prefix-p "Title" prompt) "A renamed essay")
+                         ((string-prefix-p "Slug" prompt) "renamed")
+                         (t (or initial "")))))
+                ((symbol-function 'od-check) #'ignore))
+        (od-rename-post))
+      (should (equal (file-name-nondirectory buffer-file-name) "renamed.html.pm"))
+      (should (equal (od--meta "title") "A renamed essay"))
+      (should (file-directory-p (expand-file-name "essays/renamed/img" root)))
+      (should-not (file-exists-p (expand-file-name "essays/demo" root)))
+      (should (equal (od-test-git root "status" "--porcelain" "--" "essays/renamed") ""))   ; still hidden
+      (with-temp-buffer
+        (insert-file-contents (expand-file-name "support/notes.md" default-directory))
+        (should (looking-at-p "A renamed essay$")))
+      (with-temp-buffer
+        (insert-file-contents (od--exclude-file))
+        (should (= 1 (how-many "^/essays/renamed/$" (point-min) (point-max))))
+        (should (= 0 (how-many "^/essays/demo/$" (point-min) (point-max)))))
+      (with-temp-buffer
+        (insert-file-contents (expand-file-name "essays/other/other.html.pm" root))
+        (should (= 1 (how-many "◊link\\[\"/renamed\"\\]" (point-min) (point-max))))
+        (should (= 1 (how-many "◊link\\[\"/renamed#intro\"\\]" (point-min) (point-max))))
+        (should (= 1 (how-many "◊link\\[\"/demonstration\"\\]" (point-min) (point-max))))))))
+
+(ert-deftest od-test-rename-published ()
+  "REN-1: a published post moves with git mv, gains a redirect, its index.ptree
+line follows, and everything is staged with a Meta message."
+  (od-test-with-repo
+    (od-test-publishing
+     (od-publish)
+     (od-test-git (od-root) "commit" "-q" "-m" "Publish: A demo essay")
+     (od-test-git (od-root) "push" "-q" "origin" "main")
+     (setq magit-opened nil)
+     (cl-letf (((symbol-function 'read-string)
+                (lambda (prompt &optional initial &rest _)
+                  (cond ((string-prefix-p "Title" prompt) (or initial ""))
+                        ((string-prefix-p "Slug" prompt) "demo-two")
+                        (t (or initial "")))))
+               ((symbol-function 'yes-or-no-p) (lambda (&rest _) t))
+               ((symbol-function 'od-check) #'ignore))
+       (od-rename-post))
+     (should magit-opened)
+     (should (equal (file-name-nondirectory buffer-file-name) "demo-two.html.pm"))
+     (should (equal (od--meta "title") "A demo essay"))
+     (let ((staged (split-string (od-test-git (od-root) "diff" "--cached" "--name-status") "\n" t)))
+       (should (cl-some (lambda (l) (string-match-p "\\`R.*essays/demo/demo\\.html\\.pm\tessays/demo-two/demo-two\\.html\\.pm" l)) staged))
+       (should (cl-some (lambda (l) (string-match-p "_redirects\\'" l)) staged))
+       (should (cl-some (lambda (l) (string-match-p "index\\.ptree\\'" l)) staged)))
+     (with-temp-buffer
+       (insert-file-contents (expand-file-name "_redirects" (od-root)))
+       (should (= 1 (how-many "^/demo /demo-two 301$" (point-min) (point-max)))))
+     (with-temp-buffer
+       (insert-file-contents (expand-file-name "index.ptree" (od-root)))
+       (should (= 1 (how-many "^essays/demo-two/demo-two\\.html$" (point-min) (point-max))))
+       (should (= 0 (how-many "^essays/demo/" (point-min) (point-max))))))))
+
 (ert-deftest od-test-publish-stages-the-essay ()
   (od-test-with-repo
     (with-temp-file (expand-file-name "support/private-notes.pm" default-directory) (insert "secret"))
