@@ -319,12 +319,6 @@ blockquote.epigraph footer::before { content: "— "; }
 
 /* NAV-1: the site menu, a <details> so it works without scripts */
 .site-menu { position: relative; }
-.menu-scratch button {
-  appearance: none; border: 0; background: none; font: inherit; color: var(--text);
-  display: block; width: 100%; text-align: left; cursor: pointer;
-  padding: 0.25em 0.75em; font-size: 0.9em;
-}
-.menu-scratch button:hover, .menu-scratch button:focus-visible { color: var(--accent); }
 .site-menu summary {
   list-style: none;
   cursor: pointer;
@@ -1375,14 +1369,14 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
     border-radius: 0 4px 0 0;
     padding: 0.4rem 0;
   }
-  .bar-menu a, .bar-menu .menu-scratch button {
+  .bar-menu a {
     font-family: var(--sans);
     font-size: 1.0625rem;
     padding: 0.7rem 1.25rem;
   }
   .bar-menu .chevron { display: none; }
   .bar-menu summary { justify-content: flex-start; }
-  .menu-scratch, .toc-scratch { display: none !important; }   /* POP-12: no scratch pad on touch */
+  .toc-scratch { display: none !important; }   /* POP-12: no scratch pad on touch */
 }
 .size-down span { font-size: 0.8em; }
 .size-up span { font-size: 1.15em; }

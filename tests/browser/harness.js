@@ -363,7 +363,7 @@ async function tests() {
 
   await test("POP-12: the scratch pad opens docked and keeps its text across a reload", async () => {
     w.localStorage.removeItem("scratch");
-    expect(!d.querySelector(".site-menu .menu-scratch").hidden, "no Scratch in the menu");
+    expect(!d.querySelector(".site-menu .menu-scratch"), "Scratch is still in the menu");
     d.querySelector(".toc-scratch .scratch-open").click();
     await settle(100);
     let pad = d.querySelector(".popup.scratch");
@@ -537,7 +537,7 @@ async function touchTests() {
     m.open = false;
   });
   await test("POP-12: no scratch pad on touch devices", async () => {
-    expect([...d.querySelectorAll(".menu-scratch")].every((li) => li.hidden || w.getComputedStyle(li).display === "none"), "Scratch in a menu");
+    expect(!d.querySelector(".menu-scratch"), "Scratch in a menu");
     expect(!d.querySelector(".toc-scratch"), "Scratch under the contents");
   });
   await test("POP-5: a definition opens as a popin", async () => {
@@ -598,7 +598,7 @@ const SCENARIOS = {
   async pad() {
     w.localStorage.setItem("scratch", "Ask about canalisation vs. constraint.\nCheck Hacking 1996, p. 23, against the lecture.\n\nOyama on the parity thesis: ch. 2?");
     await scroll(d.getElementById("column").offsetTop);
-    (d.querySelector(".toc-scratch .scratch-open") || d.querySelector(".menu-scratch .scratch-open")).click();
+    d.querySelector(".toc-scratch .scratch-open").click();
     await settle(200);
     d.activeElement?.blur?.();
     await settle(100);

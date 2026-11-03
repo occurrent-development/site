@@ -221,12 +221,13 @@ async function cardFor(key, src) {
 const noteKeys = (t) => (t.dataset.targets || "").split(" ").filter((x) => x.startsWith("note-"))
   .map((x) => byId(x)?.dataset.bib?.slice(4)).filter(Boolean);
 
-async function item(target) {
+async function item(target, circle) {
   const src = byId(target);
   if (target.startsWith("bib-")) {
     // CITE-7: unnumbered, so titled Reference; the work's card (BIB-8), or
-    // its Bibliography entry when there is no card
-    const card = await cardFor(target.slice(4), { dataset: {} });
+    // its Bibliography entry when there is no card. CITE-7a: a lone circle
+    // on a page without end matter carries the locator and remark itself.
+    const card = await cardFor(target.slice(4), circle || { dataset: {} });
     if (card) return { title: "Reference", head: null, body: card, ref: refUrl(target.slice(4)) };
     if (!src) return null;
     return { title: "Reference", head: null, body: el("p", {}, ...clean(src).childNodes) };
@@ -260,7 +261,8 @@ async function item(target) {
 // A circle: everything it opens, in source order, separated by a hairline (MARK-1c).
 // BIB-5: a note's title is a link to the work's page, and so is Open in new tab.
 async function circleContent(t) {
-  const items = (await Promise.all(t.dataset.targets.split(" ").map(item))).filter(Boolean);
+  const targets = t.dataset.targets.split(" ");
+  const items = (await Promise.all(targets.map((id) => item(id, targets.length === 1 ? t : null)))).filter(Boolean);
   const body = el("div");
   items.forEach((it, i) => {
     if (i) body.append(el("hr", { class: "popup-sep" }));
@@ -902,13 +904,7 @@ document.addEventListener("click", (e) => {
     return;
   }
   const scratch = e.target.closest(".scratch-open");
-  if (scratch) {
-    e.preventDefault();
-    const m = scratch.closest(".site-menu");
-    if (m) m.open = false;
-    openPad(scratch);
-    return;
-  }
+  if (scratch) { e.preventDefault(); openPad(scratch); return; }
   if (e.target.closest(".bar-section")) { e.preventDefault(); toggleToc(); return; }
 
   const t = e.target.closest(TRIGGERS);
@@ -1646,12 +1642,10 @@ function openPad(link) {
     existing.querySelector("textarea")?.focus({ preventScroll: true });
     return;
   }
-  // the link the pad returns to: the one at the foot of the contents when
-  // it shows, else the menu's summary, since the menu closes
+  // the link the pad returns to: the docked Scratch link (POP-12)
   const foot = document.querySelector(".toc-scratch .scratch-open");
   const visible = (x) => x && x.getClientRects().length;
-  const trigger = visible(link) && !link.closest(".site-menu") ? link
-    : visible(foot) ? foot : link.closest(".site-menu")?.querySelector("summary") || link;
+  const trigger = visible(link) ? link : visible(foot) ? foot : link;
   const c = padContent();
   let box;
   if (multi()) {
@@ -1684,7 +1678,6 @@ addEventListener("storage", (e) => {
 // scripts, so the script makes or shows them.
 function setupScratch() {
   if (touch.matches) return;   // not on touch devices (2026-10-26)
-  for (const li of document.querySelectorAll(".menu-scratch")) li.hidden = false;
   if (!article) return;
   let inner = article.querySelector("nav.toc .toc-inner");
   if (!inner) {

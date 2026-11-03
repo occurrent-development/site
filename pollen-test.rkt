@@ -768,9 +768,9 @@
   (check-regexp-match #rx"href=\"/blog\" aria-current=\"page\"" (menu "blog/a/a.html.pm"))
   (check-regexp-match #rx"href=\"/\" aria-current=\"page\"" (menu "pages/index.html.pm")))
 
-(test-case "NAV-1, POP-12: Scratch is the menu's last item, hidden until scripts show it; the handle is the monogram, never the name"
+(test-case "NAV-1, POP-12: Scratch is not in the menu (it is docked at the window's foot); the handle is the monogram, never the name"
   (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
-  (check-regexp-match #rx">Blog<.*<li class=\"menu-scratch\" hidden=\"\"><button[^>]*aria-label=\"Scratch pad\"" (site-menu here))
+  (check-false (regexp-match? #rx"Scratch|menu-scratch" (site-menu here)))
   (for ([menu (list (site-menu here) (site-menu here #:bar #t))])
     (check-regexp-match #rx"<summary aria-label=\"Site menu\"><span class=\"menu-icon\" aria-hidden=\"true\"></span><svg class=\"chevron\"" menu)
     (check-false (regexp-match? #rx"site-name|Occurrent" menu))))
@@ -1021,7 +1021,7 @@
 
 (test-case "NAV-1: Glossary and Bibliography join the menu, in order"
   (define here (hasheq 'here-path (path->string (build-path (current-directory) "pages/index.html.pm"))))
-  (check-regexp-match #rx">Home<.*>Essays<.*>Blog<.*>Glossary<.*>Bibliography<.*Scratch" (site-menu here)))
+  (check-regexp-match #rx">Home<.*>Essays<.*>Blog<.*>Glossary<.*>Bibliography<" (site-menu here)))
 
 (test-case "BIB-3, BIB-8: a commentary: paragraphs on the page, the first in the card; anything else fails"
   (define dir (build-path "references"))

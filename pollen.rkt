@@ -750,6 +750,19 @@
        (hash-set! bib-keys key #t)
        `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")
                         ,@(if endmatter? null `((href ,(string-append "/references/" key))))))]
+      ;; CITE-7a: on a page with no end matter (the home page, HOME-1) a
+      ;; citation has no References entry to be numbered in, so its circle
+      ;; opens the work's card by the unnumbered route, the locator and
+      ;; remark carried on the circle itself for the card (BIB-8); without
+      ;; scripts the circle is a link to the work's page. Until 2026-11-03
+      ;; such a circle pointed at a note that was never emitted: an empty popup.
+      [(? (tag? 'od-cite)) #:when (not endmatter?)
+       (define key (attr-ref x 'key))
+       (hash-set! bib-keys key #t)
+       `(od-ann ((kind "ref") (target ,(string-append "bib-" key)) (label "reference")
+                 (href ,(string-append "/references/" key))
+                 ,@(if (attrs-have-key? x 'loc) `((data-loc ,(locator-label (attr-ref x 'loc)))) null)
+                 ,@(if (attrs-have-key? x 'note) `((data-note ,(typeset-string (attr-ref x 'note)))) null)))]
       [(? (tag? 'od-cite))
        (set! note-n (add1 note-n))
        (define n note-n)
@@ -1025,7 +1038,12 @@
          `(a ((class "circle-link")
               (href ,(if (attrs-have-key? (car anns) 'href) (attr-ref (car anns) 'href) (string-append "#" (attr-ref (car anns) 'target))))
               ,@(if cid `((id ,cid)) null)
-              (aria-label ,label) (data-targets ,targets) (data-kinds ,kinds))
+              (aria-label ,label) (data-targets ,targets) (data-kinds ,kinds)
+              ;; CITE-7a: a lone unnumbered citation's locator and remark ride on its circle
+              ,@(if (= (length anns) 1)
+                    (filter values (for/list ([k '(data-loc data-note)])
+                                     (and (attrs-have-key? (car anns) k) (list k (attr-ref (car anns) k)))))
+                    null))
              ,(circle-span)))
        (append (drop-right-blank visible) (list (od-bind circle)) extras)]))
   (define (drop-right-blank xs) (if (and (pair? xs) (blank? (last xs))) (drop-right xs 1) xs))
@@ -1769,14 +1787,15 @@
         ,(column 'entry "recent-blog" "Blog" "/blog" "All entries")))
 
 ;; NAV-1: the menu at the top left. Items live here, once: Home · About ·
-;; Essays · Blog · Glossary (TERM-8) · Bibliography (BIB-4), then Scratch.
+;; Essays · Blog · Glossary (TERM-8) · Bibliography (BIB-4). Scratch is not
+;; a menu item (removed 2026-11-03): it is docked at the window's bottom
+;; left on every page (POP-12).
 (define menu-items '(("Home" "/") ("About" "/about") ("Essays" "/essays") ("Blog" "/blog")
                      ("Glossary" "/glossary") ("Bibliography" "/bibliography")))
 
 ;; NAV-1, BAR-1: BAR? makes the reading bar's copy, which on tier S shows a
 ;; shortened name and on touch devices the monogram (BRAND-1), which the
-;; stylesheet draws, so only touch devices fetch it. The last item, Scratch (POP-12), needs scripts: it is
-;; hidden until the script shows it.
+;; stylesheet draws, so only touch devices fetch it.
 (define (site-menu metas #:bar [bar? #f])
   (define here (select-from-metas 'here-path metas))
   (define rel (and here (path->string (path-replace-extension
@@ -1799,10 +1818,7 @@
                   (ul ,@(for/list ([item (in-list menu-items)])
                           `(li (a ,(append `((href ,(cadr item)))
                                            (if (equal? current (cadr item)) '((aria-current "page")) null))
-                                  ,(car item))))
-                      (li ((class "menu-scratch") (hidden ""))
-                          (button ((type "button") (class "scratch-open") (aria-label "Scratch pad"))
-                                  "Scratch" (span ((class "circle") (aria-hidden "true"))))))))))
+                                  ,(car item)))))))))
 
 ;; KIND-1: the page wrapper's class, the only place CSS and scripts see a kind.
 (define (page-class metas)

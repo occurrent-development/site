@@ -1,8 +1,11 @@
-/* Specimen page only (THEME-7): which width tier is showing. */
+/* Specimen page only (THEME-7): which width tier is showing, at the window's
+   bottom right (moved from the left 2026-11-03: the Scratch link is docked
+   there, POP-12); on touch devices it sits above the bar (BAR-1). */
 .tier {
-  position: fixed; left: 0.75rem; bottom: 0.75rem; width: auto; padding: 0; margin: 0;
+  position: fixed; right: 0.75rem; bottom: 0.75rem; width: auto; padding: 0; margin: 0; text-align: right;
   font-size: 0.7rem; color: var(--text-muted); font-variant-numeric: lining-nums tabular-nums;
 }
+@media (hover: none) { .tier { bottom: calc(3.4rem + max(env(safe-area-inset-bottom), 14px) + 0.5rem); } }
 .tier::after { content: "Tier S (ragged)"; }
 @container page (min-width: 39em)   { .tier::after { content: "Tier M (justified)"; } }
 @container page (min-width: 66.5em) { .tier::after { content: "Tier L (justified, both margins)"; } }
