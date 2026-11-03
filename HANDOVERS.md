@@ -443,33 +443,25 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 
 **LOAD-3 (MUST)** Dependencies: Emacs 29+, Magit (soft: the `od-publish` family is defined only when `magit` is loadable, and says so if not), `citar` (soft, as now). No `pollen-mode`, no `company`.
 
-**LOAD-4 (MUST)** Keys: keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. Draft 1.18 (2026-11-02, evening) withdrew `od-insert-q` before it was bound; `od-insert-cite` prompts for the quotation instead (SPEC §16, BIB-9). Draft 1.19 (that night) withdrew `od-insert-more` and its key `C-c o M` (D18). The full map, as of 2026-11-02:
+**LOAD-4 (MUST)** Keys (the table below is current; the history follows): keep every existing binding, including `C-c o r` for `od-insert-ref`. New: `C-c o I` guide (EDIT-9), `C-c o k` check, `C-c o P` publish, `C-c o C` commit, `C-c o d` deploy status, `C-c o N` new essay, `C-c o F` figure, `C-c o B` table, `C-c o u` unwrap, `C-c o U` up. Added 2026-10-20 (EDIT-8): `C-c o Q` epigraph, `C-c o q` blockquote, `C-c o o` toggle italic, `C-c o w` wrap, `C-c o b` break, `C-c o l` list, `C-c o S` summary, `C-c o A` anchor, `C-c o M` more, `C-c o L` latex, `C-c o H` changelog, `C-c o W` embed, `C-c o <` / `C-c o >` promote / demote. Draft 1.18 (2026-11-02, evening) withdrew `od-insert-q` before it was bound; `od-insert-cite` prompts for the quotation instead (SPEC §16, BIB-9). Draft 1.19 (that night) withdrew `od-insert-more` and its key `C-c o M` (D18). The full map, as of 2026-11-02:
 
-| Key | Command | Key | Command |
+| Key | Command (lower case: a menu, then a choice) | Key | Command |
 |---|---|---|---|
-| `a` | `od-insert-aside` | `A` | `od-insert-anchor` |
-| `b` | `od-insert-break` | `B` | `od-insert-table` |
-| `c` | `od-insert-cite` | `C` | `od-commit` |
-| `d` | `od-deploy-status` | `F` | `od-insert-figure` |
-| `e` | `od-insert-link-essay` | `H` | `od-insert-changelog` |
-| `f` | `od-find-term` | `I` | `od-guide` |
-| `g` | `od-goto-section` | | |
-| `i` | `od-insert-link-internal` | `N` | `od-new-essay` |
-| `k` | `od-check` | `P` | `od-publish` |
-| `l` | `od-insert-list` | `L` | `od-insert-latex` |
-| | | `Q` | `od-insert-epigraph` |
-| `m` | `od-insert-margin` | `S` | `od-insert-summary` |
-| `n` | `od-new-term` | `T` | `od-set-tags` |
-| `o` | `od-toggle-italic` | `U` | `od-up` |
-| `p` | `od-preview` | `W` | `od-insert-embed` |
-| `q` | `od-insert-blockquote` | `<` | `od-promote` |
-| `r` | `od-insert-ref` | `>` | `od-demote` |
-| `s` | `od-insert-section` | | |
-| `t` | `od-insert-term` | | |
+| `b` | `od-insert-block`: list, block quotation, epigraph | `C` | `od-commit` |
+| `c` | `od-insert-cite` | `H` | `od-insert-changelog` |
+| `d` | `od-deploy-status` | `I` | `od-guide` |
+| `g` | `od-glossary`: insert term, new term, open term | `N` | `od-new-essay` |
+| `i` | `od-insert-element`: section, figure, panels, table, summary, aside, margin note, break, rule | `P` | `od-publish` |
+| `j` | `od-insert-tag` | `R` | `od-rename-post` |
+| `k` | `od-check` | `T` | `od-set-tags` |
+| `l` | `od-insert-link`: this page, this site, other site | `U` | `od-up` |
+| `o` | `od-toggle-italic` | `<` | `od-promote` |
+| `p` | `od-preview` | `>` | `od-demote` |
+| `r` | `od-insert-reference`: ref to a figure or table, anchor | | |
 | `u` | `od-unwrap` | | |
-| `w` | `od-wrap` | | |
-| `j` | `od-insert-tag` | | |
-| `x` | `od-insert-link-external` | | |
+| `w` | `od-wrap`: em, strong, sc, code (a toggle) | | |
+
+Rebuilt 2026-11-03 (SPEC EMACS-7): the one-key-per-command map above it (`a e f m n q s t x A B F L Q S W`) is gone; those commands are reached through the menus, and `od-goto-section`, `od-insert-latex` and `od-insert-embed` have no key (`M-x`, `od-insert-tag` and the unbuilt tag respectively). `od-insert-changelog` is built and keeps `H`. Ryan's own `C-c e` prefix (config-08-text-editing.org) reaches the same inline and block tags in an essay as in every other text mode.
 
 List them all in the `occurrent-mode` docstring. Reserved for Phase 3: `R` for `od-new-reference` (SPEC BIB-3), `$` for `od-insert-math` (SPEC MATH-1), and `od-insert-cite` gains the pinned-key check of SPEC BIB-2 (ask Better BibTeX at `localhost:23119`; refuse an unpinned key; warn and continue when Zotero is not running). Neither is built in this handover. Phase 4: `od-preview` with a prefix argument builds and opens the post's PDF (SPEC PRINT-7); no new key. Reserved for Phase 5: `V` for `od-insert-audio` (SPEC AUDIO-4). Free for later: `h v y z` and `D E G J K O X Y Z` (`j` went to `od-insert-tag` on 2026-10-21, for the tags with no command of their own).
 

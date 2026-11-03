@@ -619,5 +619,52 @@ The key is picked as \"k\"."
         (set-buffer-modified-p nil)
         (setq buffer-file-name nil)))))
 
+;;; 2026-11-03: menus (EMACS-7), the wrap toggle, the changelog line
+
+(ert-deftest od-test-menus ()
+  "One key, then a choice: the menu runs the chosen command with the region kept."
+  (od-test-with "One word here."
+    (search-forward "word") (set-mark (- (point) 4)) (activate-mark)
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (prompt &rest _) (if (string-prefix-p "Link to (default" prompt) "this page" "Intro")))
+              ((symbol-function 'od--id-candidates) (lambda (&rest _) '(("Intro" . "intro")))))
+      (od-insert-link))
+    (should (equal (buffer-string) "One ◊link[\"#intro\"]{word} here.")))
+  (od-test-with "Text.\n"
+    (goto-char (point-max))
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "list")))
+      (od-insert-block))
+    (insert "item")
+    (should (equal (buffer-string) "Text.\n\n◊list{\n- item\n}\n")))
+  ;; Enter alone repeats the last choice at that prompt
+  (let ((od--menu-last nil) (seen nil))
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (prompt &rest _) (setq seen prompt) "rule"))
+              ((symbol-function 'od-insert-rule) (lambda () (interactive))))
+      (od-test-with "" (od-insert-element))
+      (should (string-match-p "default section" seen))
+      (od-test-with "" (od-insert-element))
+      (should (string-match-p "default rule" seen)))))
+
+(ert-deftest od-test-wrap-toggles ()
+  "`od-wrap' inside the same tag takes it off; inside another, it nests."
+  (od-test-with "One ◊em{word} here."
+    (search-forward "wor") (od-wrap "em")
+    (should (equal (buffer-string) "One word here.")))
+  (od-test-with "One ◊em{word} here."
+    (search-forward "wor") (od-wrap "strong")
+    (should (equal (buffer-string) "One ◊em{◊strong{word}} here."))))
+
+(ert-deftest od-test-insert-changelog ()
+  "A dated line goes at the end of the block, or into a new block at the end."
+  (let ((today (format-time-string "%Y-%m-%d")))
+    (od-test-with "Text.\n\n◊changelog{\n2026-10-05: First.\n}\n"
+      (od-insert-changelog) (insert "Second.")
+      (should (equal (buffer-string)
+                     (format "Text.\n\n◊changelog{\n2026-10-05: First.\n%s: Second.\n}\n" today))))
+    (od-test-with "Text.\n"
+      (od-insert-changelog) (insert "First.")
+      (should (equal (buffer-string) (format "Text.\n\n◊changelog{\n%s: First.\n}\n" today))))))
+
 (provide 'occurrent-test)
 ;;; occurrent-test.el ends here

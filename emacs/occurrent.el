@@ -13,6 +13,13 @@
 ;; `occurrent-mode-hook' is the place for flyspell, visual-line-mode and the
 ;; like; the mode turns none of them on. `C-c o I' opens a guide.
 ;;
+;; Keys (EMACS-7): the lower-case keys under C-c o are menus, one key and
+;; then a `completing-read' choice: g glossary, l link, i element, r
+;; reference, b block, w wrap; c cite, o toggle italic, j any tag, u unwrap,
+;; U up, < > promote and demote. The upper-case keys act on the post and
+;; the site: p preview, T tags, I guide, N new, k check, P publish,
+;; C commit, R rename, d deploy status, H a changelog line.
+;;
 ;; Citations come from your whole Zotero library (the Better BibTeX
 ;; auto-export named by ZOTERO_BIB in the repository's local.mk), through
 ;; citar when it is installed. `make refresh' then copies only the cited
@@ -580,18 +587,23 @@ is italic, a block quotation roman (LAYOUT-4c)."
 (defvar od--last-wrap "em" "The last tag `od-wrap' used.")
 
 (defun od-wrap (tag)
-  "Wrap the region, or the word at point, in ◊TAG{…}: em, strong, sc or code."
+  "Wrap the region, or the word at point, in ◊TAG{…}: em, strong, sc or code.
+With no region and point already inside a ◊TAG, remove it instead, so the
+key toggles like the italic and bold keys of the other text modes."
   (interactive (list (completing-read (format "Wrap in (default %s): " od--last-wrap)
                                       '("em" "strong" "sc" "code") nil t nil nil od--last-wrap)))
   (setq od--last-wrap tag)
-  (if (use-region-p)
-      (od--wrap (format "◊%s{" tag) "}")
-    (let ((b (bounds-of-thing-at-point 'word)))
-      (if (not b)
-          (od--wrap (format "◊%s{" tag) "}")
-        (goto-char (cdr b)) (insert "}")
-        (goto-char (car b)) (insert (format "◊%s{" tag))
-        (goto-char (+ (cdr b) (length tag) 3))))))
+  (syntax-propertize (point-max))
+  (let ((enclosing (and (not (use-region-p)) (od--enclosing-body-tag))))
+    (cond
+     ((and enclosing (equal (plist-get enclosing :name) tag)) (od-unwrap))
+     ((use-region-p) (od--wrap (format "◊%s{" tag) "}"))
+     (t (let ((b (bounds-of-thing-at-point 'word)))
+          (if (not b)
+              (od--wrap (format "◊%s{" tag) "}")
+            (goto-char (cdr b)) (insert "}")
+            (goto-char (car b)) (insert (format "◊%s{" tag))
+            (goto-char (+ (cdr b) (length tag) 3))))))))
 
 (defun od-insert-break (&optional rule)
   "Insert ◊break{} on its own line, a blank line either side (LAYOUT-4).
@@ -658,11 +670,29 @@ With a prefix argument NUMBERED, the markers are numbers."
   (insert "◊latex{}"))
 
 (defun od-insert-changelog ()
-  "Add a dated line to the essay's ◊changelog (REV-3); not built yet (VOCAB-2)."
+  "Add a line dated today to the essay's ◊changelog (REV-3).
+The block is created at the end of the file when there is none. Point
+ends after the date, where the line's text goes."
   (interactive)
   (when (eq (od--kind) 'entry)
     (user-error "A blog entry has no changelog: a change of mind is a new entry (KIND-2)"))
-  (unless (od--tag-get 'changelog :built) (user-error "◊changelog is not built yet (VOCAB-2)")))
+  (unless (od--tag-get 'changelog :built) (user-error "◊changelog is not built yet (VOCAB-2)"))
+  (syntax-propertize (point-max))
+  (let ((start (save-excursion
+                 (goto-char (point-min))
+                 (and (re-search-forward "^◊changelog{" nil t) (match-beginning 0)))))
+    (if start
+        (let* ((tag (od--tag-parse start))
+               (close (cdr (plist-get tag :body))))
+          (unless close (user-error "The ◊changelog has no closing brace"))
+          (goto-char (1- close))
+          (skip-chars-backward " \t\n")
+          (insert "\n" (format-time-string "%Y-%m-%d") ": "))
+      (goto-char (point-max))
+      (unless (bolp) (insert "\n"))
+      (unless (save-excursion (forward-line -1) (looking-at-p "[ \t]*$")) (insert "\n"))
+      (insert "◊changelog{\n" (format-time-string "%Y-%m-%d") ": ")
+      (save-excursion (insert "\n}\n")))))
 
 (defun od-insert-embed ()
   "Insert an interactive figure, ◊embed (§9.3); not built yet (VOCAB-2)."
@@ -700,6 +730,67 @@ This is the way in for tags with no command of their own (VOCAB-5)."
             ((and parts (search-forward "[" (+ start (length text)) t)))
             ((search-forward "{" (+ start (length text)) t))
             (t (goto-char (+ start (length text))))))))
+
+;;; Menus: one key, then a choice (EMACS-7) ------------------------------------
+
+(defvar od--menu-last nil
+  "What was last chosen at each menu prompt, so that Enter alone repeats it.")
+
+(defun od--menu (prompt choices)
+  "Read one of CHOICES, an alist of label to command, and run the command.
+Enter alone repeats the last choice made at PROMPT. The command runs
+interactively with the region still active, so it wraps the region as
+every insert command does (EMACS-2), and a prefix argument reaches it."
+  (let* ((last (or (alist-get prompt od--menu-last nil nil #'equal) (caar choices)))
+         (choice (completing-read (format "%s (default %s): " prompt last)
+                                  choices nil t nil nil last)))
+    (setf (alist-get prompt od--menu-last nil nil #'equal) choice)
+    (call-interactively (alist-get choice choices nil nil #'equal))))
+
+(defun od-insert-link ()
+  "Insert a ◊link: to this page, to another page of this site, or to the web (§8)."
+  (interactive)
+  (od--menu "Link to" '(("this page" . od-insert-link-internal)
+                        ("this site" . od-insert-link-essay)
+                        ("other site" . od-insert-link-external))))
+
+(defun od-glossary ()
+  "The glossary: insert a ◊term, make a new term, or open a term's file (§7).
+A prefix argument reaches `od-insert-term': the term gets a ◊sense (TERM-9)."
+  (interactive)
+  (od--menu "Glossary" '(("insert term" . od-insert-term)
+                         ("new term" . od-new-term)
+                         ("open term" . od-find-term))))
+
+(defun od-insert-element ()
+  "Insert an element of the page, chosen from a menu.
+A heading, figure, panels, table, summary, aside, margin note, section
+break or rule."
+  (interactive)
+  (od--menu "Insert" '(("section" . od-insert-section)
+                       ("figure" . od-insert-figure)
+                       ("panels" . od-insert-panels)
+                       ("table" . od-insert-table)
+                       ("summary" . od-insert-summary)
+                       ("aside" . od-insert-aside)
+                       ("margin note" . od-insert-margin)
+                       ("break" . od-insert-break)
+                       ("rule" . od-insert-rule))))
+
+(defun od-insert-reference ()
+  "Insert a cross-reference: a ◊ref to a figure or table, or an ◊anchor.
+An anchor marks a place in the text for a link to point at."
+  (interactive)
+  (od--menu "Reference" '(("ref to a figure or table" . od-insert-ref)
+                          ("anchor" . od-insert-anchor))))
+
+(defun od-insert-block ()
+  "Insert a block of text: a ◊list, a ◊blockquote or an ◊epigraph.
+See §3.4 and LAYOUT-4c."
+  (interactive)
+  (od--menu "Block" '(("list" . od-insert-list)
+                      ("block quotation" . od-insert-blockquote)
+                      ("epigraph" . od-insert-epigraph))))
 
 ;;; Preview ------------------------------------------------------------------
 
@@ -856,43 +947,45 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; :built   nil for tags in SPEC §3.3 that pollen.rkt does not provide yet:
 ;;          they complete, but highlight as errors (VOCAB-2)
 ;; :command the command under C-c o that inserts it (VOCAB-5, SPEC EMACS-6);
-;;          `od-insert-tag' (C-c o j) for the tags with no command of their own
+;;          `od-insert-tag' (C-c o j) for the tags with no command of their own;
+;;          a menu (EMACS-7) for the tags reached through one: `od-insert-element',
+;;          `od-insert-link', `od-glossary', `od-insert-reference', `od-insert-block'
 ;; :only    the one kind of file where the tag belongs (see `od-file-kind')
 ;; :inside  the tag it must stand inside (◊sense inside ◊term, TERM-9)
 ;; :not     kinds of file where the tag is refused (KIND-2: no epistemic
 ;;          status or changelog in a blog entry)
 (defconst od-vocabulary
   '((define-meta   :pos key    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag)
-    (section       :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-section)
-    (subsection    :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-section)
-    (subsubsection :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-section)
-    (summary       :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-summary)
+    (section       :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-element)
+    (subsection    :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-element)
+    (subsubsection :pos nil    :kw (id short)                                            :req (id)                  :body t   :block t   :built t :command od-insert-element)
+    (summary       :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-element)
     (abstract      :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag)
     (epistemic     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag :not (entry))
-    (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t :command od-insert-link-external)
+    (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t :command od-insert-link)
     (cite          :pos key    :kw (loc note block italic source)                        :req ()                    :body opt :block nil :built t :command od-insert-cite)
-    (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t :command od-insert-term)
-    (sense         :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-term :inside term)
-    (aside         :pos phrase :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-aside :opt-pos t)
-    (margin        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-margin)
+    (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t :command od-glossary)
+    (sense         :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-glossary :inside term)
+    (aside         :pos phrase :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-element :opt-pos t)
+    (margin        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-element)
     (sc            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (em            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (strong        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (code          :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
-    (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-anchor)
-    (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-ref)
+    (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-reference)
+    (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-reference)
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
-    (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-break)
-    (rule          :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-rule)
-    (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-latex)
-    (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-blockquote)
-    (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-epigraph)
-    (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t :command od-insert-list)
-    (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t :command od-insert-table)
+    (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
+    (rule          :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
+    (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
+    (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
+    (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
+    (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
+    (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t :command od-insert-element)
     (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
     (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
-    (figure        :pos src    :kw (id title alt licence credit invert)                  :req (id title alt licence) :body t  :block t   :built t :command od-insert-figure)
-    (panels        :pos nil    :kw (id title licence credit columns)                     :req (id title licence)    :body t   :block t   :built t :command od-insert-tag)
+    (figure        :pos src    :kw (id title alt licence credit invert)                  :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
+    (panels        :pos nil    :kw (id title licence credit columns)                     :req (id title licence)    :body t   :block t   :built t :command od-insert-element)
     (panel         :pos src    :kw (alt licence credit invert)                           :req (alt)                 :body t   :block t   :built t :command od-insert-tag :inside panels)
     (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
     (recent        :pos count  :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-tag :only home)
@@ -1142,26 +1235,27 @@ changelog and no contents; everything else is the same.
    paragraph is one line in the file, shown wrapped on screen, so there is
    nothing to refill. M-q joins an old hard-wrapped paragraph onto one line.
    - ◊ is {od-insert-lozenge}
-   - a section heading: {od-insert-section} (its id is permanent: links
+   - a section heading: {od-insert-element}, section (its id is permanent: links
      depend on it)
-   - a citation: {od-insert-cite}; a defined term: {od-insert-term}
-     (a new one: {od-new-term})
-   - an aside: {od-insert-aside} (select a phrase first, and the aside
-     comments on it); a margin note: {od-insert-margin}, at the start of
+   - a citation: {od-insert-cite}; a defined term: {od-glossary}, insert
+     term (new term makes one; open term reads one)
+   - an aside: {od-insert-element}, aside (select a phrase first, and the
+     aside comments on it); a margin note: {od-insert-element}, margin note, at the start of
      the paragraph, item or sentence it glosses
-   - emphasis and the other inline tags: {od-wrap}; the LaTeX logo:
-     {od-insert-latex}
-   - an epigraph: {od-insert-epigraph}; a block quotation:
-     {od-insert-blockquote}; italic or roman: {od-toggle-italic}
-   - a list: {od-insert-list} (C-u for numbers); a section break:
-     {od-insert-break}; a section's one-line summary: {od-insert-summary}
+   - emphasis and the other inline tags: {od-wrap} (inside one already,
+     it takes the tag off again); the LaTeX logo: {od-insert-tag}, latex
+   - a block of text: {od-insert-block}, then list (C-u for numbers), block
+     quotation or epigraph; italic or roman: {od-toggle-italic}
+   - a section break or rule, or a section's one-line summary:
+     {od-insert-element}, then break, rule or summary
    - any other tag, with its blanks to fill: {od-insert-tag}
-   - links: within the essay {od-insert-link-internal}, to another essay
-     {od-insert-link-essay}, to the web {od-insert-link-external}
-   - a figure: put the image in img/, then {od-insert-figure}; a table:
-     {od-insert-table}; refer to either with {od-insert-ref}
+   - links: {od-insert-link}, then this page, this site or other site
+   - a figure: put the image in img/, then {od-insert-element}, figure (or
+     panels, for several side by side); a table: {od-insert-element}, table;
+     refer to either with {od-insert-reference}, ref; {od-insert-reference},
+     anchor marks a place in the text to link to
    - a note to yourself: M-; (hidden from the page)
-   - jump between sections: {od-goto-section}
+   - jump between sections: {od-goto-section} (or imenu)
 
 4. Look at it: {od-preview} opens it in the browser. Check it: {od-check}
    runs the tests and renders this file; errors open with M-g n. Anything
@@ -2067,6 +2161,28 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
                     (if credit (format " #:credit \"%s\"" (od--quote credit)) "")))
     (save-excursion (insert "}"))))
 
+(defun od-insert-panels ()
+  "Insert a ◊panels block with its first ◊panel (IMG-7).
+Asks for the title, id and licence of the group, then the first image and
+its alt text. Point ends on the empty line where the next ◊panel goes,
+by `od-insert-tag' with panel, or typed."
+  (interactive)
+  (let* ((here (file-name-directory (or buffer-file-name default-directory)))
+         (img (expand-file-name "img/" here))
+         (title (string-trim (read-string "Title: ")))
+         (id (od--new-id title))
+         (licence (completing-read "Licence: " od--licences nil nil nil nil "own"))
+         (credit (unless (equal licence "own") (read-string "Credit (required): ")))
+         (path (read-file-name "First image: " (if (file-directory-p img) img here) nil t))
+         (rel (file-relative-name path here))
+         (alt (read-string "Alt text (what the image shows; empty if decorative): ")))
+    (od--open-line-for-block)
+    (insert (format "◊panels[#:id \"%s\" #:title \"%s\" #:licence \"%s\"%s]{\n"
+                    id (od--quote title) licence
+                    (if credit (format " #:credit \"%s\"" (od--quote credit)) "")))
+    (insert (format "◊panel[\"%s\" #:alt \"%s\"]{}\n" rel (od--quote alt)))
+    (save-excursion (insert "}\n"))))
+
 (defun od-insert-table ()
   "Insert a ◊table with title, id and an Org-style skeleton (EDIT-7, EDIT-10)."
   (interactive)
@@ -2577,46 +2693,31 @@ title. A blog entry renames the same way, under /blog/."
 (defvar occurrent-mode-map
   (let ((m (make-sparse-keymap)))
     (define-key m (kbd "C-c ;") #'od-insert-lozenge)
+    ;; writing: each lower-case key is a menu or a wrap (EMACS-7)
     (define-key m (kbd "C-c o c") #'od-insert-cite)
-    (define-key m (kbd "C-c o t") #'od-insert-term)
-    (define-key m (kbd "C-c o n") #'od-new-term)
-    (define-key m (kbd "C-c o f") #'od-find-term)
-    (define-key m (kbd "C-c o i") #'od-insert-link-internal)
-    (define-key m (kbd "C-c o e") #'od-insert-link-essay)
-    (define-key m (kbd "C-c o x") #'od-insert-link-external)
-    (define-key m (kbd "C-c o s") #'od-insert-section)
-    (define-key m (kbd "C-c o g") #'od-goto-section)
-    (define-key m (kbd "C-c o a") #'od-insert-aside)
-    (define-key m (kbd "C-c o m") #'od-insert-margin)
-    (define-key m (kbd "C-c o p") #'od-preview)
-    (define-key m (kbd "C-c o T") #'od-set-tags)
-    (define-key m (kbd "C-c o r") #'od-insert-ref)
-    (define-key m (kbd "C-c o I") #'od-guide)
-    (define-key m (kbd "C-c o F") #'od-insert-figure)
-    (define-key m (kbd "C-c o B") #'od-insert-table)
-    (define-key m (kbd "C-c o N") #'od-new-essay)
+    (define-key m (kbd "C-c o g") #'od-glossary)         ; insert, new, open
+    (define-key m (kbd "C-c o l") #'od-insert-link)      ; this page, this site, other site
+    (define-key m (kbd "C-c o i") #'od-insert-element)   ; section, figure, panels, table, summary, aside, margin, break, rule
+    (define-key m (kbd "C-c o r") #'od-insert-reference) ; ref, anchor
+    (define-key m (kbd "C-c o b") #'od-insert-block)     ; list, block quotation, epigraph
+    (define-key m (kbd "C-c o w") #'od-wrap)             ; em, strong, sc, code (toggles)
+    (define-key m (kbd "C-c o o") #'od-toggle-italic)
+    (define-key m (kbd "C-c o j") #'od-insert-tag)
     (define-key m (kbd "C-c o u") #'od-unwrap)
     (define-key m (kbd "C-c o U") #'od-up)
+    (define-key m (kbd "C-c o <") #'od-promote)
+    (define-key m (kbd "C-c o >") #'od-demote)
+    ;; the post and the site
+    (define-key m (kbd "C-c o p") #'od-preview)
+    (define-key m (kbd "C-c o T") #'od-set-tags)
+    (define-key m (kbd "C-c o I") #'od-guide)
+    (define-key m (kbd "C-c o N") #'od-new-essay)
     (define-key m (kbd "C-c o k") #'od-check)
     (define-key m (kbd "C-c o P") #'od-publish)
     (define-key m (kbd "C-c o C") #'od-commit)
     (define-key m (kbd "C-c o R") #'od-rename-post)
     (define-key m (kbd "C-c o d") #'od-deploy-status)
-    ;; the rest of the vocabulary (EDIT-8, SPEC EMACS-6)
-    (define-key m (kbd "C-c o Q") #'od-insert-epigraph)
-    (define-key m (kbd "C-c o q") #'od-insert-blockquote)
-    (define-key m (kbd "C-c o o") #'od-toggle-italic)
-    (define-key m (kbd "C-c o w") #'od-wrap)
-    (define-key m (kbd "C-c o b") #'od-insert-break)
-    (define-key m (kbd "C-c o l") #'od-insert-list)
-    (define-key m (kbd "C-c o S") #'od-insert-summary)
-    (define-key m (kbd "C-c o A") #'od-insert-anchor)
-    (define-key m (kbd "C-c o L") #'od-insert-latex)
     (define-key m (kbd "C-c o H") #'od-insert-changelog)
-    (define-key m (kbd "C-c o W") #'od-insert-embed)
-    (define-key m (kbd "C-c o j") #'od-insert-tag)
-    (define-key m (kbd "C-c o <") #'od-promote)
-    (define-key m (kbd "C-c o >") #'od-demote)
     (define-key m [remap fill-paragraph] #'od-fill-paragraph)
     ;; outline's promote and demote would rewrite ◊section by its regexp
     (define-key m [remap outline-promote] #'od-promote)
@@ -2654,9 +2755,14 @@ title. A blog entry renames the same way, under /blog/."
   "Writing occurrentdevelopment.com in Pollen (SPEC §16, HANDOVER-EMACS).
 
 Prose dominates; markup is dimmed; anything the build would refuse is
-highlighted, with the reason in its tooltip. `C-c o I' opens a guide to
-starting, publishing and revising an essay. Inside a pipe table, Org's
-table keys work (TAB aligns, M-arrows move rows and columns).
+highlighted, with the reason in its tooltip (`C-h .' shows it). `C-c o I'
+opens a guide to starting, publishing and revising an essay. Inside a pipe
+table, Org's table keys work (TAB aligns, M-arrows move rows and columns).
+
+The lower-case keys under `C-c o' are menus (EMACS-7): one key, then a
+choice by `completing-read': `C-c o g' the glossary, `C-c o l' a link,
+`C-c o i' an element of the page, `C-c o r' a cross-reference, `C-c o b'
+a block of text, `C-c o w' an inline tag. The rest:
 
 \\{occurrent-mode-map}"
   :syntax-table od-syntax-table

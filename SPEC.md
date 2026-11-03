@@ -1,6 +1,6 @@
 # occurrentdevelopment.com — Specification (v1)
 
-Status: draft 1.23 · Owner: Ryan · Last revised: 2026-11-03 (morning: the popin's minimum height, POP-5; the cover above the title at tier S, BIB-7; one link per citation under Cited in, BIB-9; the night of 2026-11-02: the masthead and the title face, HOME-2 and LAYOUT-2; the menu's monogram, NAV-1; the datum, LAYOUT-1a; ◊rule, LAYOUT-4a; LINK-4; POP-12, BAR-1d and THEME-6 moved; BIB-9's attribution; §16's preview and refresh)
+Status: draft 1.25 · Owner: Ryan · Last revised: 2026-11-03 (afternoon: the `C-c o` keys became menus and `od-insert-changelog` was built, §16, EMACS-7; midday: the tables of §2.1, §3.3, §6, §7.1, §13–16 and §18, whose cells were sentences, became lists, `STYLE.md` §9; morning: the popin's minimum height, POP-5; the cover above the title at tier S, BIB-7; one link per citation under Cited in, BIB-9; the night of 2026-11-02: the masthead and the title face, HOME-2 and LAYOUT-2; the menu's monogram, NAV-1; the datum, LAYOUT-1a; ◊rule, LAYOUT-4a; LINK-4; POP-12, BAR-1d and THEME-6 moved; BIB-9's attribution; §16's preview and refresh)
 
 This is the build brief for version 1 of the site: everything needed to write essays, publish them, and be happy with how they look. Requirements carry IDs (e.g. `LINK-3`) so commits and tests can reference them. **MUST** = required; **SHOULD** = expected, may slip; **MAY** = optional.
 
@@ -29,16 +29,14 @@ In priority order; the higher wins.
 
 ### 2.1 Stack
 
-| Layer | Choice |
-|---|---|
-| Source | Pollen markup (`.html.pm`), Racket |
-| Build | `raco pollen render` (parallel), tag functions and the `root` pass in `pollen.rkt` |
-| Citations | Zotero (Better BibTeX export) → `make refresh` copies the cited entries into `refs/refs.bib` and pandoc formats them into a committed cache (§5) |
-| Client | Vanilla JS (ES modules) and CSS. No framework |
-| CI | GitHub Actions (`Bogdanp/setup-racket`): full rebuild, validate, then `wrangler deploy` |
-| Hosting | Cloudflare Worker `site`, static assets only (D2). Cloudflare's own Git build stays disconnected: its image has no Racket |
-| Interactive figures | Per-figure bundles built with their own toolchain (§9.3) |
-| Editor | Emacs: `pollen-mode` + local `occurrent.el` (§16) |
+- **Source.** Pollen markup (`.html.pm`), Racket.
+- **Build.** `raco pollen render` (parallel), tag functions and the `root` pass in `pollen.rkt`.
+- **Citations.** Zotero (Better BibTeX export) → `make refresh` copies the cited entries into `refs/refs.bib` and pandoc formats them into a committed cache (§5).
+- **Client.** Vanilla JS (ES modules) and CSS. No framework.
+- **CI.** GitHub Actions (`Bogdanp/setup-racket`): full rebuild, validate, then `wrangler deploy`.
+- **Hosting.** Cloudflare Worker `site`, static assets only (D2). Cloudflare's own Git build stays disconnected: its image has no Racket.
+- **Interactive figures.** Per-figure bundles built with their own toolchain (§9.3).
+- **Editor.** Emacs: `pollen-mode` + local `occurrent.el` (§16).
 
 Pollen is settled; the Hugo shortcode approach sketched in earlier essay notes is superseded.
 
@@ -141,35 +139,33 @@ Citation keys are Better BibTeX keys from Zotero (`hackingMakingPeople2006`); th
 
 ### 3.3 Tag vocabulary
 
-| Tag | Purpose | Required | Optional |
-|---|---|---|---|
-| `◊link[target]{text}` | Any link; type inferred (§4.2) | target | `#:note`, `#:title`, `#:author`, `#:date` |
-| `◊cite[key]` / `◊cite[key]{quoted words}` | Citation → numbered note (§5); with a body, a quotation of those words from the work (BIB-9) | BibTeX key | `#:loc`, `#:note`; with a body also `#:block`, `#:italic`, `#:source` |
-| `◊term[id]{text}` | Glossary term (§6) | glossary id | `#:mark` |
-| `◊aside{…}` / `◊aside[phrase]{…}` | Aside (§7.1); with a phrase, the phrase and the circle are the link (ASIDE-8) | body | phrase (a string) |
-| `◊margin{…}` | Margin note, left margin (§7.2) | body | — |
-| `◊section` `◊subsection` `◊subsubsection` `[#:id]{title}` | Heading markers (§8) | title, id | `#:short` |
-| `◊summary{…}` | One-line section summary for popups | body | — |
-| `◊more{…}` | Long text of a glossary definition (§6); glossary files only | body | — |
-| `◊list{…}` | Lists (§3.4) | body | `#:start`, `#:columns` |
-| `◊table{…}` / `◊table-csv[path]` | Tables (§9.2) | body / path, `#:id`, `#:title` | `#:caption`, `#:source`, `#:size`, `#:sortable`, `#:align`, `#:row-headers` |
-| `◊sort-key[value]{text}` | The value a table cell sorts by (TABLE-5) | value | — |
-| `◊figure[src]{caption}` | Image (§9.1) | src, `#:id`, `#:title`, `#:alt`, `#:licence` | `#:invert`, `#:credit` |
-| `◊panels{…}` | A figure of lettered panels (IMG-9): the body is the caption, as for `◊figure`, and holds two to six `◊panel`s; **Phase 3** | `#:id`, `#:title`, `#:licence`, the panels | `#:credit`, `#:columns` |
-| `◊panel[src]{sub-caption}` | One panel of a `◊panels` figure (IMG-9); nowhere else | src, `#:alt` | `#:licence`, `#:credit`, `#:invert` |
-| `◊ref[id]` | "Figure 2", "Table 1": a link to a figure or table on the page (IMG-7); with `#:panel`, "Figure 2B" (IMG-9) | id | `#:panel` |
-| `◊embed[name]{caption}` | Interactive figure (§9.3) | name, `#:alt`, `#:fallback` | `#:width`, `#:sticky` |
-| `◊break{}` | Section-break glyph (§10.5) | — | — |
-| `◊rule{}` | The quieter break: a centred hairline half the column's width (LAYOUT-4a) | — | — |
-| `◊sc{…}` | Small caps (acronyms) | body | — |
-| `◊latex{}` | The LaTeX logo, set in the text face (TYPE-17) | — | — |
-| `◊m{…}` | Inline mathematics, pre-rendered at refresh (MATH-1); **Phase 3** | TeX source | `#:display` |
-| `◊epigraph{…}` | Epigraph, italic by default (LAYOUT-4a); for a source not in Zotero (a cited one is `◊cite` with `#:block #t`, BIB-9) | body | `#:source`, `#:italic` |
-| `◊blockquote{…}` | Block quotation, roman by default (LAYOUT-4b); for a source not in Zotero (BIB-9) | body | `#:source`, `#:italic` |
-| `◊abstract{…}` / `◊epistemic{…}` | The header's abstract and epistemic status, written in the body (SRC-4a) | body | — |
-| `◊anchor[id]`, `◊em`, `◊strong`, `◊code`, `◊br{}` | Standard elements | | |
-| `◊changelog{…}` | Revision notes (§13) | body | — |
-| `◊audio[file]{description}` | A recording of the post (§13c); **Phase 5** | file, `#:bytes`, `#:duration`, `#:recorded` | — |
+- `◊link[target]{text}`: Any link; type inferred (§4.2). Required: target. Optional: `#:note`, `#:title`, `#:author`, `#:date`.
+- `◊cite[key]` / `◊cite[key]{quoted words}`: Citation → numbered note (§5); with a body, a quotation of those words from the work (BIB-9). Required: BibTeX key. Optional: `#:loc`, `#:note`; with a body also `#:block`, `#:italic`, `#:source`.
+- `◊term[id]{text}`: Glossary term (§6). Required: glossary id. Optional: `#:mark`.
+- `◊aside{…}` / `◊aside[phrase]{…}`: Aside (§7.1); with a phrase, the phrase and the circle are the link (ASIDE-8). Required: body. Optional: phrase (a string).
+- `◊margin{…}`: Margin note, left margin (§7.2). Required: body.
+- `◊section` `◊subsection` `◊subsubsection` `[#:id]{title}`: Heading markers (§8). Required: title, id. Optional: `#:short`.
+- `◊summary{…}`: One-line section summary for popups. Required: body.
+- `◊more{…}`: Long text of a glossary definition (§6); glossary files only. Required: body.
+- `◊list{…}`: Lists (§3.4). Required: body. Optional: `#:start`, `#:columns`.
+- `◊table{…}` / `◊table-csv[path]`: Tables (§9.2). Required: body / path, `#:id`, `#:title`. Optional: `#:caption`, `#:source`, `#:size`, `#:sortable`, `#:align`, `#:row-headers`.
+- `◊sort-key[value]{text}`: The value a table cell sorts by (TABLE-5). Required: value.
+- `◊figure[src]{caption}`: Image (§9.1). Required: src, `#:id`, `#:title`, `#:alt`, `#:licence`. Optional: `#:invert`, `#:credit`.
+- `◊panels{…}`: A figure of lettered panels (IMG-9): the body is the caption, as for `◊figure`, and holds two to six `◊panel`s; **Phase 3**. Required: `#:id`, `#:title`, `#:licence`, the panels. Optional: `#:credit`, `#:columns`.
+- `◊panel[src]{sub-caption}`: One panel of a `◊panels` figure (IMG-9); nowhere else. Required: src, `#:alt`. Optional: `#:licence`, `#:credit`, `#:invert`.
+- `◊ref[id]`: "Figure 2", "Table 1": a link to a figure or table on the page (IMG-7); with `#:panel`, "Figure 2B" (IMG-9). Required: id. Optional: `#:panel`.
+- `◊embed[name]{caption}`: Interactive figure (§9.3). Required: name, `#:alt`, `#:fallback`. Optional: `#:width`, `#:sticky`.
+- `◊break{}`: Section-break glyph (§10.5).
+- `◊rule{}`: The quieter break: a centred hairline half the column's width (LAYOUT-4a).
+- `◊sc{…}`: Small caps (acronyms). Required: body.
+- `◊latex{}`: The LaTeX logo, set in the text face (TYPE-17).
+- `◊m{…}`: Inline mathematics, pre-rendered at refresh (MATH-1); **Phase 3**. Required: TeX source. Optional: `#:display`.
+- `◊epigraph{…}`: Epigraph, italic by default (LAYOUT-4a); for a source not in Zotero (a cited one is `◊cite` with `#:block #t`, BIB-9). Required: body. Optional: `#:source`, `#:italic`.
+- `◊blockquote{…}`: Block quotation, roman by default (LAYOUT-4b); for a source not in Zotero (BIB-9). Required: body. Optional: `#:source`, `#:italic`.
+- `◊abstract{…}` / `◊epistemic{…}`: The header's abstract and epistemic status, written in the body (SRC-4a). Required: body.
+- `◊anchor[id]`, `◊em`, `◊strong`, `◊code`, `◊br{}`: Standard elements.
+- `◊changelog{…}`: Revision notes (§13). Required: body.
+- `◊audio[file]{description}`: A recording of the post (§13c); **Phase 5**. Required: file, `#:bytes`, `#:duration`, `#:recorded`.
 
 A block quotation is `◊blockquote`, not `◊quote`: Racket's `quote` would swallow the tag silently, so `make test` rejects `◊quote`. Any tag name must avoid Racket's syntactic forms for the same reason; `◊list` is safe.
 
@@ -302,15 +298,13 @@ Longer discussion, as long as it needs to be, in as many paragraphs as it
 needs: everything after the first paragraph is the More.
 ```
 
-| Field | Required | Notes |
-|---|---|---|
-| filename | yes | The id; lowercase, hyphenated, permanent |
-| `term` | yes | Headword as displayed |
-| body, first paragraph | yes | The short definition, 1–3 sentences; what the popup shows first |
-| body, the rest | no | The **More**: every paragraph after the first, expanded inside the popup and printed in full on the glossary page. *Revised 2026-11-02: `◊more{…}` is withdrawn (D18); the three term files are unwrapped.* |
-| `aliases` | no | Semicolon-separated variants; used by Emacs completion |
-| `see-also` | no | Space-separated ids, validated |
-| `added` | yes | ISO date; "revised" comes from git |
+- **filename** (required). The id; lowercase, hyphenated, permanent.
+- **`term`** (required). Headword as displayed.
+- **body, first paragraph** (required). The short definition, 1–3 sentences; what the popup shows first.
+- **body, the rest** (optional). The **More**: every paragraph after the first, expanded inside the popup and printed in full on the glossary page. *Revised 2026-11-02: `◊more{…}` is withdrawn (D18); the three term files are unwrapped.*
+- **`aliases`** (optional). Semicolon-separated variants; used by Emacs completion.
+- **`see-also`** (optional). Space-separated ids, validated.
+- **`added`** (required). ISO date; "revised" comes from git.
 
 - **TERM-3 (MUST) From an essay, popups only.** A `◊term` never navigates: it is never a link to a page, including the glossary page (TERM-8). There are no per-term pages. A `◊term` opens a **popup at every tier** (a popin on touch, POP-5), as a citation does (POP-8): the headword as the popup's title, the short definition as its body, the page's **sense** when it has one (TERM-9), **More** expanding the rest of the file in place below, the popup growing to ~70% of the viewport and then scrolling, and `see-also` terms at the foot, each a circle that replaces the popup's content with a Back control (POP-6). Definitions do **not** sit in the right margin. *Revised 2026-10-26 (Phase 2c): stubs for definitions, added 2026-10-15, are withdrawn after being tried on the page; the margin is for commentary on the passage beside it (asides, figure words), and a definition is reference material that reads the same wherever it is opened. The 2026-10-15 text is in draft 1.12. D7 records the decision.* Definitions used by an essay are embedded in that essay's HTML at build, so popups need no network request: the no-JS Terms section is that store, hidden when scripts run.
 - **TERM-4 (MUST)** No-JS: an essay that uses terms ends with a **Terms** section giving each used term in full, the page's sense of it included (TERM-9); first uses link to it.
@@ -328,11 +322,9 @@ Two margins, two jobs. The **right margin** holds the apparatus that opens: asid
 
 ### 7.1 Asides
 
-| Tier | Rendering |
-|---|---|
-| Wide (XL, L) | **Collapsed stub** in the right margin, always visible, top-aligned with the line holding its circle; click to expand in place (ASIDE-3) |
-| Narrow (M, S) | The circle opens the aside as a popup/popin |
-| No JS | Asides are collected in an **Asides** list at the end, in source order, each with a ↩ return link; the circle links to its entry |
+- **Wide (XL, L).** **Collapsed stub** in the right margin, always visible, top-aligned with the line holding its circle; click to expand in place (ASIDE-3).
+- **Narrow (M, S).** The circle opens the aside as a popup/popin.
+- **No JS.** Asides are collected in an **Asides** list at the end, in source order, each with a ↩ return link; the circle links to its entry.
 
 - **ASIDE-1 (MUST)** Source position is canonical: the build emits each aside inline, right after its circle (hidden until JS lifts it into the margin), and a separate no-JS copy in the Asides list, hidden when JS runs.
 - **ASIDE-2 (MUST)** Asides are **not numbered**: no roman numerals, in the text, the stub or the popup. An aside is tied to its circle by position (the stub sits on the circle's line); when either is hovered or focused both take the accent; and **while the aside is open its circle is filled**, whatever the pointer does, until it closes. The same holds for definitions and for a circle whose popup is pinned. *Revised 2026-10-15: the fill no longer follows hover.*
@@ -647,15 +639,13 @@ Site-wide:
 
 ## 13. Revisions, feeds, correspondence
 
-| Meta field | Required | Notes |
-|---|---|---|
-| `title`, `subtitle` | title | |
-| `status` | yes | `draft` / `published` / `revised` / `superseded` |
-| `published` | yes | ISO date of first publication |
-| `author` | MAY | The author line (LAYOUT-1e). Absent, the post is by the site's author, `author` in `data/site.rktd`; set it only for a guest's post |
-| `◊epistemic{…}` (a tag, SRC-4a) | SHOULD | One sentence on confidence and what it rests on. Essays only: a build error in a blog entry (KIND-2) |
-| `◊abstract{…}` (a tag, SRC-4a) | SHOULD | Header, cross-essay popups, feed. MAY in a blog entry (KIND-2) |
-| `tags` | MAY | Comma-separated lowercase words, on one line: `◊define-meta[tags]{philosophy, child development}` (INDEX-3); shown in the header (LAYOUT-1) |
+- **`title`** (required), **`subtitle`** (MAY).
+- **`status`** (required). `draft` / `published` / `revised` / `superseded`.
+- **`published`** (required). ISO date of first publication.
+- **`author`** (MAY). The author line (LAYOUT-1e). Absent, the post is by the site's author, `author` in `data/site.rktd`; set it only for a guest's post.
+- **`◊epistemic{…}` (a tag, SRC-4a)** (SHOULD). One sentence on confidence and what it rests on. Essays only: a build error in a blog entry (KIND-2).
+- **`◊abstract{…}` (a tag, SRC-4a)** (SHOULD). Header, cross-essay popups, feed. MAY in a blog entry (KIND-2).
+- **`tags`** (MAY). Comma-separated lowercase words, on one line: `◊define-meta[tags]{philosophy, child development}` (INDEX-3); shown in the header (LAYOUT-1).
 
 - **REV-1 (MUST)** The **Edited** date comes from the git log (latest commit touching the file, ignoring `[typo]`/`[meta]` commits), never typed by hand. It is shown beside the publication date on every post, and equals it until the first edit (LAYOUT-1d). *Revised 2026-10-26: was "Last revised"/"Revised"; a date that git supplies records an edit, not a revision, and "revised" is the changelog's word (REV-3) and a `status` value.*
 - **REV-2 (MUST)** Every essay and page links to its source file and its commit history on GitHub, in the header's metadata block (LAYOUT-1) and again in the footer. Both links are **derived at render** from the file's path in the repository and `repo`/`branch` in `data/site.rktd` (`<repo>/blob/<branch>/<path>` and `<repo>/commits/<branch>/<path>`); nothing is typed in the essay and there is no per-essay flag. An essay whose source does not sit under the repository root fails the build. *Revised 2026-10-19: was footer only, by hand.*
@@ -714,16 +704,14 @@ Site-wide:
 
 ## 14. Performance and accessibility
 
-| Metric | Budget |
-|---|---|
-| Critical CSS | inlined, ≤ 14 KB gzipped |
-| Total CSS | ≤ 25 KB gz |
-| JS | ≤ 30 KB gz, ES modules, deferred; nothing blocks first paint except the theme script |
-| Fonts | ≤ 3 text files, ≤ 120 KB; regular + italic preloaded (Mono only where `◊code` is used) |
-| Third-party requests | **Zero**, including anything Cloudflare could inject: Web Analytics / RUM stays off for the domain |
-| LCP | < 1.5 s on throttled 4G |
-| CLS | < 0.02 |
-| Lighthouse performance | ≥ 98 |
+- **Critical CSS**: inlined, ≤ 14 KB gzipped.
+- **Total CSS**: ≤ 25 KB gz.
+- **JS**: ≤ 30 KB gz, ES modules, deferred; nothing blocks first paint except the theme script.
+- **Fonts**: ≤ 3 text files, ≤ 120 KB; regular + italic preloaded (Mono only where `◊code` is used).
+- **Third-party requests**: **Zero**, including anything Cloudflare could inject: Web Analytics / RUM stays off for the domain.
+- **LCP**: < 1.5 s on throttled 4G.
+- **CLS**: < 0.02.
+- **Lighthouse performance**: ≥ 98.
 
 - **PERF-1 (MUST)** All interactive JS loads after first paint and enhances markup already in the HTML.
 - **PERF-2 (SHOULD)** Hashed asset filenames with long cache headers; HTML revalidates.
@@ -734,18 +722,36 @@ Site-wide:
 
 ## 15. Phases
 
-| Phase | Scope | Done when |
-|---|---|---|
-| **0 — Skeleton** | Repo, Pollen project, template, section tree, TOC, typography (§10.1–10.3), themes, specimen page, CI deploy | The specimen page renders correctly in both themes and passes the performance budget; measure calibrated |
-| **1 — Writing** | All tags; marks; lists; figures; tables; citations + Notes + Bibliography; glossary; no-JS end matter; validation (§12); Emacs commands (§16) | A test essay using every tag builds, validates, and is fully usable with JS disabled. *Done 2026-10-09, with `/specimen` as the test essay; DRAFT-2 carried to Phase 2* |
-| **2 — Interaction** | *Built 2026-10-12; awaiting the hand checks in "done when". Revised 2026-10-15 (margin items expand in place with a right rule, definitions get stubs, notes are popups at every tier, open circles stay filled: ASIDE-2…4, TERM-3, TERM-7, MNOTE-4, POP-5…8; plus THEME-5b, LAYOUT-6b, BAR-1, IMG-3a, TOC-2's current-entry mark; and, from the evening, the left-aligned header with its margin block, the smaller title, the epigraph, `text-wrap: pretty` confined to the justified tiers and the hyphenation limits: LAYOUT-1, LAYOUT-2, LAYOUT-4a, TYPE-6, TYPE-4a). Revised again 2026-10-19: margin notes move to the left margin, right-aligned, with precise anchors including list items and sentence starts; the contents move to the window's edge and the order of loss reverses; tier XL; a shared margin gap; and the phrase form of `◊aside` (MNOTE-2…6, TOC-2, LAYOUT-6, 6a, 6c, ASIDE-3…5, ASIDE-8, VAL-1). 2026-10-20: `#:italic` on `◊epigraph` and `◊blockquote`, block quotations roman by default, `◊em` flipping to roman inside italic blocks (LAYOUT-4a…4c); the home-page index routed through the shared table code (INDEX-1a); a `◊margin` at the end of a block is an error (MNOTE-6); a key for every tag (EMACS-6); quotes curled with their context across tags, and a straight quote in output fails the build (TYPE-16). Later the same evening, from the specimen: one baseline for contents, title and metadata; the metadata reordered with the epistemic line last after a gap; a labelled tags line; a short rule closing the header; and the reading bar sized and aligned to the text block (LAYOUT-1a…1c, BAR-1d); and the LaTeX logo tag (TYPE-17). 2026-10-21: the site restructured: the home page becomes About with a Start-here line and `◊latest`; the essay index moves to `/essays`; a notebook of dated, fixed entries under `notebook/`, served at `/notebook/<slug>`, with its own index at `/notebook`, sharing every piece of the essay machinery through one `kind` attribute and one `◊index[#:kind]` function; the menu becomes Home · Essays · Notebook · Glossary; `/about` redirects to `/` (both since revised, 2026-11-02: Phase 3c); tag links go to the post's own index (HOME-1, INDEX-1, INDEX-1a, INDEX-3, NAV-1, ABOUT-2, LAYOUT-1b, BUILD-3a, DRAFT-2, KIND-1…6). To be rebuilt before the checks. 2026-10-26: hover previews margin items with the popup timings; click pins (ASIDE-3, POP-8); to be built after the checks. Later that day the monogram (an interlocked OD) and favicon set, in `assets/brand/`, linked from the head (BRAND-1, BRAND-2): built. That evening, from Ryan: both dates on every post, "Edited" for "Revised", one-word date headings in the indexes and two columns at tier S (INDEX-1b), a web app manifest named Occ Dev with the bar's iOS allowance switched off in standalone mode (BRAND-3), an author line opening the metadata block with a site-wide default, and colons on the block's labels (LAYOUT-1b, 1d, 1e, REV-1, INDEX-1, INDEX-2, KIND-2…4; spec 1.15): written into `pollen.rkt`, the CSS, `data/site.rktd`, the specimen and the tests in the same session, unbuilt; `make test` and `make` to confirm.* Carried over from Phase 1: the publish guard for `status` (DRAFT-2) and the essay meta checks, proved on a first test essay in `essays/`. Popup component; term, note, same-page, cross-essay and card popups; circles opening in the margin (POP-8); aside stubs and expansion; margin notes; reading bar with section, text size and theme (BAR-1, THEME-5); table sorting; image inversion. Opens with the **mark rework** left over from Phase 1: circles replace numerals and ≡, arrows enlarged, marks rebuilt so Safari draws them (MARK-1…1c), build walk and tests updated | The behaviour tables in §7, §11 pass by hand on desktop Safari/Chrome/Firefox and on iOS and Android |
-| **2c — Layout and popups II** | *Added 2026-10-26 from Ryan's checks (Phase 2 passed on desktop and iOS).* The contents join the text block as its first column, scroll then stick, headed by the title once stuck (TOC-2, LAYOUT-1a, LAYOUT-6, 6a, 6c); the menu at the top of the contents column, sticky, and at the left end of the reading bar, whose hairline spans the window (NAV-1, BAR-1, BAR-1d); the bar's contents list in the sans (BAR-1); hover previews of asides (ASIDE-3, from draft 1.12); definitions back to popups (TERM-3, TERM-7, POP-8, D7); several pinned popups, dragging, resizing, the dock and the scratch pad (§11.2, POP-1, POP-6, POP-9…12); the specimen updated (THEME-7). The measure and margins are unchanged. Before Phase 3 | The specimen on a 27-inch display shows no gap between contents and margin notes; the contents heading swaps to the title when it sticks and back when scrolled up; three popups pinned, one dragged, one docked, Esc closing only the focused one; the scratch pad keeps its text across a reload and another page; every §7 and §11 behaviour re-checked by hand in Safari, Chrome and Firefox, and on iOS nothing has changed |
-| **2b — Interactive figures** | `◊embed` frame: lazy loading, fallback, sticky behaviour, theming, accessibility contract (§9.3); the first widget (mammal taxonomy) built in its own folder | The taxonomy figure loads lazily in an essay, falls back to its static image with JS off, and follows both themes |
-| **3 — Around the essays** | Backlinks; changelog and `/changelog`; the glossary page (TERM-8); reference pages and `/bibliography` (§5a), with covers from Zotero, the reference card in note popups and marked quotations and the fields head (BIB-7…10, *added 2026-11-02; revised that evening*); inline mathematics pre-rendered in Libertinus Math (MATH-1); panel figures, `◊panels` and `◊panel` with lettered panels and `◊ref`'s `#:panel` (IMG-9, *added 2026-11-02, afternoon*); feed; Wayback saving and dead-link job. (Print CSS moved to Phase 4, 2026-10-22; the correspondence page was built 2026-10-27.) Starts only after Phase 2's rebuild has landed (HANDOVERS.md, HANDOVER-PHASE2), since both touch the template, the end matter and `validate.rkt`. `HANDOVERS.md` (HANDOVER-PHASE3) gives the build order | Two essays that link to each other show correct backlinks; a work cited by both shows both under Cited in; a work with a cover in Zotero shows it on its page and in its note popup after one `make refresh`; a quotation written as a `◊cite` with a body appears in full under Cited in with a link back to its mark; a `◊panels` of a photograph, a PNG line drawing and an SVG on the specimen shows A, B, C above the panels in a row at tier L, stacked at tier S, the drawing inverted and the photograph dimmed in dark mode, the SVG following the theme, the three expanding together, and a `◊ref` to B reading "Figure *n*B"; the feed validates |
-| **3c — The glossary and the front page** | *Added 2026-11-02 (night), from Ryan's review of the built glossary page; `HANDOVERS.md` (HANDOVER-PHASE3C) gives the build order. After Phase 3b.* The More is the rest of the term file and `◊more` is withdrawn (TERM-2, D18); a page's sense of a term, `◊sense`, in the popup, the Terms store, `links.json` and under Used in (TERM-9, TERM-3, TERM-4, VAL-2); Used in as a list with senses and the glossary page's end matter suppressed (TERM-8, CITE-10); Glossary in the menu (NAV-1); the notebook renamed the blog in the folder, the URLs, the index, the menu, the kind label and the docs (§13b, D13, D14); the home page a front page with an introduction and two columns of recent posts, About restored at `/about` with the Start-here line, the redirect removed (HOME-1, ABOUT-2, INDEX-1, LAYOUT-6); Emacs: `od-insert-term`'s prefix, `od-insert-more` retired, `◊sense` in the vocabulary and the highlighter (§16, KIND-6) | A term used with a `◊sense` on the specimen shows headword · definition · *In this essay:* sense · More · see-also in its popup, and the sense under Specimen on `/glossary`; a term file with two paragraphs and no `◊more` shows the second under More; `/glossary` ends with its last entry and no Bibliography; the menu reads Home · About · Essays · Blog · Glossary · Bibliography · Scratch; `/` shows the introduction and two columns that stack at phone width, the Blog column saying *Nothing yet*; `/about` is the old home page with Start here; `make`, `make test`, `make test-browser` and `make test-emacs` green |
-| **3d — The masthead and the night's furniture** | *Done 2026-11-02 (night), from Ryan's review of the built front page; spec 1.22.* The home page's masthead in Cormorant Medium, chosen from twenty-five mockups (HOME-2); titles in Libertinus Serif Display, flush with the top of the page in L and XL (LAYOUT-2, LAYOUT-1); the menu's monogram and its move to the window's edge in L (NAV-1); the margins' datum (LAYOUT-1a); `◊rule{}` (LAYOUT-4a); the title-only attribution (BIB-9); a click follows a link (LINK-4); Scratch at the bottom left (POP-12); the controls at the window's right (BAR-1d, THEME-6); and in Emacs the preview that waits, refreshes the citation cache and shows the error (§16) | `make test` green; the home page, the specimen and an essay checked at XL, L and on a phone, both themes |
-| **4 — Paper** | The print stylesheet and a PDF of every published post, typeset from the rendered HTML with citations, asides and definitions as footnotes on the page that refers to them; the PDF link in the header; `make pdf` in CI; `od-preview` with a prefix (§10.7, PRINT-1…8). Starts after Phase 3, which settles the end matter (Backlinks, Changelog) the print rules hide or print. *Added 2026-10-22.* | The specimen printed from Safari and Chrome shows its apparatus as endnotes and nothing from the screen chrome; `/specimen.pdf` typesets with every citation, aside and definition as a footnote on its own page, numbered as the References are, the Bibliography after, no straight quote, no widowed heading, no split figure; the citations fixture's PDF passes the PRINT-7 test |
-| **5 — Audio** | Readings of posts, hosted in R2 and played from the page; the ingest command; the `◊audio` tag; the podcast feed and its artwork (§13c, AUDIO-1…11). Not scheduled. Starts after Phase 3, whose feed code (REV-4) it shares; independent of Phase 4. *Added 2026-10-23.* | A post with one recording plays it with scripts off; a post without `◊audio` builds byte-identical to before; `/podcast.xml` passes an external validator with that episode, its enclosure length equal to the file's; replacing the file in place changes bytes, duration and date in the feed and nothing else; a second recording is a second episode and the page plays the newer |
+- **0 — Skeleton**
+  - *Scope.* Repo, Pollen project, template, section tree, TOC, typography (§10.1–10.3), themes, specimen page, CI deploy.
+  - *Done when.* The specimen page renders correctly in both themes and passes the performance budget; measure calibrated.
+- **1 — Writing**
+  - *Scope.* All tags; marks; lists; figures; tables; citations + Notes + Bibliography; glossary; no-JS end matter; validation (§12); Emacs commands (§16).
+  - *Done when.* A test essay using every tag builds, validates, and is fully usable with JS disabled. *Done 2026-10-09, with `/specimen` as the test essay; DRAFT-2 carried to Phase 2*.
+- **2 — Interaction**
+  - *Scope.* *Built 2026-10-12; awaiting the hand checks in "done when". Revised 2026-10-15 (margin items expand in place with a right rule, definitions get stubs, notes are popups at every tier, open circles stay filled: ASIDE-2…4, TERM-3, TERM-7, MNOTE-4, POP-5…8; plus THEME-5b, LAYOUT-6b, BAR-1, IMG-3a, TOC-2's current-entry mark; and, from the evening, the left-aligned header with its margin block, the smaller title, the epigraph, `text-wrap: pretty` confined to the justified tiers and the hyphenation limits: LAYOUT-1, LAYOUT-2, LAYOUT-4a, TYPE-6, TYPE-4a). Revised again 2026-10-19: margin notes move to the left margin, right-aligned, with precise anchors including list items and sentence starts; the contents move to the window's edge and the order of loss reverses; tier XL; a shared margin gap; and the phrase form of `◊aside` (MNOTE-2…6, TOC-2, LAYOUT-6, 6a, 6c, ASIDE-3…5, ASIDE-8, VAL-1). 2026-10-20: `#:italic` on `◊epigraph` and `◊blockquote`, block quotations roman by default, `◊em` flipping to roman inside italic blocks (LAYOUT-4a…4c); the home-page index routed through the shared table code (INDEX-1a); a `◊margin` at the end of a block is an error (MNOTE-6); a key for every tag (EMACS-6); quotes curled with their context across tags, and a straight quote in output fails the build (TYPE-16). Later the same evening, from the specimen: one baseline for contents, title and metadata; the metadata reordered with the epistemic line last after a gap; a labelled tags line; a short rule closing the header; and the reading bar sized and aligned to the text block (LAYOUT-1a…1c, BAR-1d); and the LaTeX logo tag (TYPE-17). 2026-10-21: the site restructured: the home page becomes About with a Start-here line and `◊latest`; the essay index moves to `/essays`; a notebook of dated, fixed entries under `notebook/`, served at `/notebook/<slug>`, with its own index at `/notebook`, sharing every piece of the essay machinery through one `kind` attribute and one `◊index[#:kind]` function; the menu becomes Home · Essays · Notebook · Glossary; `/about` redirects to `/` (both since revised, 2026-11-02: Phase 3c); tag links go to the post's own index (HOME-1, INDEX-1, INDEX-1a, INDEX-3, NAV-1, ABOUT-2, LAYOUT-1b, BUILD-3a, DRAFT-2, KIND-1…6). To be rebuilt before the checks. 2026-10-26: hover previews margin items with the popup timings; click pins (ASIDE-3, POP-8); to be built after the checks. Later that day the monogram (an interlocked OD) and favicon set, in `assets/brand/`, linked from the head (BRAND-1, BRAND-2): built. That evening, from Ryan: both dates on every post, "Edited" for "Revised", one-word date headings in the indexes and two columns at tier S (INDEX-1b), a web app manifest named Occ Dev with the bar's iOS allowance switched off in standalone mode (BRAND-3), an author line opening the metadata block with a site-wide default, and colons on the block's labels (LAYOUT-1b, 1d, 1e, REV-1, INDEX-1, INDEX-2, KIND-2…4; spec 1.15): written into `pollen.rkt`, the CSS, `data/site.rktd`, the specimen and the tests in the same session, unbuilt; `make test` and `make` to confirm.* Carried over from Phase 1: the publish guard for `status` (DRAFT-2) and the essay meta checks, proved on a first test essay in `essays/`. Popup component; term, note, same-page, cross-essay and card popups; circles opening in the margin (POP-8); aside stubs and expansion; margin notes; reading bar with section, text size and theme (BAR-1, THEME-5); table sorting; image inversion. Opens with the **mark rework** left over from Phase 1: circles replace numerals and ≡, arrows enlarged, marks rebuilt so Safari draws them (MARK-1…1c), build walk and tests updated.
+  - *Done when.* The behaviour tables in §7, §11 pass by hand on desktop Safari/Chrome/Firefox and on iOS and Android.
+- **2c — Layout and popups II**
+  - *Scope.* *Added 2026-10-26 from Ryan's checks (Phase 2 passed on desktop and iOS).* The contents join the text block as its first column, scroll then stick, headed by the title once stuck (TOC-2, LAYOUT-1a, LAYOUT-6, 6a, 6c); the menu at the top of the contents column, sticky, and at the left end of the reading bar, whose hairline spans the window (NAV-1, BAR-1, BAR-1d); the bar's contents list in the sans (BAR-1); hover previews of asides (ASIDE-3, from draft 1.12); definitions back to popups (TERM-3, TERM-7, POP-8, D7); several pinned popups, dragging, resizing, the dock and the scratch pad (§11.2, POP-1, POP-6, POP-9…12); the specimen updated (THEME-7). The measure and margins are unchanged. Before Phase 3.
+  - *Done when.* The specimen on a 27-inch display shows no gap between contents and margin notes; the contents heading swaps to the title when it sticks and back when scrolled up; three popups pinned, one dragged, one docked, Esc closing only the focused one; the scratch pad keeps its text across a reload and another page; every §7 and §11 behaviour re-checked by hand in Safari, Chrome and Firefox, and on iOS nothing has changed.
+- **2b — Interactive figures**
+  - *Scope.* `◊embed` frame: lazy loading, fallback, sticky behaviour, theming, accessibility contract (§9.3); the first widget (mammal taxonomy) built in its own folder.
+  - *Done when.* The taxonomy figure loads lazily in an essay, falls back to its static image with JS off, and follows both themes.
+- **3 — Around the essays**
+  - *Scope.* Backlinks; changelog and `/changelog`; the glossary page (TERM-8); reference pages and `/bibliography` (§5a), with covers from Zotero, the reference card in note popups and marked quotations and the fields head (BIB-7…10, *added 2026-11-02; revised that evening*); inline mathematics pre-rendered in Libertinus Math (MATH-1); panel figures, `◊panels` and `◊panel` with lettered panels and `◊ref`'s `#:panel` (IMG-9, *added 2026-11-02, afternoon*); feed; Wayback saving and dead-link job. (Print CSS moved to Phase 4, 2026-10-22; the correspondence page was built 2026-10-27.) Starts only after Phase 2's rebuild has landed (HANDOVERS.md, HANDOVER-PHASE2), since both touch the template, the end matter and `validate.rkt`. `HANDOVERS.md` (HANDOVER-PHASE3) gives the build order.
+  - *Done when.* Two essays that link to each other show correct backlinks; a work cited by both shows both under Cited in; a work with a cover in Zotero shows it on its page and in its note popup after one `make refresh`; a quotation written as a `◊cite` with a body appears in full under Cited in with a link back to its mark; a `◊panels` of a photograph, a PNG line drawing and an SVG on the specimen shows A, B, C above the panels in a row at tier L, stacked at tier S, the drawing inverted and the photograph dimmed in dark mode, the SVG following the theme, the three expanding together, and a `◊ref` to B reading "Figure *n*B"; the feed validates.
+- **3c — The glossary and the front page**
+  - *Scope.* *Added 2026-11-02 (night), from Ryan's review of the built glossary page; `HANDOVERS.md` (HANDOVER-PHASE3C) gives the build order. After Phase 3b.* The More is the rest of the term file and `◊more` is withdrawn (TERM-2, D18); a page's sense of a term, `◊sense`, in the popup, the Terms store, `links.json` and under Used in (TERM-9, TERM-3, TERM-4, VAL-2); Used in as a list with senses and the glossary page's end matter suppressed (TERM-8, CITE-10); Glossary in the menu (NAV-1); the notebook renamed the blog in the folder, the URLs, the index, the menu, the kind label and the docs (§13b, D13, D14); the home page a front page with an introduction and two columns of recent posts, About restored at `/about` with the Start-here line, the redirect removed (HOME-1, ABOUT-2, INDEX-1, LAYOUT-6); Emacs: `od-insert-term`'s prefix, `od-insert-more` retired, `◊sense` in the vocabulary and the highlighter (§16, KIND-6).
+  - *Done when.* A term used with a `◊sense` on the specimen shows headword · definition · *In this essay:* sense · More · see-also in its popup, and the sense under Specimen on `/glossary`; a term file with two paragraphs and no `◊more` shows the second under More; `/glossary` ends with its last entry and no Bibliography; the menu reads Home · About · Essays · Blog · Glossary · Bibliography · Scratch; `/` shows the introduction and two columns that stack at phone width, the Blog column saying *Nothing yet*; `/about` is the old home page with Start here; `make`, `make test`, `make test-browser` and `make test-emacs` green.
+- **3d — The masthead and the night's furniture**
+  - *Scope.* *Done 2026-11-02 (night), from Ryan's review of the built front page; spec 1.22.* The home page's masthead in Cormorant Medium, chosen from twenty-five mockups (HOME-2); titles in Libertinus Serif Display, flush with the top of the page in L and XL (LAYOUT-2, LAYOUT-1); the menu's monogram and its move to the window's edge in L (NAV-1); the margins' datum (LAYOUT-1a); `◊rule{}` (LAYOUT-4a); the title-only attribution (BIB-9); a click follows a link (LINK-4); Scratch at the bottom left (POP-12); the controls at the window's right (BAR-1d, THEME-6); and in Emacs the preview that waits, refreshes the citation cache and shows the error (§16).
+  - *Done when.* `make test` green; the home page, the specimen and an essay checked at XL, L and on a phone, both themes.
+- **4 — Paper**
+  - *Scope.* The print stylesheet and a PDF of every published post, typeset from the rendered HTML with citations, asides and definitions as footnotes on the page that refers to them; the PDF link in the header; `make pdf` in CI; `od-preview` with a prefix (§10.7, PRINT-1…8). Starts after Phase 3, which settles the end matter (Backlinks, Changelog) the print rules hide or print. *Added 2026-10-22.*
+  - *Done when.* The specimen printed from Safari and Chrome shows its apparatus as endnotes and nothing from the screen chrome; `/specimen.pdf` typesets with every citation, aside and definition as a footnote on its own page, numbered as the References are, the Bibliography after, no straight quote, no widowed heading, no split figure; the citations fixture's PDF passes the PRINT-7 test.
+- **5 — Audio**
+  - *Scope.* Readings of posts, hosted in R2 and played from the page; the ingest command; the `◊audio` tag; the podcast feed and its artwork (§13c, AUDIO-1…11). Not scheduled. Starts after Phase 3, whose feed code (REV-4) it shares; independent of Phase 4. *Added 2026-10-23.*
+  - *Done when.* A post with one recording plays it with scripts off; a post without `◊audio` builds byte-identical to before; `/podcast.xml` passes an external validator with that episode, its enclosure length equal to the file's; replacing the file in place changes bytes, duration and date in the feed and nothing else; a second recording is a second episode and the page plays the newer.
 
 Phase 1's Emacs work can start during Phase 0; writing the test essay is much easier with the pickers.
 
@@ -757,40 +763,42 @@ Phase 1's Emacs work can start during Phase 0; writing the test essay is much ea
 
 All pickers use plain `completing-read`, so they work with Vertico, Ivy, Helm or the default UI, with useful annotations beside candidates.
 
-| Command | Candidates | Inserts |
-|---|---|---|
-| `od-insert-cite` (`C-c o c`) | every key in the Zotero export named by `ZOTERO_BIB` in `local.mk` (delegate to `citar` if present); refuses an unpinned key when Better BibTeX can be asked (BIB-2). Then prompts, in turn, for everything a citation can carry, each skipped with Enter: the locator (a key and locator not yet in the citation cache are announced, since the next preview will refresh it, CITE-9; *2026-11-02*); the kind, *reference*, *quotation* or *block quotation* (default *quotation* when a region is active, since the region is the quoted words; *reference* otherwise); a remark (`#:note`); for a block, italic or roman | `◊cite["key"]`, or `◊cite["key" #:loc "…"]{region}`, or `◊cite["key" #:block #t #:loc "…"]{region}` on its own lines (BIB-9); warns when a quotation has no locator |
-| `od-new-reference` (`C-c o R`) | the key at point, or a picked key | Creates `references/<key>.pm` and opens it (BIB-3); Phase 3 |
-| `od-insert-math` (`C-c o $`) | — | `◊m{region}` (MATH-1); Phase 3 |
-| `od-insert-term` | every headword and alias in `glossary/`, plus "New term…" | `◊term["id"]{region}`; aliases resolve to the id. With a prefix argument (`C-u`), `◊term["id"]{region ◊sense{}}` with point inside the sense's braces (TERM-9); a `user-error` when the file already gives this term a sense |
-| `od-new-term` | prompts for headword, proposes an id | Creates `glossary/<id>.pm` from a template, opens it beside the essay |
-| `od-find-term` | terms | Opens the term's file |
-| `od-insert-link-internal` | sections in this file | `◊link["#id"]{region}` |
-| `od-insert-link-essay` | essays, then sections, from `anchors.json` | `◊link["/slug#id"]{region}` |
-| `od-insert-link-external` | URLs already used, plus free entry | `◊link["url" #:note "…"]{region}` |
-| `od-insert-section` | level (defaults to current) | `◊section[#:id "slug"]{Title}`, slug proposed and checked |
-| `od-goto-section` | sections, indented by level | Jumps |
-| `od-insert-aside` / `od-insert-margin` | — | `◊aside{}` / `◊margin{}` with point inside; with an active region, `od-insert-aside` makes it the phrase: `◊aside["region"]{}` (ASIDE-8) |
-| `od-preview` (`C-c o p`) | — ; `C-u` builds and opens the post's PDF (PRINT-7); Phase 4 | Saves, starts `make serve` if nothing answers on the port and waits for it (up to 90 s), then opens the file in the browser. When the build stops on a citation form not yet cached (CITE-9) it runs `make refresh-cites`, restarts the server and opens the page; any other failure shows `*od-serve*` with the error (*2026-11-02*) |
-| `od-refresh` (`M-x`) | — | The whole `make refresh` (BUILD-3) in a compilation buffer, restarting the server after; `od-publish` runs it too (*2026-11-02*) |
-| `od-set-tags` (`C-c o T`) | tags already used anywhere in the site (several, comma-separated) | Replaces or adds the `◊define-meta[tags]` line |
-| `od-insert-ref` (`C-c o r`) | the figures and tables in the file, with their titles, and each panel of a `◊panels` as `id#b` with its sub-caption (IMG-9) | `◊ref["id"]` (IMG-7); for a panel, `◊ref["id" #:panel "b"]` |
-| `od-insert-epigraph` (`C-c o Q`) | prompts for the attribution; `C-u` sets `#:italic #f` | `◊epigraph[#:source "…"]{region}` on its own lines (LAYOUT-4a) |
-| `od-insert-blockquote` (`C-c o q`) | — ; `C-u` sets `#:italic #t` | `◊blockquote{region}` on its own lines (LAYOUT-4b); for a source not in Zotero (BIB-9) |
-| `od-toggle-italic` (`C-c o o`) | — | Adds, flips or removes `#:italic` on the enclosing `◊epigraph` or `◊blockquote`; removes it when it would restate the default (LAYOUT-4c) |
-| `od-wrap` (`C-c o w`) | the inline tags: `em`, `strong`, `sc`, `code` | `◊em{region}` etc.; the most recent choice is the default |
-| `od-insert-break` (`C-c o b`) | — | `◊break{}` on its own line, blank lines either side; with a prefix argument, `◊rule{}` (LAYOUT-4a) |
-| `od-insert-list` (`C-c o l`) | — ; `C-u` for a numbered list | `◊list{` … `}` with one `- ` or `1. ` item and point after the marker (§3.4) |
-| `od-insert-summary` (`C-c o S`) | — | `◊summary{}` on the line after the nearest heading above (SECT-6) |
-| `od-insert-anchor` (`C-c o A`) | proposes an id from the word at point, checked against the file's ids | `◊anchor["id"]` |
-| ~~`od-insert-more` (`C-c o M`)~~ | — | *Retired 2026-11-02: the More is every paragraph after the first (TERM-2), so there is nothing to insert; the key is freed* |
-| `od-insert-changelog` (`C-c o H`) | — | A line in the essay's `◊changelog{…}`, creating the block at the end if absent, dated today (REV-3); `user-error` until the tag is built (VOCAB-2) |
-| `od-insert-embed` (`C-c o W`) | widget folders in `widgets/` | `◊embed["name" #:alt "" #:fallback ""]{}` (§9.3); `user-error` until the tag is built |
-| `od-promote` / `od-demote` (`C-c o <` / `C-c o >`) | — | Changes the heading level of the heading at point, leaving `#:id` alone (HANDOVER-EMACS EDIT-5) |
-| `od-insert-audio` (`C-c o V`) | a WAV file | Runs `tools/audio.py` and inserts the finished `◊audio` tag (AUDIO-4); Phase 5 |
-| `od-insert-tag` (`C-c o j`) | the built tags allowed in this kind of file | Any tag, with its required arguments as blanks to fill: the key for tags with no command of their own (`define-meta`, `abstract`, `epistemic`, `br`, `table-csv`, `sort-key`, `index`, `latest`, `header-sample`) |
+Since 2026-11-03 (EMACS-7) the lower-case keys under `C-c o` are **menus**: one key, then a `completing-read` choice, Enter alone repeating the last choice at that prompt. `C-c o g` glossary (*insert term*, *new term*, *open term*), `C-c o l` link (*this page*, *this site*, *other site*), `C-c o i` element (*section*, *figure*, *panels*, *table*, *summary*, *aside*, *margin note*, *break*, *rule*), `C-c o r` reference (*ref to a figure or table*, *anchor*), `C-c o b` block (*list*, *block quotation*, *epigraph*), `C-c o w` wrap (*em*, *strong*, *sc*, *code*; a toggle). The commands a menu reaches are listed below under their own names; the key beside each is the menu and the choice.
+
+- `od-insert-cite` (`C-c o c`): `◊cite["key"]`, or `◊cite["key" #:loc "…"]{region}`, or `◊cite["key" #:block #t #:loc "…"]{region}` on its own lines (BIB-9); warns when a quotation has no locator. Candidates: every key in the Zotero export named by `ZOTERO_BIB` in `local.mk` (delegate to `citar` if present); refuses an unpinned key when Better BibTeX can be asked (BIB-2). Then prompts, in turn, for everything a citation can carry, each skipped with Enter: the locator (a key and locator not yet in the citation cache are announced, since the next preview will refresh it, CITE-9; *2026-11-02*); the kind, *reference*, *quotation* or *block quotation* (default *quotation* when a region is active, since the region is the quoted words; *reference* otherwise); a remark (`#:note`); for a block, italic or roman.
+- `od-new-reference` (`C-c o R`): Creates `references/<key>.pm` and opens it (BIB-3); Phase 3. Candidates: the key at point, or a picked key.
+- `od-insert-math` (`C-c o $`): `◊m{region}` (MATH-1); Phase 3.
+- `od-insert-term` (`C-c o g`, *insert term*): `◊term["id"]{region}`; aliases resolve to the id. With a prefix argument (`C-u`), `◊term["id"]{region ◊sense{}}` with point inside the sense's braces (TERM-9); a `user-error` when the file already gives this term a sense. Candidates: every headword and alias in `glossary/`, plus "New term…".
+- `od-new-term` (`C-c o g`, *new term*): Creates `glossary/<id>.pm` from a template, opens it beside the essay. Candidates: prompts for headword, proposes an id.
+- `od-find-term` (`C-c o g`, *open term*): Opens the term's file. Candidates: terms.
+- `od-insert-link-internal` (`C-c o l`, *this page*): `◊link["#id"]{region}`. Candidates: sections in this file.
+- `od-insert-link-essay` (`C-c o l`, *this site*): `◊link["/slug#id"]{region}`. Candidates: essays, then sections, from `anchors.json`.
+- `od-insert-link-external` (`C-c o l`, *other site*): `◊link["url" #:note "…"]{region}`. Candidates: URLs already used, plus free entry.
+- `od-insert-section` (`C-c o i`, *section*): `◊section[#:id "slug"]{Title}`, slug proposed and checked. Candidates: level (defaults to current).
+- `od-goto-section` (`M-x`; unbound 2026-11-03, `imenu` does the same): Jumps. Candidates: sections, indented by level.
+- `od-insert-aside` / `od-insert-margin` (`C-c o i`, *aside* / *margin note*): `◊aside{}` / `◊margin{}` with point inside; with an active region, `od-insert-aside` makes it the phrase: `◊aside["region"]{}` (ASIDE-8).
+- `od-preview` (`C-c o p`): Saves, starts `make serve` if nothing answers on the port and waits for it (up to 90 s), then opens the file in the browser. When the build stops on a citation form not yet cached (CITE-9) it runs `make refresh-cites`, restarts the server and opens the page; any other failure shows `*od-serve*` with the error (*2026-11-02*). Candidates: `C-u` builds and opens the post's PDF (PRINT-7); Phase 4.
+- `od-refresh` (`M-x`): The whole `make refresh` (BUILD-3) in a compilation buffer, restarting the server after; `od-publish` runs it too (*2026-11-02*).
+- `od-set-tags` (`C-c o T`): Replaces or adds the `◊define-meta[tags]` line. Candidates: tags already used anywhere in the site (several, comma-separated).
+- `od-insert-ref` (`C-c o r`, *ref to a figure or table*): `◊ref["id"]` (IMG-7); for a panel, `◊ref["id" #:panel "b"]`. Candidates: the figures and tables in the file, with their titles, and each panel of a `◊panels` as `id#b` with its sub-caption (IMG-9).
+- `od-insert-epigraph` (`C-c o b`, *epigraph*): `◊epigraph[#:source "…"]{region}` on its own lines (LAYOUT-4a). Candidates: prompts for the attribution; `C-u` sets `#:italic #f`.
+- `od-insert-blockquote` (`C-c o b`, *block quotation*): `◊blockquote{region}` on its own lines (LAYOUT-4b); for a source not in Zotero (BIB-9). Candidates: `C-u` sets `#:italic #t`.
+- `od-toggle-italic` (`C-c o o`): Adds, flips or removes `#:italic` on the enclosing `◊epigraph` or `◊blockquote`; removes it when it would restate the default (LAYOUT-4c).
+- `od-wrap` (`C-c o w`): `◊em{region}` etc.; the most recent choice is the default. With no region and point inside the chosen tag already, removes it (a toggle, *2026-11-03*). Candidates: the inline tags: `em`, `strong`, `sc`, `code`.
+- `od-insert-break` (`C-c o i`, *break*; `od-insert-rule`, *rule*): `◊break{}` on its own line, blank lines either side; with a prefix argument, `◊rule{}` (LAYOUT-4a).
+- `od-insert-list` (`C-c o b`, *list*): `◊list{` … `}` with one `- ` or `1. ` item and point after the marker (§3.4). Candidates: `C-u` for a numbered list.
+- `od-insert-summary` (`C-c o i`, *summary*): `◊summary{}` on the line after the nearest heading above (SECT-6).
+- `od-insert-anchor` (`C-c o r`, *anchor*): `◊anchor["id"]`. Candidates: proposes an id from the word at point, checked against the file's ids.
+- ~~`od-insert-more` (`C-c o M`)~~: *Retired 2026-11-02: the More is every paragraph after the first (TERM-2), so there is nothing to insert; the key is freed*.
+- `od-insert-changelog` (`C-c o H`): A line in the essay's `◊changelog{…}`, creating the block at the end if absent, dated today (REV-3). Built 2026-11-03.
+- `od-insert-embed` (`M-x`; gets a key when built): `◊embed["name" #:alt "" #:fallback ""]{}` (§9.3); `user-error` until the tag is built. Candidates: widget folders in `widgets/`.
+- `od-promote` / `od-demote` (`C-c o <` / `C-c o >`): Changes the heading level of the heading at point, leaving `#:id` alone (HANDOVER-EMACS EDIT-5).
+- `od-insert-audio` (`C-c o V`): Runs `tools/audio.py` and inserts the finished `◊audio` tag (AUDIO-4); Phase 5. Candidates: a WAV file.
+- `od-insert-figure` / `od-insert-panels` / `od-insert-table` (`C-c o i`, *figure* / *panels* / *table*): A complete `◊figure` (HANDOVER-EMACS EDIT-7); a `◊panels` group with its title, id, licence and first `◊panel`, point where the next panel goes (*2026-11-03*); a `◊table` with an Org-style skeleton.
+- `od-insert-tag` (`C-c o j`): Any tag, with its required arguments as blanks to fill: the key for tags with no command of their own (`define-meta`, `abstract`, `epistemic`, `br`, `table-csv`, `sort-key`, `index`, `latest`, `header-sample`). Candidates: the built tags allowed in this kind of file.
 
 - **EMACS-6 (MUST) Every tag has a key.** Every tag in `od-vocabulary` with `:built t` is reachable from `C-c o` by one of the commands above, so the which-key popup is the complete menu of the vocabulary (seen 2026-10-20: epigraph, block quotation, break, list, summary, anchor, `more` and the inline tags had no command). A tag added to the vocabulary without a command fails a test in `occurrent-test.el` (TEST-1) that compares the two sets; the unbuilt tags (`embed`, `changelog`) have their commands already, which refuse until the tag lands. Every insert command wraps the active region (EMACS-2); block tags are inserted on their own lines with a blank line either side, and leave point where the writing continues. *Added 2026-10-20.*
+- **EMACS-7 (MUST) Menus, not chords.** The lower-case keys under `C-c o` that insert markup are menus, each a `completing-read` over a few labelled choices (`od--menu`), so the choices are seen rather than remembered, and the map stays small. Enter alone repeats the last choice at that prompt; the region stays active for the chosen command (EMACS-2) and a prefix argument reaches it (`C-u C-c o g`, *insert term*, adds a `◊sense`). The vocabulary's `:command` names the menu, so EMACS-6 still holds. *Added 2026-11-03 at Ryan's request; the map had one key per command.*
 - **EMACS-1 (MUST)** A key inserts `◊` (`C-c ;`; the other commands are under `C-c o`). Also set one Option key back to macOS (`ns-right-alternate-modifier`/`mac-right-option-modifier` to `none`) so ⌥⇧V works everywhere.
 - **EMACS-2 (MUST)** Commands wrap the active region when there is one.
 - **EMACS-3 (MUST)** Glossary candidates are read **directly from `glossary/`** (not a build output), cached per session and invalidated by modification time, so a term created a minute ago is immediately available.
@@ -807,27 +815,23 @@ The manual of style is `STYLE.md`. This section held its seed (drafts 1.0–1.16
 
 ## 18. Open decisions
 
-| # | Decision | Recommendation | Needed by |
-|---|---|---|---|
-| D1 | ~~Theme colours~~ | **Resolved:** the first candidate of each pair (THEME-4) | n/a |
-| D2 | ~~Host~~ | **Resolved:** Cloudflare Worker with static assets, deployed by wrangler from GitHub Actions | n/a |
-| D3 | ~~Typeface~~ | **Resolved:** Libertinus Serif for this build (TYPE-7); paid alternatives parked in the backlog | n/a |
-| D4 | Content / code licences | CC BY 4.0 for essays, MIT for code. `LICENSE` and `LICENSE-CONTENT` are TODO stubs; the repository is already public | Before the first essay is published |
-| D5 | ~~Serial comma~~ | **Resolved 2026-11-02:** the Oxford comma, always (`STYLE.md` §4.2) | n/a |
-| D6 | Section-break glyph | One custom SVG of your own; a plain asterism is in place (`assets/icons/asterism.svg`) | Before launch |
-| D7 | ~~Term popup placement~~ | **Resolved a third time, 2026-10-26:** definitions are popups at every tier; only asides use the margin (TERM-3, POP-8). The 2026-10-15 stubs were built and tried: a definition in the margin competed with asides for the same space and read as commentary, which it is not. Do not reopen | n/a |
-| D8 | ~~A shared circle without JS~~ | **Resolved:** it links to its first item; a term in the group keeps its own text linked to Terms (MARK-1c) | n/a |
-| D9 | ~~Level-1 list bullet~~ | **Resolved:** a small solid dot, so a circle only ever means "opens something" (LIST-2) | n/a |
-| D10 | ~~Cross-browser checks~~ | **Resolved:** the builder views Safari and Firefox on this Mac (read-only) and judges screenshots; real iOS and Android checks stay with Ryan | n/a |
-| D11 | Which margin the header's metadata block sits in, now that margin notes are on the left | **Right, as built (LAYOUT-1):** nothing else occupies the right margin beside the abstract, the left margin is narrower, and the block is metadata rather than a signpost. Revisit on the specimen if a left-margin note near an essay's opening makes the two sides look like one apparatus split in half | Phase 2 checks |
-| D12 | What closes the header: a short rule (LAYOUT-1c) or a glyph of its own | **The rule.** A header glyph is a reasonable alternative only if it is plainly an ornament of the front matter and not a second kind of pause; if the rule looks thin on the specimen, try a glyph there before deciding | Phase 2 checks |
-| D13 | ~~The name of the second kind of post (§13b)~~ | **Resolved 2026-11-02: Blog**, with *entry* for one piece. Notebook, chosen 2026-10-21 because Notes collided with the citation section (since renamed References) and Blog seemed to fight the site's vocabulary, was tried on the menu and in the spec for twelve days and did not stick: it suggested a working book rather than a place to read, and the plain word is the one readers already know. Nothing was published under the old name, so the rename cost what the 2026-10-21 note said it would: the menu list in `pollen.rkt`, the folder, the index page, and the prose in the docs. The kind's value in the code stays `entry` | n/a |
-| D14 | URL shape for entries | **Essays at the root (`/<slug>`), entries under `/blog/<slug>`.** An essay is the site; an entry is in the blog. *The prefix was `/notebook` until 2026-11-02 (D13); nothing was published under it.* Keeping essays at the root also keeps every anchor already promised (VAL-3). The asymmetry is deliberate: do not move essays under `/essays/` to match | Before the first entry is published |
-
-| D15 | PDF engine (§10.7) | **WeasyPrint** from the rendered HTML: one source, one stylesheet, Python like the rest of `tools/`, free, offline, CSS footnotes. LuaLaTeX from a Pollen poly target is the fallback if the specimen PDF reads badly; it would be a second renderer for every tag. Decide on `/specimen.pdf`, not in the abstract | Phase 4, first week |
-| D16 | Loudness target for mono readings (AUDIO-2) | **−19 LUFS integrated, −1 dBTP**, the usual mono equivalent of Apple's −16 stereo figure; confirm by ear against another podcast on a phone with the first recording, and record the number in `tools/audio.py` | Phase 5, first recording |
-| D17 | Whether the monogram appears on the page itself (BRAND-1), beyond the tab | **Try `logo-mono.svg` in `--accent` as the Home link at the head of the menu rail, on the specimen first.** Small (about the cap height of the menu line), with the accessible name "Home"; it would replace the word, not sit beside it. If it reads as decoration rather than a link, leave the mark to the tab and the touch icon | Phase 2 checks |
-
-| D18 | ~~What a term file's paragraphs after the first are~~ | **Resolved 2026-11-02: the More, all of them (TERM-2).** Until draft 1.19 only `◊more{…}` was the More, and a second plain paragraph was read into a field nothing used and dropped from the popup and the glossary page without a word. A tag that must wrap the rest of the file to keep it from vanishing is a trap, and a definition reads as a short document anyway: a lede, then the rest. `◊more` and `od-insert-more` are withdrawn | n/a |
+- **D1** ~~Theme colours~~. **Resolved:** the first candidate of each pair (THEME-4).
+- **D2** ~~Host~~. **Resolved:** Cloudflare Worker with static assets, deployed by wrangler from GitHub Actions.
+- **D3** ~~Typeface~~. **Resolved:** Libertinus Serif for this build (TYPE-7); paid alternatives parked in the backlog.
+- **D4** Content / code licences. CC BY 4.0 for essays, MIT for code. `LICENSE` and `LICENSE-CONTENT` are TODO stubs; the repository is already public. Needed by: before the first essay is published.
+- **D5** ~~Serial comma~~. **Resolved 2026-11-02:** the Oxford comma, always (`STYLE.md` §4.2).
+- **D6** Section-break glyph. One custom SVG of your own; a plain asterism is in place (`assets/icons/asterism.svg`). Needed by: before launch.
+- **D7** ~~Term popup placement~~. **Resolved a third time, 2026-10-26:** definitions are popups at every tier; only asides use the margin (TERM-3, POP-8). The 2026-10-15 stubs were built and tried: a definition in the margin competed with asides for the same space and read as commentary, which it is not. Do not reopen.
+- **D8** ~~A shared circle without JS~~. **Resolved:** it links to its first item; a term in the group keeps its own text linked to Terms (MARK-1c).
+- **D9** ~~Level-1 list bullet~~. **Resolved:** a small solid dot, so a circle only ever means "opens something" (LIST-2).
+- **D10** ~~Cross-browser checks~~. **Resolved:** the builder views Safari and Firefox on this Mac (read-only) and judges screenshots; real iOS and Android checks stay with Ryan.
+- **D11** Which margin the header's metadata block sits in, now that margin notes are on the left. **Right, as built (LAYOUT-1):** nothing else occupies the right margin beside the abstract, the left margin is narrower, and the block is metadata rather than a signpost. Revisit on the specimen if a left-margin note near an essay's opening makes the two sides look like one apparatus split in half. Needed by: Phase 2 checks.
+- **D12** What closes the header: a short rule (LAYOUT-1c) or a glyph of its own. **The rule.** A header glyph is a reasonable alternative only if it is plainly an ornament of the front matter and not a second kind of pause; if the rule looks thin on the specimen, try a glyph there before deciding. Needed by: Phase 2 checks.
+- **D13** ~~The name of the second kind of post (§13b)~~. **Resolved 2026-11-02: Blog**, with *entry* for one piece. Notebook, chosen 2026-10-21 because Notes collided with the citation section (since renamed References) and Blog seemed to fight the site's vocabulary, was tried on the menu and in the spec for twelve days and did not stick: it suggested a working book rather than a place to read, and the plain word is the one readers already know. Nothing was published under the old name, so the rename cost what the 2026-10-21 note said it would: the menu list in `pollen.rkt`, the folder, the index page, and the prose in the docs. The kind's value in the code stays `entry`.
+- **D14** URL shape for entries. **Essays at the root (`/<slug>`), entries under `/blog/<slug>`.** An essay is the site; an entry is in the blog. *The prefix was `/notebook` until 2026-11-02 (D13); nothing was published under it.* Keeping essays at the root also keeps every anchor already promised (VAL-3). The asymmetry is deliberate: do not move essays under `/essays/` to match. Needed by: before the first entry is published.
+- **D15** PDF engine (§10.7). **WeasyPrint** from the rendered HTML: one source, one stylesheet, Python like the rest of `tools/`, free, offline, CSS footnotes. LuaLaTeX from a Pollen poly target is the fallback if the specimen PDF reads badly; it would be a second renderer for every tag. Decide on `/specimen.pdf`, not in the abstract. Needed by: Phase 4, first week.
+- **D16** Loudness target for mono readings (AUDIO-2). **−19 LUFS integrated, −1 dBTP**, the usual mono equivalent of Apple's −16 stereo figure; confirm by ear against another podcast on a phone with the first recording, and record the number in `tools/audio.py`. Needed by: Phase 5, first recording.
+- **D17** Whether the monogram appears on the page itself (BRAND-1), beyond the tab. **Try `logo-mono.svg` in `--accent` as the Home link at the head of the menu rail, on the specimen first.** Small (about the cap height of the menu line), with the accessible name "Home"; it would replace the word, not sit beside it. If it reads as decoration rather than a link, leave the mark to the tab and the touch icon. Needed by: Phase 2 checks.
+- **D18** ~~What a term file's paragraphs after the first are~~. **Resolved 2026-11-02: the More, all of them (TERM-2).** Until draft 1.19 only `◊more{…}` was the More, and a second plain paragraph was read into a field nothing used and dropped from the popup and the glossary page without a word. A tag that must wrap the rest of the file to keep it from vanishing is a trap, and a definition reads as a short document anyway: a lede, then the rest. `◊more` and `od-insert-more` are withdrawn.
 
 Resolved already: Pollen markup over Markdown; sections never numbered; glossary site-wide, popup-only; numbered citation notes in Chicago style, with the number kept out of the running text; asides in the right margin, margin notes in the left, contents at the window's edge (2026-10-19); no comments; no archived copies; Libertinus Serif as the typeface; two marks only, arrow and circle; a text-size control in the reading bar (reversing the earlier cut); the bar shows on scroll-up and hides after 2 s idle; the text block stays where it is (LAYOUT-6a); epigraphs italic, block quotations roman, with `#:italic` to flip either (2026-10-20); a generated page per cited work at `/references/<key>`, with keys pinned in Zotero, and a site-wide `/bibliography`, the per-essay Bibliography kept (2026-10-20); the home page is About, the essay index is `/essays`, and the notebook is a second kind of post built on the essay machinery, not a copy of it (2026-10-21; the home page a front page of its own, About at `/about` and the notebook the blog from 2026-11-02); covers are photographs of your own copy, kept in Zotero and copied out by `make refresh`, never taken from the web, and quotations are marked rather than detected (2026-11-02); the mark is a `◊cite` with a body, `#:block #t` for a block, and the popup and the reference page show the work as labelled fields at one tab stop, Chicago being kept for the lists and for print (2026-11-02, evening).
