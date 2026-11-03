@@ -1,7 +1,17 @@
 {
+ "1dcffb3ced9fa5cb8395c04853bf586f8056b545e4f2a7389edb8ea3e420ca4c": {
+  "checked": "2026-11-03",
+  "file": "pages/img/2026-11-02-lucas-pillow-specimen-ball-a.jpg",
+  "invert": false
+ },
  "f6511b670a15d2e311730cacc77009c41fa7485c5f38abe3700940901edbc252": {
   "checked": "2026-10-12",
   "file": "pages/img/landscape.jpg",
+  "invert": true
+ },
+ "fbfe9ce476819cc6bf360228ad6a29c727ceb4bc15f700f5ceace49af6878fa1": {
+  "checked": "2026-11-03",
+  "file": "pages/img/2026-11-02-lucas-pillow-specimen-valleys-b.png",
   "invert": true
  }
 }

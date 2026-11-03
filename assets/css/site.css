@@ -985,6 +985,11 @@ figure.figure .figure-svg { color: var(--text); }
 }
 .endmatter h2 { font-size: 1.45em; }       /* matches level-1 headings at body size */
 .endmatter p { text-indent: 0; }
+/* CITE-10 (2026-11-03): one list of works, never two. The numbered notes are
+   the store the popups, the link graph and the printed endnotes read, so they
+   stay in the page; on screen the Bibliography is the list a reader sees, and
+   its ↩ links lead back to each citation. */
+@media screen { #notes { display: none; } }
 ol.notes { margin: 0; padding-left: 2em; }
 ul.asides { margin: 0; padding: 0; list-style: none; }
 ol.notes { font-variant-numeric: oldstyle-nums proportional-nums; }

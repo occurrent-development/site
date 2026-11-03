@@ -38,7 +38,7 @@ The site is written in bespoke ◊link["https://docs.racket-lang.org/pollen/"]{P
 I take design inspiration from:
 
 ◊list{
-- ◊link["https://www.edwardtufte.com/"]{Edward Tufte}. My use of margin notes, the design of tables, and my preference for high-data-density charts all come straight from Tufte. His book ◊link["https://www.edwardtufte.com/book/the-visual-display-of-quantitative-information/"]{◊em{The Visual Display of Quantitative Information}} is a masterpiece.
+- ◊link["https://www.edwardtufte.com/"]{Edward Tufte}. My use of margin notes, the design of tables, and my preference for high-data-density charts all come straight from Tufte. His book ◊em{The Visual Display of Quantitative Information}◊cite["tufteVisualDisplayQuantitative2001"] is a masterpiece.
 - ◊link["https://matthewbutterick.com/"]{Matthew Butterick}. The minimalism of this site, particularly links, references his web design. See his free typography book ◊link["https://practicaltypography.com/"]{◊em{Practical Typography}}. Butterick also created Pollen, with which the site is built.
 - ◊link["https://gwern.net/"]{Gwern Branwen}. The more sophisticated mechanics of this site (informative link marks, pinnable popups, and viewable source code) are all inspired by Gwern's work. His website is a laboratory for web design in support of long-form writing.
 }

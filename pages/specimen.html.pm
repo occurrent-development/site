@@ -308,10 +308,10 @@ a link to the end of the page, where definitions are collected under Terms.
 ◊section[#:id "notes-asides" #:short "References and asides"]{References and asides}
 ◊summary{Circles for sources and digressions; the numbers stay with the notes.}
 
-Citations become numbered notes, collected at the end under References, but the
-number belongs to the note and is never printed in the text. Every work the
-page cites is listed again after the notes, in a Bibliography, so that an
-essay is complete without the rest of the site. The first note for a work
+Citations become numbered notes, but the number belongs to the note and is
+never printed in the text. Every work the page cites is listed at the end, in a
+Bibliography, so that an essay is complete without the rest of the site; each
+entry has a ↩ back to the citation. The first note for a work
 gives it in full: Hacking's account of how classifications change the people
 classified first appeared in the ◊em{London Review of
 Books} ◊cite["hackingMakingPeople2006" #:loc "p. 23"] and is developed at

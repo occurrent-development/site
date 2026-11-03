@@ -165,6 +165,27 @@
   (check-equal? (map (λ (s) (attr-ref s 'id)) (find-all doc (λ (x) (equal? (attr-ref x 'class #f) "endmatter"))))
                 '("terms" "asides" "notes" "bibliography")))
 
+(test-case "CITE-10: one visible list; without scripts a circle goes to the Bibliography, whose ↩ leads back"
+  (define doc (fixture "citations.html.pm"))
+  (define bib (by-id doc "bibliography"))
+  ;; every numbered circle links to its work's entry
+  (define note-circles
+    (find-all doc (λ (x) (and (eq? (get-tag x) 'a) (attrs-have-key? x 'data-targets)
+                              (regexp-match? #rx"note-" (attr-ref x 'data-targets))))))
+  (check-true (pair? note-circles))
+  (for ([c (in-list note-circles)])
+    (check-regexp-match #rx"^#bib-" (attr-ref c 'href))
+    (check-not-false (by-id bib (substring (attr-ref c 'href) 1))))
+  ;; each entry has one ↩ per numbered citation of the work, each reaching a circle that opens one of its notes
+  (define (note-key n) (attr-ref (by-id doc (format "note-~a" n)) 'data-bib))
+  (for ([li (in-list (find-all bib (tag? 'li)))])
+    (define backs (find-all li (λ (x) (equal? (attr-ref x 'class #f) "back"))))
+    (define expected (for/list ([n (in-range 1 10)] #:when (equal? (note-key n) (attr-ref li 'id))) n))
+    (check-equal? (length backs) (length expected))
+    (for ([b (in-list backs)] [n (in-list expected)])
+      (define circle (by-id doc (substring (attr-ref b 'href) 1)))
+      (check-not-false (member (format "note-~a" n) (string-split (attr-ref circle 'data-targets)))))))
+
 (test-case "MARK-1c: annotations at the same point share one circle"
   (define doc (root "Claim" (cite "hackingMakingPeople2006" #:loc "p. 23")
                     (cite "hackingSocialConstructionWhat2000" #:loc "pp. 31-34") ", then "

@@ -75,6 +75,71 @@
   "year": "1996",
   "type": "Chapter"
  },
+ "tufteVisualDisplayQuantitative2001": {
+  "full": {
+   "": [
+    "Edward R. Tufte, ",
+    [
+     "em",
+     {},
+     "The Visual Display of Quantitative Information"
+    ],
+    ", Second edition (Graphics press, 2001)."
+   ]
+  },
+  "short": {
+   "": [
+    "Tufte, ",
+    [
+     "em",
+     {},
+     "The Visual Display of Quantitative Information"
+    ],
+    "."
+   ]
+  },
+  "bib": [
+   "Tufte, Edward R. ",
+   [
+    "em",
+    {},
+    "The Visual Display of Quantitative Information"
+   ],
+   ". Second edition. Graphics press, 2001."
+  ],
+  "order": 5,
+  "doi": null,
+  "url": null,
+  "csl": {
+   "ISBN": "978-0-9613921-4-7",
+   "author": [
+    {
+     "family": "Tufte",
+     "given": "Edward R."
+    }
+   ],
+   "edition": "Second edition",
+   "id": "tufteVisualDisplayQuantitative2001",
+   "issued": {
+    "date-parts": [
+     [
+      2001
+     ]
+    ]
+   },
+   "language": "en-US",
+   "publisher": "Graphics press",
+   "publisher-place": "Cheshire, Connecticut",
+   "title": "The Visual Display of Quantitative Information",
+   "type": "book"
+  },
+  "title": "The Visual Display of Quantitative Information",
+  "authors": [
+   "Tufte"
+  ],
+  "year": "2001",
+  "type": "Book"
+ },
  "pirsigZenArtMotorcycle1991": {
   "full": {
    "Ch. 14, p. 155": [

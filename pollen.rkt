@@ -779,7 +779,11 @@
                                key first? quoted loc commentary)
                          notes))
        ;; CITE-1: the number belongs to the note; the text gets a circle.
-       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "reference ~a" n))))]
+       ;; CITE-10 (2026-11-03): the References list is the store the popups,
+       ;; the link graph and print read, and is not shown on screen, so without
+       ;; scripts the circle goes to the work's Bibliography entry.
+       `(od-ann ((kind "note") (target ,(format "note-~a" n)) (label ,(format "reference ~a" n))
+                 (href ,(string-append "#bib-" key))))]
       [(? (tag? 'od-aside))
        (set! aside-n (add1 aside-n))
        (define i aside-n)
@@ -943,7 +947,14 @@
                   (endmatter "bibliography" "Bibliography"
                              `(ul ((class "bibliography"))
                                   ,@(for/list ([k (in-list (sort (hash-keys bib-keys) < #:key bib-order))])
-                                      `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k) "\u00A0" ,(reference-link k)))))))))
+                                      ;; one ↩ for each numbered citation of the work, to its circle (CITE-4)
+                                      (define citing (for/list ([nt (in-list (reverse notes))] #:when (equal? (third nt) k)) (first nt)))
+                                      `(li ((id ,(string-append "bib-" k))) ,@(bib-entry k) "\u00A0" ,(reference-link k)
+                                           ,@(for/list ([n (in-list citing)])
+                                               `(span " " (od-back ((target ,(format "note-~a" n))
+                                                                     (label ,(if (= (length citing) 1)
+                                                                                 "Back to the reference in the text"
+                                                                                 (format "Back to citation ~a of this work in the text" n)))))))))))))))
   (append body (if endmatter? end null)))
 
 ;; A first-use term: its text links to its definition, with a circle.
