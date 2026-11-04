@@ -150,7 +150,7 @@ Every post has depth, and the reader controls how far down they go. Place each t
 - **Third-party diagrams are redrawn** by the author and credited "after Surname (year)". No screenshots of other people's figures.
 - **Refer** with `◊ref[id]` ("Figure 2"); never type the number.
 - **Column width only** (`IMG-2`). A figure that needs more is a figure with too much in it.
-- **Several images that make one point are one figure**, a `◊panels` with lettered panels (`IMG-9`), never a composite image and never three figures in a row. The letters are the build's; the caption refers to them (*the lesion outlined in B*) and the text with `◊ref[id #:panel "b"]`. A sub-caption names a panel in two or three words; what to notice goes in the caption. Two to six panels; if the figure wants more, it is two figures.
+- **Several images that make one point are one figure**, a `◊panels` with lettered panels (`IMG-9`), never a composite image and never three figures in a row. The letters are the build's; the caption refers to them (*the lesion outlined in B*) and the text with `◊ref[id #:panel "b"]`. Each panel's body is its caption, set in the margin under the title as *A. …*, *B. …*: a name or what to notice in that panel; what the panels show together goes in the figure's caption after them, if anything does. Two to six panels; if the figure wants more, it is two figures.
 - **Interactive figures** (`◊embed`) carry a static fallback that makes the same point.
 
 ### 5.5 Essays and entries

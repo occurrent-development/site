@@ -2223,7 +2223,8 @@ more, where the build allows it without a warning (IMG-9, spec 1.21)."
   "Insert a complete ◊panels block (IMG-9).
 Asks for the title, id and licence of the figure, how many panels it has
 \(two to six) and how they are arranged, then, for each panel in turn, its
-image, alt text and an optional sub-caption. `#:columns' is written only
+image, alt text and an optional caption (IMG-9: set in the margin under the
+title as A., B.). `#:columns' is written only
 when it differs from the build's default, so the build never warns about
 it. Point ends on the caption line, before the closing brace."
   (interactive)
@@ -2246,7 +2247,7 @@ it. Point ends on the caption line, before the closing brace."
                                                 (if (file-directory-p img) img here) nil t))
                           (rel (file-relative-name path here))
                           (alt (read-string (format "Alt text for %s (what the image shows): " letter)))
-                          (sub (string-trim (read-string (format "Sub-caption for %s (a few words; empty for none): " letter)))))
+                          (sub (string-trim (read-string (format "Caption for %s (in the margin as %s.; empty for none): " letter letter)))))
                      (format "◊panel[\"%s\" #:alt \"%s\"]%s\n" rel (od--quote alt)
                              (if (string-empty-p sub) "" (format "{%s}" sub)))))))
     (od--open-line-for-block)
