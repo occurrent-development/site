@@ -108,8 +108,8 @@
 (ert-deftest od-test-errors-keywords ()
   (od-test-errors-are "See ◊cite[\"k\" #:page \"3\"]." '("#:page"))
   (od-test-errors-are
-   "◊figure[\"a.png\" #:id \"a\" #:title \"T\" #:alt \"x\" #:licence \"own\" #:width \"wide\"]{c}"
-   '("#:width"))
+   "◊figure[\"a.png\" #:id \"a\" #:title \"T\" #:alt \"x\" #:licence \"own\" #:wide #t]{c}"
+   '("#:wide"))   ; #:width is a keyword since spec 1.27 (IMG-2); a retired name is not
   (od-test-errors-are "◊figure[\"a.png\" #:alt \"x\" #:licence \"own\"]{c}" '("◊figure"))
   (od-test-errors-are "◊section{No id}" '("◊section")))
 

@@ -1025,8 +1025,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t :command od-insert-element)
     (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
     (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
-    (figure        :pos src    :kw (id title alt licence credit invert)                  :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
-    (panels        :pos nil    :kw (id title licence credit columns)                     :req (id title licence)    :body t   :block t   :built t :command od-insert-element)
+    (figure        :pos src    :kw (id title alt licence credit invert width)            :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
+    (panels        :pos nil    :kw (id title licence credit columns width)               :req (id title licence)    :body t   :block t   :built t :command od-insert-element)
     (panel         :pos src    :kw (alt licence credit invert)                           :req (alt)                 :body t   :block t   :built t :command od-insert-tag :inside panels)
     (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
     (recent        :pos count  :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-tag :only home)
@@ -2185,6 +2185,16 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
   "Return S with its double quotes escaped, for a Pollen string (EDIT-7)."
   (replace-regexp-in-string "\"" "\\\\\"" s))
 
+(defun od--read-width ()
+  "Ask for a figure's width as a fraction of the column (IMG-2); nil for full.
+Returns the keyword text to append, \" #:width 0.5\", or an empty string."
+  (let ((w (string-trim (read-string "Width (fraction of the column, 0.25 to 1; Enter for full): "))))
+    (cond ((or (string-empty-p w) (member w '("1" "1.0"))) "")
+          ((and (string-match-p "\\`[0-9.]+\\'" w)
+                (let ((x (string-to-number w))) (and (>= x 0.25) (<= x 1))))
+           (format " #:width %s" w))
+          (t (user-error "Width is a fraction of the column from 0.25 to 1, as in 0.5 (IMG-2)")))))
+
 (defun od-insert-figure ()
   "Insert a complete ◊figure: image, title, id, alt text and licence (EDIT-7)."
   (interactive)
@@ -2196,10 +2206,11 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
          (id (od--new-id title))
          (alt (read-string "Alt text (what the image shows; empty if decorative): "))
          (licence (completing-read "Licence: " od--licences nil nil nil nil "own"))
-         (credit (unless (equal licence "own") (read-string "Credit (required): "))))
-    (insert (format "◊figure[\"%s\" #:id \"%s\" #:title \"%s\" #:alt \"%s\" #:licence \"%s\"%s]{"
+         (credit (unless (equal licence "own") (read-string "Credit (required): ")))
+         (width (od--read-width)))
+    (insert (format "◊figure[\"%s\" #:id \"%s\" #:title \"%s\" #:alt \"%s\" #:licence \"%s\"%s%s]{"
                     rel id (od--quote title) (od--quote alt) licence
-                    (if credit (format " #:credit \"%s\"" (od--quote credit)) "")))
+                    (if credit (format " #:credit \"%s\"" (od--quote credit)) "") width))
     (save-excursion (insert "}"))))
 
 (defun od--panels-columns (n)
@@ -2239,6 +2250,7 @@ it. Point ends on the caption line, before the closing brace."
                 (user-error "A figure of panels has two to six panels; one image is a ◊figure (IMG-9)"))
               k))
          (columns (od--panels-columns n))
+         (width (od--read-width))
          (panels
           (cl-loop for i from 0 below n
                    for letter = (string (+ ?A i))
@@ -2251,10 +2263,11 @@ it. Point ends on the caption line, before the closing brace."
                      (format "◊panel[\"%s\" #:alt \"%s\"]%s\n" rel (od--quote alt)
                              (if (string-empty-p sub) "" (format "{%s}" sub)))))))
     (od--open-line-for-block)
-    (insert (format "◊panels[#:id \"%s\" #:title \"%s\" #:licence \"%s\"%s%s]{\n"
+    (insert (format "◊panels[#:id \"%s\" #:title \"%s\" #:licence \"%s\"%s%s%s]{\n"
                     id (od--quote title) licence
                     (if credit (format " #:credit \"%s\"" (od--quote credit)) "")
-                    (if (= columns (min n 3)) "" (format " #:columns %d" columns))))
+                    (if (= columns (min n 3)) "" (format " #:columns %d" columns))
+                    width))
     (apply #'insert panels)
     (save-excursion (insert "}\n"))))
 
