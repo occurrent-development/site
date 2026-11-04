@@ -167,7 +167,7 @@
 ;; LAYOUT-4: one glyph, drawn by CSS from assets/icons/asterism.svg.
 (define (section-break) '(hr ((class "break"))))
 
-;; LAYOUT-4a: ◊rule{}, the quieter break: a centred hairline half the
+;; LAYOUT-4e: ◊rule{}, the quieter break: a centred hairline half the
 ;; column's width, spaced as the glyph is (2026-11-02, night).
 (define (rule . xs)
   (unless (null? (filter (λ (x) (not (and (string? x) (regexp-match? #px"^\\s*$" x)))) xs))

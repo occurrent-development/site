@@ -661,7 +661,7 @@ Refuses before a heading: a heading already marks the turn (§17)."
   (unless (or (eobp) (looking-at-p "[ \t]*$")) (insert "\n")))
 
 (defun od-insert-rule ()
-  "Insert ◊rule{}, the quieter section break (LAYOUT-4a); see `od-insert-break'."
+  "Insert ◊rule{}, the quieter section break (LAYOUT-4e); see `od-insert-break'."
   (interactive)
   (od-insert-break t))
 

@@ -689,7 +689,7 @@ hr.break + p { text-indent: 0; }
 @container page (min-width: 39em) {
   hr.break { height: 1.1em; margin: 2em auto; }
 }
-/* LAYOUT-4a: ◊rule{}, a hairline half the column's width, in the rule
+/* LAYOUT-4e: ◊rule{}, a hairline half the column's width, in the rule
    colour of the header's rule (LAYOUT-1c), with the glyph's spacing */
 hr.break.rule {
   -webkit-mask: none;
