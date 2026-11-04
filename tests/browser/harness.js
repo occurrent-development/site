@@ -451,6 +451,32 @@ async function tests() {
     await load("/specimen", 2560, 1440);
   });
 
+  await test("IMG-2: #:width 0.5 is half the column, flush left, words in the margin, Expand on its corner; whole column at S", async () => {
+    await resize(1400, 900);
+    const fig = d.getElementById("pillar");
+    fig.scrollIntoView({ block: "center" });
+    await settle(200);
+    const body = rect(fig.querySelector(".exhibit-body")), img = rect(fig.querySelector("img"));
+    const col = rect(d.querySelector("article p"));
+    near(img.left, col.left, 1, "the image's left against the text's");
+    near(img.width, col.width / 2, 2, "the image against half the column");
+    expect(rect(fig.querySelector(".exhibit-title")).left > col.right, "the title is not in the margin at L");
+    const ex = rect(fig.querySelector(".expand"));
+    expect(ex.right <= img.right + 0.5 && ex.right > img.right - 20 && ex.top < img.top + 20, "Expand is not on the image's top-right corner");
+    fig.querySelector(".expand").click();
+    await settle(200);
+    expect(rect(d.querySelector(".lb-stage img")).width > img.width * 1.1 || rect(d.querySelector(".lb-stage img")).height > img.height * 1.1,
+      "Expand keeps the fraction");
+    key("Escape", d.body);
+    await settle(100);
+    await resize(390, 844);
+    fig.scrollIntoView({ block: "start" });
+    await settle(200);
+    const narrow = rect(fig.querySelector("img")), ncol = rect(fig.querySelector(".exhibit-title"));
+    near(narrow.width, ncol.width, 2, "the fraction is not dropped at S");
+    await load("/specimen", 2560, 1440);
+  });
+
   await test("Tier L: Pin, no Dock, contents in the bar; tier M: no Pin, one popup at a time, the pinned closed", async () => {
     await resize(1400, 900);
     expect(tier() === "L", `tier ${tier()} at 1,400`);
@@ -662,6 +688,13 @@ const SCENARIOS = {
   async citedin() {
     const s = d.getElementById("cited-in");
     w.scrollTo({ top: s.offsetTop - 40, behavior: "instant" });
+    await settle(300);
+  },
+  // IMG-2: the specimen's half-width figure, loaded
+  async pillar() {
+    const f = d.getElementById("pillar");
+    for (const img of f.querySelectorAll("img")) { img.loading = "eager"; await img.decode().catch(() => {}); }
+    f.scrollIntoView({ block: "center" });
     await settle(300);
   },
   // IMG-9: the specimen's panels, every image loaded; `expand` opens them

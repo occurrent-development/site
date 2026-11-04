@@ -149,7 +149,7 @@
                     #:size [size "normal"] #:width [width #f]
                     #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f])
   (unless (member size sizes) (build-error "table: #:size must be one of ~a" (string-join sizes ", ")))
-  (when width (build-error "table ~s: #:width is gone; every table is column width, and Expand shows it larger (IMG-2)" id))
+  (when width (build-error "table ~s: a table takes no #:width; it is always column width, and Expand shows it larger (IMG-2)" id))
   (make-exhibit "table" id title
                 (list
                  `(div ((class "table-scroll") (tabindex "0") (role "region")

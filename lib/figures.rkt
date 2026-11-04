@@ -16,14 +16,31 @@
 
 (provide make-figure make-panels licence-label cover-picture)
 
-;; IMG-2: every figure is column width (rem at the default 16px: 36.5em × 1.25);
-;; Expand (IMG-8) shows it larger. A panel (IMG-9) is a column of the grid
-;; in tiers M and up, the whole column in tier S, where the panels stack.
-(define (sizes [columns 1])
-  (if (= columns 1)
+;; IMG-2: a figure is column width (rem at the default 16px: 36.5em × 1.25),
+;; or the fraction of it #:width gives in tiers M and up; below tier M the
+;; fraction is dropped and the figure is the whole column. Expand (IMG-8)
+;; shows it larger. A panel (IMG-9) is a column of the grid in tiers M and
+;; up, the whole column in tier S, where the panels stack.
+(define (sizes [columns 1] #:fraction [fraction 1])
+  (if (and (= columns 1) (= fraction 1))
       "(min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)"
       (format "(min-width: 48.75rem) ~arem, calc(100vw - 3.125rem)"
-              (/ (round (* 1000 (/ 45.625 columns))) 1000.0))))
+              (/ (round (* 1000 (/ (* 45.625 fraction) columns))) 1000.0))))
+
+;; IMG-2 (spec 1.27): #:width is a fraction of the column, 0.25 to 1; #f or 1
+;; is the full column. Returns the fraction, or #f for the full column.
+(define (check-width what width)
+  (cond [(not width) #f]
+        [(and (real? width) (<= 1/4 width 1)) (if (= width 1) #f width)]
+        [else (build-error "~a: #:width is a fraction of the column from 0.25 to 1, as in #:width 0.5, not ~s (IMG-2)"
+                           what width)]))
+
+;; The exhibit's attributes for a fraction: the CSS reads --fig-width.
+(define (width-attrs fraction)
+  (if fraction
+      (let ([f (number->string (exact->inexact fraction))])
+        `((data-width ,f) (style ,(format "--fig-width: ~a" f))))
+      null))
 
 ;; IMG-6
 (define licence-rx #px"^(own|public-domain|permission|cc0|cc-by(-sa|-nd|-nc|-nc-sa|-nc-nd)?-\\d\\.\\d)$")
@@ -62,20 +79,21 @@
   (check-licence (format "figure ~s" src) licence)
   (when (and (not (equal? licence "own")) (not credit))
     (build-error "figure ~s needs #:credit (licence ~a)" src licence))
-  (when width (build-error "figure ~s: #:width is gone; every figure is column width, and Expand shows it larger (IMG-2)" src))
+  (define fraction (check-width (format "figure ~s" src) width))
   (define-values (path entry) (image-entry "figure" src))
   (define label (licence-label licence))
   (define credit-line
     (filter values (list (and credit (if (string? credit) credit (text-of credit)))
                          label)))
   (make-exhibit "figure" id title
-                (list (if (hash-ref entry 'svg #f) (inline-svg path alt) (picture entry alt)))
+                (list (if (hash-ref entry 'svg #f) (inline-svg path alt) (picture entry alt #:fraction (or fraction 1))))
                 caption
                 (if (null? credit-line) null (list (string-join credit-line " · ")))
                 #:class "figure"
                 ;; #:invert wins; else the cached classification; else dimmed
                 #:attrs `((data-invert ,(case invert [(#t) "yes"] [(#f) "no"]
-                                          [else (or (and (not (hash-ref entry 'svg #f)) (classified path)) "auto")])))))
+                                          [else (or (and (not (hash-ref entry 'svg #f)) (classified path)) "auto")]))
+                          ,@(width-attrs fraction))))
 
 ;; IMG-6, BIB-7: `cover` exists for one thing, the photograph of your own
 ;; copy that the build itself shows on a work's page and card
@@ -105,8 +123,10 @@
 ;; with the image; the captions go among the exhibit's words, one line per
 ;; panel in source order, each opening with its letter ("A.", filled by the
 ;; root pass), before the figure's own caption and the credit.
-(define (make-panels body #:id id #:title title #:licence licence #:credit credit #:columns columns)
+(define (make-panels body #:id id #:title title #:licence licence #:credit credit #:columns columns
+                     #:width [width #f])
   (define what (format "◊panels ~s" id))
+  (define fraction (check-width what width))   ; IMG-2: the grid as a whole
   (define-values (panels rest) (partition (λ (x) (and (txexpr? x) (eq? (get-tag x) 'od-panel))) body))
   (define n (length panels))
   (when (< n 2)
@@ -135,7 +155,7 @@
       `(div ((class "panel") (role "group") (data-panel ,(number->string i))
              (data-invert ,(or (opt p 'invert) (and (not svg?) (classified path)) "auto")))
             (span ((class "panel-letter")))
-            (div ((class "panel-image")) ,(if svg? (inline-svg path alt) (picture entry alt cols))))))
+            (div ((class "panel-image")) ,(if svg? (inline-svg path alt) (picture entry alt cols #:fraction (or fraction 1)))))))
   (define lines
     (for/list ([p (in-list panels)] [i (in-naturals)]
                #:unless (null? (trim-elements (get-elements p))))
@@ -146,6 +166,7 @@
                 (trim-elements rest)
                 (panels-credit panels licence credit)
                 #:lead (if (null? lines) null `((ol ((class "panel-captions")) ,@lines)))
+                #:attrs (width-attrs fraction)
                 #:class "figure panel-figure"))
 
 ;; IMG-9, IMG-6: one credit line. When no panel gives its own licence or
@@ -188,12 +209,12 @@
 
 (define (srcset urls) (string-join (for/list ([u (in-list urls)]) (format "~a ~aw" (hash-ref u 'url) (hash-ref u 'w))) ", "))
 
-(define (picture entry alt [columns 1])
+(define (picture entry alt [columns 1] #:fraction [fraction 1])
   (define srcs (hash-ref entry 'sources))
   (define fallback (string->symbol (hash-ref entry 'fallback)))
   (define fb (hash-ref srcs fallback))
   (define default (or (for/last ([u (in-list fb)] #:when (<= (hash-ref u 'w) 1200)) u) (first fb)))
-  (define sz (sizes columns))
+  (define sz (sizes columns #:fraction fraction))
   `(picture
     (source ((type "image/avif") (srcset ,(srcset (hash-ref srcs 'avif))) (sizes ,sz)))
     (source ((type "image/webp") (srcset ,(srcset (hash-ref srcs 'webp))) (sizes ,sz)))

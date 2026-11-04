@@ -332,9 +332,9 @@
 ;; IMG-9: a figure of lettered panels. ◊panel elements in the body are lifted
 ;; out in source order and the rest is the caption; the root pass letters them.
 (define (panels #:id [id #f] #:title [title #f] #:licence [licence #f] #:credit [credit #f]
-                #:columns [columns #f] . body)
+                #:columns [columns #f] #:width [width #f] . body)
   (make-panels body #:id id #:title (and title (list (norm title)))
-               #:licence licence #:credit (norm credit) #:columns columns))
+               #:licence licence #:credit (norm credit) #:columns columns #:width width))
 
 (define (panel [src #f] #:alt [alt #f] #:licence [licence #f] #:credit [credit #f] #:invert [invert 'auto]
                . caption)

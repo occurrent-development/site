@@ -428,6 +428,17 @@ it descends, so that a ball rolling down it ends in one of three places. The
 line below is a credit, set apart from the caption as every credit is, and as
 a table's source is.}
 
+A tall image at the column's width would run down the page, so a figure may be
+narrower: ◊ref["pillar"] is half the column, set at the text's left edge with
+its words where they always are. On a phone it takes the whole column again,
+since half of a narrow column is a thumbnail.
+
+◊figure["img/2026-11-05-lucas-pillow-specimen-pillar.jpg" #:id "pillar"
+#:title "A pillar" #:alt "A plain stone pillar with a square cap and base,
+standing on a sandy floor under a pale sky, its shadow falling to the right."
+#:licence "own" #:width 0.5]{A portrait image at half the column's width
+(◊code{#:width 0.5}). Rendered for this page.}
+
 Several images that make one point are one figure, its panels lettered by the
 build. ◊ref["canalisation-panels"] sets a photograph, a line drawing and a
 diagram side by side; on a phone they stack. Each panel is treated as a figure

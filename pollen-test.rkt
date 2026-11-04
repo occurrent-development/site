@@ -363,12 +363,44 @@
   (check-equal? (car (get-elements nw)) '(em "Books"))
   (check-not-false (member '(em "London Review of ") (find-all doc (tag? 'em)))))
 
-(test-case "IMG-7: figures and tables need an id and a title; widths are gone"
+(test-case "IMG-7: figures and tables need an id and a title; a table takes no width"
   (define rows (list "| a |" "\n" "|---|" "\n" "| 1 |" "\n"))
   (check-true (fails? (λ () (apply table #:title "T" rows))))
   (check-true (fails? (λ () (apply table #:id "t" rows))))
   (check-true (fails? (λ () (apply table #:id "t" #:title "T" #:width "wide" rows))))
+  (check-true (fails? (λ () (apply table #:id "t" #:title "T" #:width 0.5 rows))))
   (check-true (fails? (λ () (apply table #:id "Bad Id" #:title "T" rows)))))
+
+(test-case "IMG-2 (1.27): #:width is a fraction of the column, 0.25 to 1, on figures and panel figures"
+  (define (fig w) (figure "pages/img/landscape.jpg" #:id "f" #:title "T" #:alt "a" #:licence "own" #:width w "c"))
+  (define half (fig 0.5))
+  (check-equal? (attr-ref half 'data-width) "0.5")
+  (check-equal? (attr-ref half 'style) "--fig-width: 0.5")
+  ;; sizes scaled by the fraction in tiers M and up; the whole column below
+  (check-equal? (attr-ref (car (find-all half (tag? 'img))) 'sizes)
+                "(min-width: 48.75rem) 22.812rem, calc(100vw - 3.125rem)")
+  (check-equal? (attr-ref (fig 1/4) 'data-width) "0.25")
+  ;; 1, or none, is the full column and carries nothing
+  (for ([x (in-list (list (fig 1) (fig #f)))])
+    (check-false (attrs-have-key? x 'data-width))
+    (check-equal? (attr-ref (car (find-all x (tag? 'img))) 'sizes)
+                  "(min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)"))
+  ;; out of range, a unit, a keyword, a string: build errors
+  (for ([w (in-list (list 0.2 0 -0.5 1.01 2 "0.5" "50%" "wide" 'half))])
+    (check-true (fails? (λ () (fig w))) (format "#:width ~s" w)))
+  ;; ◊panels: the fraction applies to the grid as a whole, each panel's
+  ;; sizes the fraction's share of its column
+  (define p (panels #:id "q" #:title "T" #:licence "own" #:width 0.5
+                    (panel "pages/img/landscape.jpg" #:alt "a")
+                    (panel "pages/img/landscape.jpg" #:alt "b")))
+  (check-equal? (attr-ref p 'data-width) "0.5")
+  (check-equal? (attr-ref (car (find-all p (tag? 'img))) 'sizes)
+                "(min-width: 48.75rem) 11.406rem, calc(100vw - 3.125rem)")
+  (check-true (fails? (λ () (panels #:id "q" #:title "T" #:licence "own" #:width 0.1
+                                    (panel "pages/img/landscape.jpg" #:alt "a")
+                                    (panel "pages/img/landscape.jpg" #:alt "b")))))
+  ;; last: a failed fixture leaves the source directory at its own
+  (check-true (fails? (λ () (fixture "figures/width-wide.html.pm")))))
 
 (test-case "IMG-7: numbered in order, each kind on its own; ◊ref prints the label"
   (define (tab id) (table #:id id #:title "T" "| a |" "\n" "|---|" "\n" "| 1 |" "\n"))

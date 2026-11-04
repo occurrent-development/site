@@ -74,6 +74,11 @@ SHOTS = [
     ("panels-s-390", 390, 1500, "panels", "dark"),
     ("panels-expanded", 1680, 1050, "panels", "light", "/specimen&expand=1"),
     ("panels-expanded", 1680, 1050, "panels", "dark", "/specimen&expand=1"),
+    # IMG-2: the specimen's half-width figure at tiers L and S, both themes
+    ("width-l-1400", 1400, 900, "pillar", "light"),
+    ("width-l-1400", 1400, 900, "pillar", "dark"),
+    ("width-s-390", 390, 1500, "pillar", "light"),
+    ("width-s-390", 390, 1500, "pillar", "dark"),
 ]
 
 
