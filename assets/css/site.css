@@ -191,7 +191,10 @@ p { margin: 0; text-wrap: wrap; hanging-punctuation: first; }
 /* TYPE-6: pretty only where the text is justified. In tier S Safari's
    pretty trades hyphens for short lines and wrecks a narrow rag. */
 @container page (min-width: 39em) { p { text-wrap: pretty; } }
-p + p { text-indent: 1.5em; }
+/* Paragraphs are separated by space, not a first-line indent (changed
+   2026-11-04): indent 0, skip --parskip. Every `text-indent: 0` below is now
+   inert; contexts that set their own paragraph margin still win. */
+p + p { margin-top: var(--parskip, 1em); }
 
 em, i { font-style: italic; }
 strong, b { font-weight: 600; }
