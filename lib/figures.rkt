@@ -101,6 +101,10 @@
 ;; the letters before per-panel credits, are left empty for the root pass
 ;; to fill (IMG-7's numbering), so the source never carries them. #:columns
 ;; 1 stacks the panels, each at the column's full width (sizes 1).
+;; A panel's body is its caption (spec 1.26): nothing but the letter stays
+;; with the image; the captions go among the exhibit's words, one line per
+;; panel in source order, each opening with its letter ("A.", filled by the
+;; root pass), before the figure's own caption and the credit.
 (define (make-panels body #:id id #:title title #:licence licence #:credit credit #:columns columns)
   (define what (format "◊panels ~s" id))
   (define-values (panels rest) (partition (λ (x) (and (txexpr? x) (eq? (get-tag x) 'od-panel))) body))
@@ -128,16 +132,20 @@
         (build-error "panel ~s needs #:credit, on the panel or on its ◊panels (licence ~a)" src lic))
       (define-values (path entry) (image-entry "panel" src))
       (define svg? (hash-ref entry 'svg #f))
-      (define sub (trim-elements (get-elements p)))
       `(div ((class "panel") (role "group") (data-panel ,(number->string i))
              (data-invert ,(or (opt p 'invert) (and (not svg?) (classified path)) "auto")))
             (span ((class "panel-letter")))
-            (div ((class "panel-image")) ,(if svg? (inline-svg path alt) (picture entry alt cols)))
-            ,@(if (null? sub) null `((span ((class "credit panel-caption")) ,@sub))))))
+            (div ((class "panel-image")) ,(if svg? (inline-svg path alt) (picture entry alt cols))))))
+  (define lines
+    (for/list ([p (in-list panels)] [i (in-naturals)]
+               #:unless (null? (trim-elements (get-elements p))))
+      `(li (span ((class "panel-mark") (data-panel ,(number->string i)))) " "
+           (span ((class "panel-text")) ,@(trim-elements (get-elements p))))))
   (make-exhibit "figure" id title
                 (list `(div ((class "panels") (data-columns ,(number->string cols))) ,@rendered))
                 (trim-elements rest)
                 (panels-credit panels licence credit)
+                #:lead (if (null? lines) null `((ol ((class "panel-captions")) ,@lines)))
                 #:class "figure panel-figure"))
 
 ;; IMG-9, IMG-6: one credit line. When no panel gives its own licence or

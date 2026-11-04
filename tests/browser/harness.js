@@ -419,6 +419,17 @@ async function tests() {
     const sum = imgs.reduce((a, r) => a + r.width, 0);
     near(rect(fig.querySelector(".panels")).width, rect(fig.querySelector(".exhibit-body")).width, 1, "the grid against the column");
     expect(sum > rect(fig.querySelector(".panels")).width * 0.9, "the panels leave too much gap");
+    // spec 1.26: nothing but the letter with the image; the panels' captions
+    // are lettered lines in the margin under the title, before the figure's
+    // own caption, with no gap between them
+    expect(!fig.querySelector(".exhibit-body .panel-caption, .exhibit-body li"), "a caption is still set with an image");
+    const lines = [...fig.querySelectorAll(".exhibit-meta .panel-captions > li")];
+    expect(lines.map((l) => l.querySelector(".panel-mark").textContent).join(" ") === "A. B. C.", "the caption lines are not A., B., C.");
+    const body = rect(fig.querySelector(".exhibit-body")), title = rect(fig.querySelector(".exhibit-title"));
+    for (const l of lines) expect(rect(l).left > body.right, "a caption line is not in the margin at L");
+    expect(rect(lines[0]).top >= title.bottom - 0.5, "the caption lines are not under the title");
+    near(rect(lines[1]).top, rect(lines[0]).bottom, 1, "a gap between the caption lines");
+    expect(rect(fig.querySelector(".exhibit-caption")).top >= rect(lines[2]).bottom - 0.5, "the figure's caption is not after the lines");
     fig.querySelector(".expand").click();
     await settle(200);
     const stage = d.querySelector(".lb-stage"), grid = stage?.querySelector(".panels");
@@ -426,6 +437,7 @@ async function tests() {
     const tops = [...grid.querySelectorAll(".panel-image")].map((x) => rect(x).top);
     expect(tops.length === 3 && Math.abs(tops[0] - tops[2]) < 1, "the expanded panels are not in a row");
     expect(rect(grid).width > rect(fig.querySelector(".panels")).width * 1.3, "the expanded grid is no wider than the column's");
+    expect(d.querySelectorAll(".lb-foot .panel-captions > li").length === 3, "the lightbox's foot lacks the caption lines");
     key("Escape", d.body);
     await settle(100);
     await resize(390, 844);
@@ -435,6 +447,7 @@ async function tests() {
     near(stacked[1].left, stacked[0].left, 1, "B's left against A's at S");
     expect(stacked[0].bottom < stacked[1].top && stacked[1].bottom < stacked[2].top, "the panels do not stack at S");
     expect(panels.every((p) => w.getComputedStyle(p.querySelector(".panel-letter")).display !== "none"), "letters lost at S");
+    expect(rect(fig.querySelector(".panel-captions")).top >= stacked[2].bottom, "the caption lines are not below the figure at S");
     await load("/specimen", 2560, 1440);
   });
 

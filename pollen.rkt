@@ -337,9 +337,9 @@
                #:licence licence #:credit (norm credit) #:columns columns))
 
 (define (panel [src #f] #:alt [alt #f] #:licence [licence #f] #:credit [credit #f] #:invert [invert 'auto]
-               . sub-caption)
+               . caption)
   (unless (string? src)
-    (build-error "◊panel needs a source, as in ◊panel[\"img/….png\" #:alt \"…\"]{Sub-caption} (IMG-9)"))
+    (build-error "◊panel needs a source, as in ◊panel[\"img/….png\" #:alt \"…\"]{Caption} (IMG-9)"))
   (unless (string? alt)
     (build-error "panel ~s needs #:alt: every panel is described on its own (IMG-9, IMG-3)" src))
   (txexpr 'od-panel
@@ -347,7 +347,7 @@
                                (and licence (list 'licence (format "~a" licence)))
                                (and credit (list 'credit (norm credit)))
                                (case invert [(#t) '(invert "yes")] [(#f) '(invert "no")] [else #f])))
-          sub-caption))
+          caption))
 
 ;; IMG-7: ◊ref[id] prints the label of a figure or table on this page
 ;; ("Figure 2"), as a same-page link; the root pass fills in the number.
@@ -1124,7 +1124,8 @@
 ;; IMG-7: figures and tables are numbered in document order, each kind on
 ;; its own ("Figure 1", "Table 1"); ◊ref becomes a link carrying the label.
 ;; IMG-9: a figure's panels are lettered in the same walk, A, B, C… in
-;; source order, and its credit line's letters filled in from them.
+;; source order, and its credit line's letters and its caption lines'
+;; letters ("A.") filled in from them.
 (define (number-exhibits elems)
   (define counts (make-hash))
   (define labels (make-hash))
@@ -1145,6 +1146,9 @@
                        (if (has-class? e "panel-letter")
                            (txexpr (get-tag e) (append (get-attrs e) `((id ,lid))) (list l))
                            (walk e))))]
+            [(has-class? x "panel-mark")      ; a panel's caption line (spec 1.26)
+             (txexpr (get-tag x) (get-attrs x)
+                     (list (string-append (letter (string->number (attr-ref x 'data-panel))) ".")))]
             [(has-class? x "panel-keys")
              (txexpr (get-tag x) (get-attrs x)
                      (list (string-join (for/list ([i (in-list (string-split (attr-ref x 'data-panels)))])

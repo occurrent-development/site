@@ -399,9 +399,20 @@
   (check-equal? (attr-ref (car (find-all (car panels) (tag? 'img))) 'alt) "A ball.")
   (check-equal? (attr-ref (car (find-all (caddr panels) (λ (x) (has-class* x "figure-svg")))) 'aria-label)
                 "Branching paths.")
-  (check-equal? (map (λ (p) (text-of (car (find-all p (λ (x) (has-class* x "panel-caption")))))) panels)
-                '("Ball" "Valleys" "Paths"))
-  (check-true (pair? (find-all (car panels) (λ (x) (has-class* x "credit")))))   ; IMG-3a
+  ;; spec 1.26: nothing but the letter is set with the image; the panels'
+  ;; captions are lettered lines among the words, in source order, before
+  ;; the figure's own caption and the credit; a panel with no body has none
+  (check-equal? (map (λ (p) (map (λ (e) (if (txexpr? e) (get-tag e) 'text)) (get-elements p))) panels)
+                '((span div) (span div) (span div)))
+  (check-equal? (find-all fig (λ (x) (has-class* x "panel-caption"))) null)
+  (define meta (car (find-all fig (λ (x) (has-class* x "exhibit-meta")))))
+  (check-equal? (map (λ (e) (attr-ref e 'class)) (filter txexpr? (get-elements meta)))
+                '("panel-captions" "exhibit-caption" "credit"))
+  (define lines (find-all meta (tag? 'li)))
+  (check-equal? (map text-of lines)
+                '("A. Ball" "B. The valleys, from head to foot. Each ridge is a choice." "C. Paths"))
+  (check-equal? (map (λ (l) (text-of (car (find-all l (λ (x) (has-class* x "panel-mark")))))) lines)
+                '("A." "B." "C."))
   ;; the caption is what is left, trimmed; the credit line groups by letter
   (check-equal? (text-of (car (find-all fig (λ (x) (has-class* x "exhibit-caption")))))
                 "The caption, which mentions A and C.")
@@ -444,7 +455,9 @@
                 '("A" "B"))
   (check-equal? (attr-ref (car (find-all (car panels) (tag? 'img))) 'sizes)
                 "(min-width: 48.75rem) 45.625rem, calc(100vw - 3.125rem)")   ; the full column
-  (check-equal? (text-of (car (find-all fig (λ (x) (has-class* x "exhibit-caption"))))) "The caption."))
+  (check-equal? (text-of (car (find-all fig (λ (x) (has-class* x "exhibit-caption"))))) "The caption.")
+  ;; B has no body, so only A has a caption line (spec 1.26)
+  (check-equal? (map text-of (find-all fig (tag? 'li))) '("A. Ball")))
 
 (test-case "EDIT-10: Org's table separators: |---+---| under the header, others ignored"
   (define t (table #:id "o" #:title "T" "| a | b |" "\n" "|---+---|" "\n" "| 1 | 2 |" "\n" "|---+---|" "\n" "| 3 | 4 |" "\n"))

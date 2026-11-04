@@ -437,7 +437,9 @@ cross-sections are ◊ref["canalisation-panels" #:panel "b"].
 
 ◊panels[#:id "canalisation-panels" #:title "One valley, three ways" #:licence "own"]{
 ◊panel["img/2026-11-02-lucas-pillow-specimen-ball-a.jpg" #:alt "A red ball resting on a sandy floor under a pale sky, its shadow beneath it."]{The ball}
-◊panel["img/2026-11-02-lucas-pillow-specimen-valleys-b.png" #:alt "Three cross-sections of a valley, one above another: one trough, then two, then three." #:invert #t #:credit "After C. H. Waddington (1957)"]{The valley}
+◊panel["img/2026-11-02-lucas-pillow-specimen-valleys-b.png" #:alt "Three cross-sections of a valley, one above another: one trough, then two, then three." #:invert #t #:credit "After C. H. Waddington (1957)"]{The valley in three
+cross-sections, from its head to its foot. Each ridge that rises along the floor
+is a choice the ball has not yet made.}
 ◊panel["img/2026-11-02-lucas-specimen-branching-c.svg" #:alt "A path that divides in two, one branch of which divides again, ending in three points."]{The paths}
 The ball in A comes to rest where the valley floor in B is lowest; as the
 valley descends it divides, and the paths in C are the ways the ball can go.

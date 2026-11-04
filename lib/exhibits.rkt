@@ -12,7 +12,10 @@
 
 ;; kind: "figure" or "table". title, body, caption, credit: element lists
 ;; (caption and credit may be empty). attrs: extra attributes for <figure>.
-(define (make-exhibit kind id title body caption credit #:class [cls ""] #:attrs [attrs null])
+;; lead: elements set first among the words, before the caption: a panel
+;; figure's lettered lines (IMG-9).
+(define (make-exhibit kind id title body caption credit #:class [cls ""] #:attrs [attrs null]
+                      #:lead [lead null])
   (check-id id (string->symbol (format "~a #:id" kind)))
   (when (or (not title) (null? title) (equal? (string-trim (text-of title)) ""))
     (build-error "~a ~s needs a #:title" kind id))
@@ -22,7 +25,8 @@
            (div ((class "exhibit-title") (id ,title-id))
                 (span ((class "exhibit-label")) ,(if (equal? kind "table") "Table" "Figure")) " " ,@title)
            (div ((class "exhibit-body")) ,@body)
-           ,@(if (and (null? caption) (null? credit)) null
+           ,@(if (and (null? lead) (null? caption) (null? credit)) null
                  `((figcaption ((class "exhibit-meta"))
+                               ,@lead
                                ,@(if (null? caption) null `((span ((class "exhibit-caption")) ,@caption)))
                                ,@(if (null? credit) null `((span ((class "credit")) ,@credit))))))))
