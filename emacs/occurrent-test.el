@@ -142,6 +142,48 @@
   (od-test-errors-are "A ◊sense{loose} word." '("◊sense"))
   (od-test-errors-are "◊more{Longer text.}" '("◊more")))
 
+(ert-deftest od-test-insert-panels ()
+  "IMG-9: `od-insert-panels' asks how many panels and how they sit, then every image in turn."
+  (let ((answers '()))
+    (cl-letf (((symbol-function 'read-string)
+               (lambda (prompt &rest _)
+                 (push prompt answers)
+                 (cond ((string-prefix-p "Title" prompt) "Three views")
+                       ((string-prefix-p "Id" prompt) "views")
+                       ((string-prefix-p "Alt text for" prompt) (format "Alt %s" (substring prompt 13 14)))
+                       ((string-prefix-p "Sub-caption for C" prompt) "")
+                       ((string-prefix-p "Sub-caption for" prompt) (format "Sub %s" (substring prompt 16 17)))
+                       (t ""))))
+              ((symbol-function 'read-number) (lambda (&rest _) 3))
+              ((symbol-function 'completing-read)
+               (lambda (prompt &optional coll &rest _)
+                 (push prompt answers)
+                 (cond ((string-prefix-p "Licence" prompt) "own")
+                       ((string-prefix-p "Columns" prompt) (cadr coll))   ; the second choice: stacked
+                       (t ""))))
+              ((symbol-function 'read-file-name)
+               (lambda (prompt &rest _)
+                 (push prompt answers)
+                 (format "/tmp/od-panels/img/%s.png" (downcase (substring prompt 16 17))))))
+      (with-temp-buffer
+        (setq default-directory "/tmp/od-panels/")
+        (od-insert-panels)
+        (should (equal (buffer-string)
+                       (concat "◊panels[#:id \"views\" #:title \"Three views\" #:licence \"own\" #:columns 1]{\n"
+                               "◊panel[\"img/a.png\" #:alt \"Alt A\"]{Sub A}\n"
+                               "◊panel[\"img/b.png\" #:alt \"Alt B\"]{Sub B}\n"
+                               "◊panel[\"img/c.png\" #:alt \"Alt C\"]\n"
+                               "}\n")))
+        ;; point is on the caption line, before the brace
+        (should (looking-at-p "}\n"))
+        (should (= (count-lines (point-min) (point)) 4))))
+    ;; three images were asked for, in order, and the columns question came before any image
+    (let ((asked (reverse answers)))
+      (should (equal (cl-remove-if-not (lambda (p) (string-prefix-p "Image for panel" p)) asked)
+                     '("Image for panel A (1 of 3): " "Image for panel B (2 of 3): " "Image for panel C (3 of 3): ")))
+      (should (< (cl-position-if (lambda (p) (string-prefix-p "Columns" p)) asked)
+                 (cl-position-if (lambda (p) (string-prefix-p "Image" p)) asked))))))
+
 (ert-deftest od-test-panel-inside-panels ()
   "IMG-9: ◊panel inside ◊panels is clean, and ◊ref may name the figure; a loose ◊panel is an error."
   (od-test-errors-are (concat "See ◊ref[\"p\" #:panel \"b\"].\n\n"

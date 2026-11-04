@@ -2202,11 +2202,30 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
                     (if credit (format " #:credit \"%s\"" (od--quote credit)) "")))
     (save-excursion (insert "}"))))
 
+(defun od--panels-columns (n)
+  "Ask how N panels are to be arranged; return the columns, 1, 2 or 3.
+The build's default (N across, up to three) is offered first and needs only
+Enter; 1 is a vertical stack; the other grid is offered for four panels or
+more, where the build allows it without a warning (IMG-9, spec 1.21)."
+  (let* ((default (min n 3))
+         (describe (lambda (c)
+                     (cond ((= c 1) "stacked, one above another")
+                           ((<= n c) (format "%d across, in one row" n))
+                           (t (format "a grid of %d columns" c)))))
+         (choices (append (list default 1)
+                          (when (>= n 4) (list (if (= default 3) 2 3)))))
+         (candidates (mapcar (lambda (c) (format "%d (%s)" c (funcall describe c))) choices))
+         (choice (completing-read (format "Columns for %d panels (Enter for %s): " n (car candidates))
+                                  candidates nil t nil nil (car candidates))))
+    (string-to-number choice)))
+
 (defun od-insert-panels ()
-  "Insert a ◊panels block with its first ◊panel (IMG-7).
-Asks for the title, id and licence of the group, then the first image and
-its alt text. Point ends on the empty line where the next ◊panel goes,
-by `od-insert-tag' with panel, or typed."
+  "Insert a complete ◊panels block (IMG-9).
+Asks for the title, id and licence of the figure, how many panels it has
+\(two to six) and how they are arranged, then, for each panel in turn, its
+image, alt text and an optional sub-caption. `#:columns' is written only
+when it differs from the build's default, so the build never warns about
+it. Point ends on the caption line, before the closing brace."
   (interactive)
   (let* ((here (file-name-directory (or buffer-file-name default-directory)))
          (img (expand-file-name "img/" here))
@@ -2214,14 +2233,28 @@ by `od-insert-tag' with panel, or typed."
          (id (od--new-id title))
          (licence (completing-read "Licence: " od--licences nil nil nil nil "own"))
          (credit (unless (equal licence "own") (read-string "Credit (required): ")))
-         (path (read-file-name "First image: " (if (file-directory-p img) img here) nil t))
-         (rel (file-relative-name path here))
-         (alt (read-string "Alt text (what the image shows; empty if decorative): ")))
+         (n (let ((k (read-number "How many panels (2–6): " 2)))
+              (unless (and (integerp k) (<= 2 k 6))
+                (user-error "A figure of panels has two to six panels; one image is a ◊figure (IMG-9)"))
+              k))
+         (columns (od--panels-columns n))
+         (panels
+          (cl-loop for i from 0 below n
+                   for letter = (string (+ ?A i))
+                   collect
+                   (let* ((path (read-file-name (format "Image for panel %s (%d of %d): " letter (1+ i) n)
+                                                (if (file-directory-p img) img here) nil t))
+                          (rel (file-relative-name path here))
+                          (alt (read-string (format "Alt text for %s (what the image shows): " letter)))
+                          (sub (string-trim (read-string (format "Sub-caption for %s (a few words; empty for none): " letter)))))
+                     (format "◊panel[\"%s\" #:alt \"%s\"]%s\n" rel (od--quote alt)
+                             (if (string-empty-p sub) "" (format "{%s}" sub)))))))
     (od--open-line-for-block)
-    (insert (format "◊panels[#:id \"%s\" #:title \"%s\" #:licence \"%s\"%s]{\n"
+    (insert (format "◊panels[#:id \"%s\" #:title \"%s\" #:licence \"%s\"%s%s]{\n"
                     id (od--quote title) licence
-                    (if credit (format " #:credit \"%s\"" (od--quote credit)) "")))
-    (insert (format "◊panel[\"%s\" #:alt \"%s\"]{}\n" rel (od--quote alt)))
+                    (if credit (format " #:credit \"%s\"" (od--quote credit)) "")
+                    (if (= columns (min n 3)) "" (format " #:columns %d" columns))))
+    (apply #'insert panels)
     (save-excursion (insert "}\n"))))
 
 (defun od-insert-table ()
