@@ -252,6 +252,15 @@ blockquote.epigraph.roman { font-style: normal; }   /* #:italic #f */
 blockquote.epigraph:not(.roman) em, blockquote.quote.italic em { font-style: normal; }
 blockquote.epigraph footer { font-style: normal; text-align: right; margin-top: 0.25em; }
 blockquote.epigraph footer::before { content: "— "; }
+/* LAYOUT-4d (spec 1.28): the attribution aligns to the quotation, not the
+   column. The block shrink-wraps its longest line, never past the column
+   and never under half of it (so two words do not read as a caption), and
+   the footer, right-aligned within it, hangs under the quotation's last
+   words. A quotation of running prose fills the column as before. The
+   left indent is the margin's, so it holds; the floor is half the column
+   the block sits in. Covers BIB-9's marked quotations, which are
+   blockquote.quote with the attribution the build writes. */
+blockquote.epigraph, blockquote.quote { width: fit-content; max-width: 100%; min-width: 50%; }
 
 /* ── Essay header (LAYOUT-1) ───────────────────────────────────────────── */
 .site-header {

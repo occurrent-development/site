@@ -1191,7 +1191,7 @@
   (define circle (findf (λ (x) (has-class* x "circle-link")) (find-all doc txexpr?)))
   (check-equal? (attr-ref circle 'href) "/references/hackingLoopingEffectsHuman1996"))
 
-(test-case "LAYOUT-4, LAYOUT-4a: ◊break{} is the glyph and ◊rule{} the hairline; text in ◊rule fails"
+(test-case "LAYOUT-4, LAYOUT-4e: ◊break{} is the glyph and ◊rule{} the hairline; text in ◊rule fails"
   (check-equal? (attr-ref (break) 'class) "break")
   (check-equal? (attr-ref (rule) 'class) "break rule")
   (check-equal? (attr-ref (rule "  \n") 'class) "break rule")

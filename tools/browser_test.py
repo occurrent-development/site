@@ -79,6 +79,15 @@ SHOTS = [
     ("width-l-1400", 1400, 900, "pillar", "dark"),
     ("width-s-390", 390, 1500, "pillar", "light"),
     ("width-s-390", 390, 1500, "pillar", "dark"),
+    # LAYOUT-4d: the epigraph (the page's top) and a BIB-9 marked quotation
+    ("epigraph-l-1400", 1400, 900, "top", "light"),
+    ("epigraph-l-1400", 1400, 900, "top", "dark"),
+    ("epigraph-s-390", 390, 844, "top", "light"),
+    ("epigraph-s-390", 390, 844, "top", "dark"),
+    ("quote-l-1400", 1400, 900, "quote", "light"),
+    ("quote-l-1400", 1400, 900, "quote", "dark"),
+    ("quote-s-390", 390, 844, "quote", "light"),
+    ("quote-s-390", 390, 844, "quote", "dark"),
 ]
 
 

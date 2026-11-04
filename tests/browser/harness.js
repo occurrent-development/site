@@ -451,6 +451,32 @@ async function tests() {
     await load("/specimen", 2560, 1440);
   });
 
+  await test("LAYOUT-4d: a short quotation shrink-wraps, its attribution under its last words; a long one fills the column; indent and #:italic hold", async () => {
+    await resize(1400, 900);
+    const col = rect(d.querySelector("article p"));
+    const quotes = [...d.querySelectorAll("article blockquote.epigraph, article blockquote.quote")];
+    const find = (t) => quotes.find((q) => q.textContent.includes(t));
+    const epi = find("same"), marked = find("cycle called yourself"), darwin = find("grandeur");
+    const roman = quotes.find((q) => q.matches(".epigraph.roman")), italic = quotes.find((q) => q.matches(".quote.italic"));
+    for (const [name, q] of [["the epigraph", epi], ["the marked quotation", marked]]) {
+      expect(q, `no ${name} on the specimen`);
+      const b = rect(q), f = rect(q.querySelector("footer"));
+      expect(b.width < col.width * 0.9, `${name} fills the column`);
+      expect(b.width >= col.width / 2 - 1, `${name} is under half the column`);
+      near(f.right, b.right, 1, `${name}'s attribution against its block`);
+      expect(b.left > col.left + 10, `${name} lost its indent`);
+      expect(w.getComputedStyle(q.querySelector("footer")).fontStyle === "normal", `${name}'s attribution is not roman`);
+    }
+    // the epigraph's longest line ends at the block's right edge (no floor here)
+    const range = d.createRange(); range.selectNodeContents(epi.querySelector("p"));
+    const lines = [...range.getClientRects()];
+    if (rect(epi).width > col.width / 2 + 1) near(Math.max(...lines.map((r) => r.right)), rect(epi).right, 2, "the epigraph's longest line against its block");
+    near(rect(darwin).right, col.right, 2, "a long quotation no longer fills the column");
+    expect(w.getComputedStyle(epi).fontStyle === "italic" && w.getComputedStyle(roman).fontStyle === "normal", "the epigraph's #:italic");
+    expect(w.getComputedStyle(darwin).fontStyle === "normal" && w.getComputedStyle(italic).fontStyle === "italic", "the block quotation's #:italic");
+    expect(w.getComputedStyle(epi.querySelector("em")).fontStyle === "normal", "emphasis in the italic epigraph is not roman");
+  });
+
   await test("IMG-2: #:width 0.5 is half the column, flush left, words in the margin, Expand on its corner; whole column at S", async () => {
     await resize(1400, 900);
     const fig = d.getElementById("pillar");
@@ -688,6 +714,12 @@ const SCENARIOS = {
   async citedin() {
     const s = d.getElementById("cited-in");
     w.scrollTo({ top: s.offsetTop - 40, behavior: "instant" });
+    await settle(300);
+  },
+  // LAYOUT-4d: the specimen's marked quotation (BIB-9), its attribution written by the build
+  async quote() {
+    const q = [...d.querySelectorAll("article blockquote.quote")].find((x) => x.textContent.includes("cycle called yourself"));
+    q.scrollIntoView({ block: "center" });
     await settle(300);
   },
   // IMG-2: the specimen's half-width figure, loaded
