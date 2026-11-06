@@ -335,10 +335,10 @@ need it◊aside{An aside may cite, too: Hacking's essay on
 argument ◊cite["hackingLoopingEffectsHuman1996"]. Its note is numbered at
 its place in the argument.} and is unnumbered. On a wide screen it sits in the
 right margin as a single line, cut short; resting the pointer on it lets it
-grow downward in place, and clicking pins it there. A short one is shown
-whole. Pin the first aside and then open the circle inside it: the note opens over the page, and the aside stays where
+grow downward in place, and clicking pins it there. A short one has
+nothing to grow, but clicking still selects it. Pin the first aside and then open the circle inside it: the note opens over the page, and the aside stays where
 it is. On a narrower screen both open over the text. Without scripts each
-aside is collected at the end, with a link back.◊aside{A short aside is shown in full.}
+aside is collected at the end, with a link back.◊aside{A short aside has nothing to expand, but a click still selects it.}
 
 On a wide screen with a pointer, several popups can be kept open at once.
 Clicking a circle pins its popup, and so does Pin in its title bar; up to

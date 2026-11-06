@@ -246,6 +246,25 @@ async function tests() {
     await scroll(0);
   });
 
+  await test("ASIDE-3: every stub is one line closed; a one-line aside can be selected, filling its circle", async () => {
+    const stubs = [...d.querySelectorAll("article .stub")];
+    expect(stubs.length > 0, "no stubs");
+    for (const s of stubs) expect(s.offsetHeight <= 1.5 * parseFloat(getComputedStyle(s).lineHeight), `a closed stub is taller than a line: ${s.id}`);
+    const one = stubs.find((s) => s.dataset.single);
+    expect(one, "no one-line aside on the specimen");
+    one.scrollIntoView({ block: "center" });
+    await settle(200);
+    one._trigger.click();
+    await settle(100);
+    expect(one.classList.contains("is-open") && !one.classList.contains("is-preview"), "a one-line aside was not selected");
+    expect(one._trigger.querySelector(".circle").classList.contains("is-open"), "its circle is not filled");
+    expect(getComputedStyle(one).borderRightColor !== getComputedStyle(stubs.find((s) => s !== one && !s.classList.contains("is-open"))).borderRightColor, "a selected rule looks like an unselected one");
+    key("Escape");
+    await settle(100);
+    expect(!one._trigger.querySelector(".circle").classList.contains("is-open"), "Esc left its circle filled");
+    await scroll(0);
+  });
+
   await test("POP-9: up to six pinned; the seventh closes the oldest", async () => {
     const ids = ["note-1", "note-2", "note-3", "note-4", "note-7 note-8", "term-occurrent", "term-looping-effect"];
     for (const id of ids) { trig(id).click(); await settle(80); }

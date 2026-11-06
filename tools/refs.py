@@ -67,6 +67,8 @@ def cited():
     for path in sorted(ROOT.glob("**/*.pm")):
         if SKIP_DIRS & set(path.relative_to(ROOT).parts):
             continue
+        if path.name.startswith(".#") or not path.is_file():   # Emacs lock files (dangling symlinks)
+            continue
         text = path.read_text(encoding="utf-8")
         draft = bool(DRAFT.search(text))
         for key, rest in CITE.findall(text):

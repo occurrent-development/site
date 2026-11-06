@@ -815,7 +815,6 @@ function toggleMargin(stub, { focus = false } = {}) {
   if (marginOpen && marginOpen.stub === stub) { collapseMargin({ returnFocus: focus }); return; }
   if (marginPreview && marginPreview.stub === stub) { clearTimeout(previewCloseTimer); marginPreview = null; }
   collapseMargin();
-  if (stub.dataset.full) { if (focus) stub.focus(); return; }   // shown in full; never collapses
   expandStub(stub, true);
   marginOpen = { stub, trigger: stub._trigger };
   positionMargin();
@@ -835,7 +834,7 @@ function collapseMargin({ returnFocus = false } = {}) {
 // across a line of circles opens nothing. A preview never takes focus, so
 // Esc and Tab stay where the reader left them.
 function previewMargin(stub) {
-  if (!stub?.isConnected || !wide() || stub.dataset.full) return;
+  if (!stub?.isConnected || !wide() || stub.dataset.single) return;
   if (marginOpen?.stub === stub || marginPreview?.stub === stub) return;
   endPreview({ layout: false });
   expandStub(stub, false);
@@ -856,7 +855,7 @@ function endPreview({ layout = true } = {}) {
 function schedulePreview(stub) {
   clearTimeout(previewTimer);
   clearTimeout(previewCloseTimer);
-  if (marginPreview?.stub === stub || marginOpen?.stub === stub || stub.dataset.full) return;
+  if (marginPreview?.stub === stub || marginOpen?.stub === stub || stub.dataset.single) return;
   previewTimer = setTimeout(() => previewMargin(stub), 300);
 }
 // The preview closes ~250 ms after the pointer has left circle and stub
@@ -911,7 +910,7 @@ document.addEventListener("click", (e) => {
   const stub = e.target.closest(".stub");
 
   // A collapsed or previewed stub is pinned wherever it is clicked (ASIDE-3).
-  if (stub && (!stub.classList.contains("is-open") || stub.classList.contains("is-preview")) && !stub.dataset.full
+  if (stub && (!stub.classList.contains("is-open") || stub.classList.contains("is-preview"))
       && !e.target.closest("a, button")) {
     e.preventDefault();
     close();
@@ -1001,7 +1000,7 @@ document.addEventListener("pointerover", (e) => {
   const stub = e.target.closest(".stub");
   if (stub) {
     highlight(stub._trigger, true, stub);
-    if (wide() && !stub.dataset.full) schedulePreview(stub);
+    if (wide() && !stub.dataset.single) schedulePreview(stub);
   }
   const over = e.target.closest(".popup");
   if (over) {
@@ -1072,11 +1071,11 @@ function setupMargin() {
       if (t) t._stub = a;
     } else {
       a.hidden = true;
-      a.classList.remove("in-margin", "stub", "is-full", "is-open", "hl");
+      a.classList.remove("in-margin", "stub", "is-open", "hl");
       a.removeAttribute("tabindex");
       a.removeAttribute("role");
       a.removeAttribute("aria-expanded");
-      delete a.dataset.full;
+      delete a.dataset.single;
       a.removeAttribute("style");
       if (t) t._stub = null;
     }
@@ -1265,7 +1264,9 @@ function positionMargin() {
     .map((x) => [x.querySelector(".exhibit-title"), x.querySelector(".exhibit-meta")].filter(Boolean));
   const headers = [...article.querySelectorAll(".header-meta")];
   for (const e of [...stubs, ...exhibits.flat(), ...headers]) e.style.transform = "";
-  // ASIDE-3: an item that fits in two margin lines is shown in full
+  // ASIDE-3: every stub is one line when closed. One that already fits on its
+  // line has nothing to expand; it is marked `single`, so hover does not
+  // preview it, but a click still selects it (rule, text and circle).
   // Stubs can sit in smaller text (a table), where the stylesheet's em would
   // be wrong; so their place and size are set from the article's.
   const fs = parseFloat(getComputedStyle(article).fontSize);
@@ -1273,10 +1274,9 @@ function positionMargin() {
   for (const st of stubs) {
     Object.assign(st.style, { left: `${v("--measure") + v("--margin-gap")}px`, width: getComputedStyle(article).getPropertyValue("--margin"), fontSize: `${0.85 * fs}px` });
     if (st.classList.contains("is-open")) continue;
-    st.classList.add("is-full");
     const lh = parseFloat(getComputedStyle(st).lineHeight);
-    if (st.offsetHeight <= 2 * lh + 1) st.dataset.full = "1";
-    else { delete st.dataset.full; st.classList.remove("is-full"); }
+    if (st.scrollWidth <= st.clientWidth + 1 && st.offsetHeight <= 1.5 * lh) st.dataset.single = "1";
+    else delete st.dataset.single;
   }
   // Items: { els, top, h, fixed }. A caption block has no height of its own,
   // so its extent is its children's.

@@ -14,6 +14,7 @@
     --accent:         light-dark(#8A3A26, #D49A7E);
     --accent-visited: light-dark(#8A5344, #B08C7C);
     --rule:           light-dark(#B5A88C, #3D3B38);
+    --stub-rule:      light-dark(#8A7C5C, #77746E);   /* ASIDE-3: the margin rule, firmer than --rule */
     --popup-bg:       light-dark(#F5EFE2, #1B1A18);
     --popup-border:   light-dark(#C8BBA0, #3D3B38);
     --selection:      light-dark(#D9C7A2, #4A3B32);
@@ -25,20 +26,20 @@
   :root {
     color-scheme: light;
     --bg: #EFE7D4; --text: #000000; --text-muted: #5A5244; --accent: #8A3A26;
-    --accent-visited: #8A5344; --rule: #B5A88C; --popup-bg: #F5EFE2;
+    --accent-visited: #8A5344; --rule: #B5A88C; --stub-rule: #8A7C5C; --popup-bg: #F5EFE2;
     --popup-border: #C8BBA0; --selection: #D9C7A2;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #121212; --text: #D2D2D0; --text-muted: #9C9A95; --accent: #D49A7E;
-    --accent-visited: #B08C7C; --rule: #3D3B38; --popup-bg: #1B1A18;
+    --accent-visited: #B08C7C; --rule: #3D3B38; --stub-rule: #77746E; --popup-bg: #1B1A18;
     --popup-border: #3D3B38; --selection: #4A3B32;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
       --bg: #121212; --text: #D2D2D0; --text-muted: #9C9A95; --accent: #D49A7E;
-      --accent-visited: #B08C7C; --rule: #3D3B38; --popup-bg: #1B1A18;
+      --accent-visited: #B08C7C; --rule: #3D3B38; --stub-rule: #77746E; --popup-bg: #1B1A18;
       --popup-border: #3D3B38; --selection: #4A3B32;
     }
   }
@@ -1736,10 +1737,12 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
     color: var(--text-muted);
   }
 }
-/* ASIDE-3: asides start as one margin line with a hairline rule on the
-   right edge of the margin; opening one grows the same text downward in
-   place, and the rule with it. No box, no background. Definitions are
-   popups (TERM-3). */
+/* ASIDE-3: asides start as one margin line with a rule on the right edge of
+   the margin; opening one grows the same text downward in place, and the
+   rule with it. No box, no background. Definitions are popups (TERM-3).
+   The rule is a visible 2px at rest and the accent when the aside is
+   selected (pinned), one line or many; the text steps from a softened
+   muted colour to the full text colour, so the selected one stands out. */
 .stub {
   display: inline-block;   /* blockified once absolute; inline so it starts on its circle's line */
   box-sizing: border-box;
@@ -1747,14 +1750,14 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--text-muted) 82%, var(--bg));
   padding-right: 0.6em;
-  border-right: 1px solid var(--rule);
+  border-right: 2px solid var(--stub-rule);
 }
-.stub.is-full, .stub.is-open { white-space: normal; text-overflow: clip; }
-.stub.is-full { cursor: default; }
+.stub.is-open { white-space: normal; text-overflow: clip; }
 .stub:hover, .stub.hl, .stub:focus-visible { color: var(--accent); }
 .stub.is-open { color: var(--text); max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
+.stub.is-open:not(.is-preview) { border-right-color: var(--accent); }
 .stub:focus-visible { outline-offset: 3px; }
 
 /* ── Headings in sans (LAYOUT-2a, chosen 2026-10-15) ──────────────────────

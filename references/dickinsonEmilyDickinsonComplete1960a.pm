@@ -1,5 +1,10 @@
 #lang pollen
 
-◊; Commentary on this work (BIB-3). Leave it empty and the work's page shows its
-◊; facts and where it is cited, nothing more. The first paragraph is the one the
-◊; popup card shows, so write it to stand on its own.
+Tell all the truth but tell it slant---◊br{}
+Success in Circuit lies◊br{}
+Too bright for our infirm Delight◊br{}
+The Truth's superb surprise◊br{}
+As Lightning to the Children eased◊br{}
+With explanation kind◊br{}
+The Truth must dazzle gradually◊br{}
+Or every man be blind---

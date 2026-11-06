@@ -1,4 +1,282 @@
 {
+ "dickinsonEmilyDickinsonComplete1960a": {
+  "full": {
+   "": [
+    "Emily Dickinson, “Tell All the Truth but Tell It Slant— (1263),” in ",
+    [
+     "em",
+     {},
+     "Emily Dickinson: The Complete Poems"
+    ],
+    ", 5. print, ed. Thomas Herbert Johnson (Little, Brown Comp, 1960)."
+   ]
+  },
+  "short": {
+   "": [
+    "Dickinson, “Tell All the Truth but Tell It Slant— (1263).”"
+   ]
+  },
+  "bib": [
+   "Dickinson, Emily. “Tell All the Truth but Tell It Slant— (1263).” In ",
+   [
+    "em",
+    {},
+    "Emily Dickinson: The Complete Poems"
+   ],
+   ", 5. print, edited by Thomas Herbert Johnson. Little, Brown Comp, 1960."
+  ],
+  "order": 0,
+  "doi": null,
+  "url": null,
+  "csl": {
+   "ISBN": "978-0-316-18414-4",
+   "author": [
+    {
+     "family": "Dickinson",
+     "given": "Emily"
+    }
+   ],
+   "container-title": "Emily Dickinson: The Complete Poems",
+   "edition": "5. print",
+   "editor": [
+    {
+     "family": "Johnson",
+     "given": "Thomas Herbert"
+    }
+   ],
+   "id": "dickinsonEmilyDickinsonComplete1960a",
+   "issued": {
+    "date-parts": [
+     [
+      1960
+     ]
+    ]
+   },
+   "language": "en-US",
+   "publisher": "Little, Brown Comp",
+   "publisher-place": "Boston",
+   "title": "Tell All the Truth but Tell It Slant— (1263)",
+   "type": "chapter"
+  },
+  "title": "Tell All the Truth but Tell It Slant— (1263)",
+  "authors": [
+   "Dickinson"
+  ],
+  "year": "1960",
+  "type": "Chapter"
+ },
+ "keeDiagnosticYieldTiming2016": {
+  "full": {
+   "": [
+    "Penny Pei Lee Kee et al., “Diagnostic Yield of Timing Blood Culture Collection Relative to Fever,” ",
+    [
+     "em",
+     {},
+     "Pediatric Infectious Disease Journal"
+    ],
+    " 35, no. 8 (2016): 846–50, ",
+    [
+     "a",
+     {
+      "href": "https://doi.org/10.1097/INF.0000000000001189"
+     },
+     "https://doi.org/10.1097/INF.0000000000001189"
+    ],
+    "."
+   ]
+  },
+  "short": {
+   "": [
+    "Kee et al., “Diagnostic Yield of Timing Blood Culture Collection Relative to Fever.”"
+   ]
+  },
+  "bib": [
+   "Kee, Penny Pei Lee, Maidhili Chinnappan, Ajit Nair, et al. “Diagnostic Yield of Timing Blood Culture Collection Relative to Fever.” ",
+   [
+    "em",
+    {},
+    "Pediatric Infectious Disease Journal"
+   ],
+   " 35, no. 8 (2016): 846–50. ",
+   [
+    "a",
+    {
+     "href": "https://doi.org/10.1097/INF.0000000000001189"
+    },
+    "https://doi.org/10.1097/INF.0000000000001189"
+   ],
+   "."
+  ],
+  "order": 4,
+  "doi": "10.1097/INF.0000000000001189",
+  "url": "https://doi.org/10.1097/INF.0000000000001189",
+  "csl": {
+   "DOI": "10.1097/INF.0000000000001189",
+   "ISSN": "0891-3668",
+   "author": [
+    {
+     "family": "Kee",
+     "given": "Penny Pei Lee"
+    },
+    {
+     "family": "Chinnappan",
+     "given": "Maidhili"
+    },
+    {
+     "family": "Nair",
+     "given": "Ajit"
+    },
+    {
+     "family": "Yeak",
+     "given": "Daryl"
+    },
+    {
+     "family": "Chen",
+     "given": "Annie"
+    },
+    {
+     "family": "Starr",
+     "given": "Mike"
+    },
+    {
+     "family": "Daley",
+     "given": "Andrew J."
+    },
+    {
+     "family": "Cheng",
+     "given": "Allen C."
+    },
+    {
+     "family": "Burgner",
+     "given": "David"
+    }
+   ],
+   "container-title": "Pediatric Infectious Disease Journal",
+   "id": "keeDiagnosticYieldTiming2016",
+   "issue": "8",
+   "issued": {
+    "date-parts": [
+     [
+      2016,
+      8
+     ]
+    ]
+   },
+   "language": "en-US",
+   "page": "846-850",
+   "title": "Diagnostic Yield of Timing Blood Culture Collection Relative to Fever",
+   "type": "article-journal",
+   "volume": "35"
+  },
+  "title": "Diagnostic Yield of Timing Blood Culture Collection Relative to Fever",
+  "authors": [
+   "Kee",
+   "Chinnappan",
+   "Nair",
+   "Yeak",
+   "Chen",
+   "Starr",
+   "Daley",
+   "Cheng",
+   "Burgner"
+  ],
+  "year": "2016",
+  "type": "Article"
+ },
+ "whelanPediatricBloodCultures2024": {
+  "full": {
+   "": [
+    "Seán Olann Whelan et al., “Pediatric Blood Cultures—Turning up the Volume: A Before and After Intervention Study,” ",
+    [
+     "em",
+     {},
+     "European Journal of Pediatrics"
+    ],
+    " 183, no. 7 (2024): 3063–71, ",
+    [
+     "a",
+     {
+      "href": "https://doi.org/10.1007/s00431-024-05544-0"
+     },
+     "https://doi.org/10.1007/s00431-024-05544-0"
+    ],
+    "."
+   ]
+  },
+  "short": {
+   "": [
+    "Whelan et al., “Pediatric Blood Cultures—Turning up the Volume.”"
+   ]
+  },
+  "bib": [
+   "Whelan, Seán Olann, Conor Mulrooney, Frank Moriarty, and Martin Cormican. “Pediatric Blood Cultures—Turning up the Volume: A Before and After Intervention Study.” ",
+   [
+    "em",
+    {},
+    "European Journal of Pediatrics"
+   ],
+   " 183, no. 7 (2024): 3063–71. ",
+   [
+    "a",
+    {
+     "href": "https://doi.org/10.1007/s00431-024-05544-0"
+    },
+    "https://doi.org/10.1007/s00431-024-05544-0"
+   ],
+   "."
+  ],
+  "order": 8,
+  "doi": "10.1007/s00431-024-05544-0",
+  "url": "https://doi.org/10.1007/s00431-024-05544-0",
+  "csl": {
+   "DOI": "10.1007/s00431-024-05544-0",
+   "ISSN": "1432-1076",
+   "author": [
+    {
+     "family": "Whelan",
+     "given": "Seán Olann"
+    },
+    {
+     "family": "Mulrooney",
+     "given": "Conor"
+    },
+    {
+     "family": "Moriarty",
+     "given": "Frank"
+    },
+    {
+     "family": "Cormican",
+     "given": "Martin"
+    }
+   ],
+   "container-title": "European Journal of Pediatrics",
+   "id": "whelanPediatricBloodCultures2024",
+   "issue": "7",
+   "issued": {
+    "date-parts": [
+     [
+      2024,
+      4
+     ]
+    ]
+   },
+   "language": "en-US",
+   "page": "3063-3071",
+   "title": "Pediatric Blood Cultures—Turning up the Volume: A before and after Intervention Study",
+   "title-short": "Pediatric Blood Cultures—Turning up the Volume",
+   "type": "article-journal",
+   "volume": "183"
+  },
+  "title": "Pediatric Blood Cultures—Turning up the Volume: A before and after Intervention Study",
+  "authors": [
+   "Whelan",
+   "Mulrooney",
+   "Moriarty",
+   "Cormican"
+  ],
+  "year": "2024",
+  "type": "Article"
+ },
  "hackingLoopingEffectsHuman1996": {
   "full": {
    "": [
@@ -107,7 +385,7 @@
    ],
    ". Second edition. Graphics press, 2001."
   ],
-  "order": 6,
+  "order": 7,
   "doi": null,
   "url": null,
   "csl": {
@@ -139,72 +417,6 @@
   ],
   "year": "2001",
   "type": "Book"
- },
- "dickinsonEmilyDickinsonComplete1960a": {
-  "full": {
-   "": [
-    "Emily Dickinson, “Tell All the Truth but Tell It Slant— (1263),” in ",
-    [
-     "em",
-     {},
-     "Emily Dickinson: The Complete Poems"
-    ],
-    ", 5. print, ed. Thomas Herbert Johnson (Little, Brown Comp, 1960)."
-   ]
-  },
-  "short": {
-   "": [
-    "Dickinson, “Tell All the Truth but Tell It Slant— (1263).”"
-   ]
-  },
-  "bib": [
-   "Dickinson, Emily. “Tell All the Truth but Tell It Slant— (1263).” In ",
-   [
-    "em",
-    {},
-    "Emily Dickinson: The Complete Poems"
-   ],
-   ", 5. print, edited by Thomas Herbert Johnson. Little, Brown Comp, 1960."
-  ],
-  "order": 0,
-  "doi": null,
-  "url": null,
-  "csl": {
-   "ISBN": "978-0-316-18414-4",
-   "author": [
-    {
-     "family": "Dickinson",
-     "given": "Emily"
-    }
-   ],
-   "container-title": "Emily Dickinson: The Complete Poems",
-   "edition": "5. print",
-   "editor": [
-    {
-     "family": "Johnson",
-     "given": "Thomas Herbert"
-    }
-   ],
-   "id": "dickinsonEmilyDickinsonComplete1960a",
-   "issued": {
-    "date-parts": [
-     [
-      1960
-     ]
-    ]
-   },
-   "language": "en-US",
-   "publisher": "Little, Brown Comp",
-   "publisher-place": "Boston",
-   "title": "Tell All the Truth but Tell It Slant— (1263)",
-   "type": "chapter"
-  },
-  "title": "Tell All the Truth but Tell It Slant— (1263)",
-  "authors": [
-   "Dickinson"
-  ],
-  "year": "1960",
-  "type": "Chapter"
  },
  "pirsigZenArtMotorcycle1991": {
   "full": {
@@ -274,7 +486,7 @@
    ],
    ". Vintage, 1991."
   ],
-  "order": 5,
+  "order": 6,
   "doi": null,
   "url": null,
   "csl": {

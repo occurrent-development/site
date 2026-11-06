@@ -34,6 +34,8 @@ def figures():
     for pm in sorted(ROOT.glob("**/*.pm")):
         if SKIP_DIRS & set(pm.relative_to(ROOT).parts):
             continue
+        if pm.name.startswith(".#") or not pm.is_file():   # Emacs lock files (dangling symlinks)
+            continue
         text = pm.read_text(encoding="utf-8")
         found = [(src, LICENCE.search(rest)) for src, rest in FIGURE.findall(text)]
         # IMG-9: a panel without a #:licence of its own has its ◊panels' licence

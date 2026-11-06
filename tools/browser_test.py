@@ -127,10 +127,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path.startswith("/__test/"):
             return os.path.join(HARNESS, path[len("/__test/"):])
         p = os.path.join(PUBLIC, path.lstrip("/"))
+        # /name is name.html even when a folder of that name exists, as the
+        # Worker serves it: the first published blog entry made public/blog/
+        # a directory beside blog.html, and /blog read as a missing index
+        # (seen 2026-11-07, when every later test ran on the 404 page).
+        if path.strip("/") and not path.endswith("/") and os.path.isfile(p + ".html"):
+            return p + ".html"
         if os.path.isdir(p):
             p = os.path.join(p, "index.html")
-        if not os.path.exists(p) and os.path.exists(p + ".html"):
-            p += ".html"
         return p
 
     def end_headers(self):
