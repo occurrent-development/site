@@ -132,7 +132,7 @@ This one may be archaic now: modern bag-valve masks can provide PEEP.
 ◊subsubsection[#:id "concision"]{52. Concision.}
 
 ◊subsubsection[#:id "be-the-dumbest-person-in-the-room"]{53. Be the dumbest person in the room.}
-◊;{When you start interupting meetings to clarify stuff you don't understand you sometimes discover that no-one else understood it either. Or the thing that seemed absurd (so you must have misunderstood it) really is absurd.}
+When you start interupting meetings to clarify stuff you don't understand you sometimes discover that no-one else understood it either. Or the thing that seemed absurd (so you must have misunderstood it) really is absurd.
 
 ◊subsubsection[#:id "the-world-owes-you-nothing"]{54. Remember: the world owes you nothing.}
 
@@ -154,7 +154,7 @@ Words to live by.
 "What's the purpose?"
 
 ◊subsubsection[#:id "perfect-is-the-enemy-of-good"]{62. Perfect is the enemy of good.}
-I originally learnt this as "Don't let perfect be the enemy of good." I had a mentor when I worked in Dubbo who taught me this version, which is much wiser. Perfect is like the speed of light (◊em{c}): the energy required to accelerate to ◊em{c} grows without bound as you approach it. Perfection isn't just unattainable: the effort of approaching it (i.e., the cost) grows without bound---everything else suffers.
+I originally learnt this as "Don't let perfect be the enemy of good." I had a mentor when I worked in Dubbo who taught me this version, which is much wiser. Perfect is like the speed of light (◊em{c}): the energy required to accelerate to ◊em{c} grows without bound as you approach it. Perfection isn't just unattainable: the effort of approaching it (i.e., the cost) grows without bound, and everything else suffers.
 
 ◊subsubsection[#:id "worth-doing-well"]{63. If a job is worth doing well, take your time. Otherwise just do it quickly.}
 My Dad's favourite line was "If a job's worth doing it's worth doing well." I've modified it: things are asked of us that must be done, but need not be done well.
@@ -162,7 +162,9 @@ My Dad's favourite line was "If a job's worth doing it's worth doing well." I've
 ◊subsubsection[#:id "people-know-how-much-you-care"]{64. People don't care how much you know---but they know how much you care.}
 
 ◊subsubsection[#:id "seek-the-unassimilated"]{65. Seek out the unassimilated.}
-Bureaucracies are a bit like the Borg: they want to assimilate individuals into The Collective, rendering their individuality irrelevant. These institutionalised drones loose their ability to think independently from the hive mind. They see organisational rules and structures as permanent and inviolable (even comforting). I find it very difficult to work with drones, so I'm always looking out for the unassimilated.
+Bureaucracies can be a bit like the Borg: they want to assimilate individuals into The Collective, rendering their individuality irrelevant. These institutionalised drones loose their ability to think independently from the hive mind. They see organisational rules and structures as permanent and inviolable (even comforting). I find it very difficult to work with drones, so I'm always looking for the unassimilated.
 
 ◊subsubsection[#:id "be-a-human"]{66. Be a human.}
-This is related to the preceding point. Sometimes you find yourself talking to someone and you realise that while the sounds are coming from human vocal cords, you're not actually talking with a human. You're talking with an avatar for a system---the human is incidental and fungible. The best example is when you're on the phone to customer service (pre-AI): you can tell that the person has some flowchart in front of them and if your problem isn't on the flowchart then they can't help you; using their brain wasn't in their job description. Doctors can sometimes do this too. When they come to a consultation with a prefab set of pathways and an objective to assign the patient to a path. When they come to an interaction only to convey a message or obtain a signature. When they only show the patient a mask. In that moment those doctors are not being humans, they are being avatars for a system. Don't do that. Be a human.
+This is related to the preceding point. Sometimes you find yourself talking to someone and you realise that while the sounds are coming from human vocal cords, you're not actually talking with a human. You're talking with an avatar for a system---the human is incidental and fungible. The best example is when you're on the phone to customer service (pre-AI): you can tell that the person has some flowchart in front of them and if your problem isn't on the flowchart then they can't help you; using their brain wasn't in their job description. Doctors can sometimes do this too. When they come to a consultation with a prefab set of pathways and an objective to assign the patient to a path. When they come to an interaction only to convey a message or obtain a signature. When they only show the patient a mask. In that moment those doctors are not being humans, they are being avatars for a system.
+
+Don't do that. Be a human.
