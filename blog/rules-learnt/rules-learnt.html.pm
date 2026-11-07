@@ -88,7 +88,7 @@ This is talking about lumbar punctures: positioning really matters. It is very e
 I never mastered this one.
 
 ◊subsubsection[#:id "take-the-obs-yourself"]{35. Take the obs yourself.}
-"Obs": heart rate, blood pressure, respiratory rate, capillary refill time. They can convey critical information about a sick kid. My advice to young players: If there's a sick kid under your care, and especially if someone is really worried, go and do the obs yourself. Put your hands on the kid, feel their skin, look them in the eyes. You will get a huge amount of data; over time you'll be able to read it intuitively. Just relying on the raw numbers on a chart is a bad idea: you're reading the result of a lossy compression algorithm. Go and get the raw data!
+"Obs": heart rate, blood pressure, respiratory rate, capillary refill time. They can convey critical information about a sick kid. My advice to young players: If there's a sick kid under your care, and especially if someone is really worried, go and do the obs yourself. Put your hands on the kid, feel their skin, look them in the eyes. You will get a huge amount of data; over time you'll be able to read it intuitively. Just relying on a chart is a bad idea: you're reading the result of a lossy compression algorithm. Go and get the raw data!
 
 ◊subsubsection[#:id "closed-loop-communication"]{36. Speak clearly: closed-loop communication.}
 
