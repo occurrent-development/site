@@ -19,9 +19,19 @@
   "file": "pages/img/2026-11-05-lucas-pillow-specimen-pillar.jpg",
   "invert": false
  },
+ "a82b279326c3902d87d64f2aea2e6e7dc3f566957388acd16cd72dff08e5c8ed": {
+  "checked": "2026-11-07",
+  "file": "blog/whats-in-my-bag/img/ent-kit.jpeg",
+  "invert": false
+ },
  "acf73d6316360b31e0b16c3bcf74792d92e174ac3a1690425955afe02a293b77": {
   "checked": "2026-11-06",
   "file": "essays/zen-and-the-art-of-banana-dissection/img/banana-simple.jpg",
+  "invert": false
+ },
+ "c189efba0065383e9585a3356a254b407476cd83f2d6f58bc531326c55166533": {
+  "checked": "2026-11-07",
+  "file": "blog/whats-in-my-bag/img/pneumatic-modified.jpg",
   "invert": false
  },
  "f4bd8af318713653ab18220f5cc6fb0c8263a98444c9f5d7777ebe16061ce396": {
@@ -43,5 +53,10 @@
   "checked": "2026-11-03",
   "file": "pages/img/2026-11-02-lucas-pillow-specimen-valleys-b.png",
   "invert": true
+ },
+ "fe798b73a5cddb5b2c6e94dfaff5c65173fcab93d88ebff045006e9eeeaaa92f": {
+  "checked": "2026-11-07",
+  "file": "blog/whats-in-my-bag/img/ent-kit-2.jpeg",
+  "invert": false
  }
 }

@@ -423,8 +423,6 @@
          (define id (attr-ref h 'id))
          (cond
            [(<= l level) (values (reverse acc) elems)]
-           [(> l (add1 level))
-            (build-error "heading ~s skips a level (level ~a under level ~a)" id l level)]
            [else
             ;; SECT-6: an optional ◊summary directly after the heading.
             (define-values (summary rest*)

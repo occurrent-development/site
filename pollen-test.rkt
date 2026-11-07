@@ -78,18 +78,35 @@
   (check-equal? (get-elements (first links)) '("A"))
   (check-equal? (attr-ref (first links) 'title) "About alpha.")
   ;; fewer than three level-1 sections: no TOC
-  (check-equal? (find-all (root (section #:id "x" "X") "\n\n" (section #:id "y" "Y")) (tag? 'nav)) '()))
+  (check-equal? (find-all (root (section #:id "x" "X") "\n\n" (section #:id "y" "Y")) (tag? 'nav)) '())
+  ;; level 3 never counts towards the three, and never appears
+  (check-equal? (find-all (root (subsubsection #:id "p" "P") "\n\n" (subsubsection #:id "q" "Q") "\n\n" (subsubsection #:id "r" "R")) (tag? 'nav)) '())
+  (define mixed (root (section #:id "m" "M") "\n\n" (subsubsection #:id "n" "N") "\n\n"
+                      (section #:id "o" "O") "\n\n" (section #:id "s" "S")))
+  (check-equal? (map (λ (a) (attr-ref a 'href)) (find-all (first (get-elements mixed)) (tag? 'a))) '("#m" "#o" "#s")))
 
 (test-case "LAYOUT-3: only the first paragraph is the intro"
   (define doc (apply root three-sections))
   (define intros (find-all doc (λ (x) (and (attrs-have-key? x 'class) (equal? (attr-ref x 'class) "intro")))))
   (check-equal? intros '((p ((class "intro")) "Intro."))))
 
+(test-case "SECT-5: a heading may skip levels"
+  (define doc
+    (root (subsubsection #:id "a" "Level 3 under the title") "\n\n" "Body." "\n\n"
+          (subsubsection #:id "b" "Another at level 3") "\n\n"
+          (section #:id "c" "Level 1") "\n\n"
+          (subsubsection #:id "d" "Level 3 under level 1")))
+  (define sections (find-all doc (tag? 'section)))
+  (check-equal? (map (λ (s) (attr-ref s 'id)) sections) '("a" "b" "c" "d"))
+  (check-equal? (map (λ (s) (attr-ref s 'class)) sections)
+                '("level-3" "level-3" "level-1" "level-3"))
+  ;; d is inside c; b is not inside a
+  (check-not-false (member "d" (map (λ (s) (attr-ref s 'id)) (find-all (third sections) (tag? 'section)))))
+  (check-false (member "b" (map (λ (s) (attr-ref s 'id)) (find-all (first sections) (tag? 'section))))))
+
 (test-case "SECT-1/3/5: validation"
   (check-true (fails? (λ () (section "No id"))))
   (check-true (fails? (λ () (section #:id "Bad Id" "Title"))))
-  (check-true (fails? (λ () (root (section #:id "a" "A") "\n\n" (subsubsection #:id "b" "B")))))
-  (check-true (fails? (λ () (root (subsection #:id "a" "Starts at level 2")))))
   (check-true (fails? (λ () (root (section #:id "a" "A") "\n\n" (section #:id "a" "Again")))))
   (check-true (fails? (λ () (root (blockquote (section #:id "a" "Inside a quote"))))))
   (check-true (fails? (λ () (root "Text." "\n\n" (summary "Orphan."))))))
