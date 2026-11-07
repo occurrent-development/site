@@ -142,7 +142,7 @@ Turns out: no evidence base for this◊cite["keeDiagnosticYieldTiming2016"]. Blo
 ◊subsubsection[#:id "people-who-lack-integrity"]{56. Beware people who lack integrity.}
 
 ◊subsubsection[#:id "forgiveness-not-permission"]{57. It is better to ask for forgiveness than permission.}
-Words to live by.
+Slow, rigid systems rarely approve anything new in advance, but they often tolerate what already works. Start small, keep it reversible, and be ready to explain it. A trial that has already helped someone is a much easier conversation than a proposal.
 
 ◊subsubsection[#:id "be-likeable"]{58. It helps if people like you.}
 
