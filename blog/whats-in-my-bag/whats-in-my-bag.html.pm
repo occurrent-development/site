@@ -16,7 +16,7 @@ I used to use an electrician's backpack, but my enthusiasm got the better of me.
 ◊break{}
 
 ◊section[#:id "vorotek-o-scope"]{VorOtek O-Scope}
-I have so much to say about the VorOtek O-Scope that it has its own post, here.
+I have so much to say about the VorOtek O-Scope that it has its own post, ◊link["/blog/the-vorotek-o-scope"]{here}.
 
 ◊section[#:id "ent-kit"]{ENT kit}
 In addition to the O-Scope, I carry:
