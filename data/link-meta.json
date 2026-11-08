@@ -1,4 +1,10 @@
 {
+ "https://bigtendonhammers.com/": {
+  "wayback": "https://web.archive.org/web/20250823220533/https://bigtendonhammers.com/"
+ },
+ "https://caniuse.com": {
+  "wayback": "https://web.archive.org/web/20261108124507/https://caniuse.com/"
+ },
  "https://docs.racket-lang.org/pollen/": {
   "wayback": "https://web.archive.org/web/20261005005902/https://docs.racket-lang.org/pollen/"
  },
@@ -11,10 +17,22 @@
  "https://practicaltypography.com/": {
   "wayback": "https://web.archive.org/web/20261026211719/https://practicaltypography.com/"
  },
+ "https://www.childrens-stories.net/reading-age/burt-reading-age-test.pdf": {
+  "wayback": "https://web.archive.org/web/20230617113242/https://www.childrens-stories.net/reading-age/burt-reading-age-test.pdf"
+ },
  "https://www.edwardtufte.com/": {
   "wayback": "https://web.archive.org/web/20261026041653/https://www.edwardtufte.com/"
  },
  "https://www.gnu.org/software/emacs/": {
   "wayback": "https://web.archive.org/web/20261024062943/http://www.gnu.org/software/emacs/"
+ },
+ "https://www.vorotek.com/": {
+  "wayback": "https://web.archive.org/web/20260712213116/https://www.vorotek.com/"
+ },
+ "https://www.youtube.com/watch?v=YzhspnatKlg": {
+  "wayback": "https://web.archive.org/web/20260715210147/https://www.youtube.com/watch?v=YzhspnatKlg"
+ },
+ "https://www.youtube.com/watch?v=bdUBsdNhgbA": {
+  "wayback": "https://web.archive.org/web/20260715205918/https://www.youtube.com/watch?v=bdUBsdNhgbA"
  }
 }

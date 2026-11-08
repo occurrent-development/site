@@ -277,6 +277,85 @@
   "year": "2024",
   "type": "Article"
  },
+ "jacksSpontaneousRetinalVenous2003": {
+  "full": {
+   "": [
+    "A. S. Jacks, “Spontaneous Retinal Venous Pulsation: Aetiology and Significance,” ",
+    [
+     "em",
+     {},
+     "Journal of Neurology, Neurosurgery & Psychiatry"
+    ],
+    " 74, no. 1 (2003): 7–9, ",
+    [
+     "a",
+     {
+      "href": "https://doi.org/10.1136/jnnp.74.1.7"
+     },
+     "https://doi.org/10.1136/jnnp.74.1.7"
+    ],
+    "."
+   ]
+  },
+  "short": {
+   "": [
+    "Jacks, “Spontaneous Retinal Venous Pulsation.”"
+   ]
+  },
+  "bib": [
+   "Jacks, A. S. “Spontaneous Retinal Venous Pulsation: Aetiology and Significance.” ",
+   [
+    "em",
+    {},
+    "Journal of Neurology, Neurosurgery & Psychiatry"
+   ],
+   " 74, no. 1 (2003): 7–9. ",
+   [
+    "a",
+    {
+     "href": "https://doi.org/10.1136/jnnp.74.1.7"
+    },
+    "https://doi.org/10.1136/jnnp.74.1.7"
+   ],
+   "."
+  ],
+  "order": 4,
+  "doi": "10.1136/jnnp.74.1.7",
+  "url": "https://doi.org/10.1136/jnnp.74.1.7",
+  "csl": {
+   "DOI": "10.1136/jnnp.74.1.7",
+   "ISSN": "00223050",
+   "author": [
+    {
+     "family": "Jacks",
+     "given": "A S"
+    }
+   ],
+   "container-title": "Journal of Neurology, Neurosurgery & Psychiatry",
+   "id": "jacksSpontaneousRetinalVenous2003",
+   "issue": "1",
+   "issued": {
+    "date-parts": [
+     [
+      2003,
+      1
+     ]
+    ]
+   },
+   "language": "en-US",
+   "page": "7-9",
+   "title": "Spontaneous Retinal Venous Pulsation: Aetiology and Significance",
+   "title-short": "Spontaneous Retinal Venous Pulsation",
+   "type": "article-journal",
+   "volume": "74"
+  },
+  "title": "Spontaneous Retinal Venous Pulsation: Aetiology and Significance",
+  "authors": [
+   "Jacks"
+  ],
+  "year": "2003",
+  "type": "Article"
+ },
  "hackingLoopingEffectsHuman1996": {
   "full": {
    "": [
