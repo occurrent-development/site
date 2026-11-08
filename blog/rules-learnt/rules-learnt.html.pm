@@ -1,6 +1,6 @@
 #lang pollen
 
-◊define-meta[title]{Rules Learnt}
+◊define-meta[title]{Lessons Learnt}
 ◊define-meta[status]{published}
 ◊define-meta[published]{2026-11-07}
 ◊define-meta[tags]{advice}
@@ -12,7 +12,7 @@ Here they are, roughly in chronological order. Most date from when I was a paedi
 ◊break{}
 
 ◊subsubsection[#:id "be-kind"]{1. Be kind.}
-Or as Fred Rogers put it: ◊em{"There are three ways to ultimate success: The first way is to be kind. The second way is to be kind. The third way is to be kind.”}
+◊epigraph[#:source "Fred Rogers"]{There are three ways to ultimate success:◊br{}The first way is to be kind.◊br{}The second way is to be kind.◊br{}The third way is to be kind.}
 
 ◊subsubsection[#:id "be-on-time"]{2. Always be on time.}
 Still aspirational for me.
@@ -30,12 +30,12 @@ Still aspirational for me.
 ◊subsubsection[#:id "prioritise-and-execute"]{8. You never know when the shit will hit the fan: prioritise and execute, only then take a break.}
 
 ◊subsubsection[#:id "tell-the-truth"]{9. Always tell the truth (or stay silent).}
-Sometimes the truth ought to be ◊em{slant}◊cite["dickinsonEmilyDickinsonComplete1960a"].
+Although sometimes the truth ought to be ◊em{slant}◊cite["dickinsonEmilyDickinsonComplete1960a"].
 
 ◊subsubsection[#:id "anger-wastes-energy"]{10. Anger is usually a waste of energy.}
 
 ◊subsubsection[#:id "cleverer-you-think"]{11. The cleverer you think you're being, the more likely you're wrong.}
-"Pride goeth before destruction..." (Proverbs 16:18)
+◊epigraph[#:source "Proverbs 16:18"]{Pride goeth before destruction...}
 
 ◊subsubsection[#:id "shut-up-and-listen"]{12. Learn to shut up and listen.}
 
