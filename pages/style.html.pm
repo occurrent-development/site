@@ -21,19 +21,12 @@ Where a rule here is also a requirement there, the ID follows it in parentheses 
 
 Owner: Ryan.
 Modelled on ◊link["https://gwern.net/style-guide" #:note "The style guide this manual follows in structure."]{the Gwern style guide}.
+The AI policy is on ◊link["/policies#ai-policy"]{the policies page}.
 
 ◊break{}
 
-◊section[#:id "ai-policy"]{AI policy}
-
-I use AI in the research and planning stages of writing.
-When a piece is finished, an AI checks the final version against this manual.
-
-No AI-authored text appears on this site.
-The ideas and the writing are human, and will always be.
-
 ◊;{CONFLICT, for Ryan to resolve before this page is published. Three
-passages carried over from STYLE.md unchanged disagree with the policy above:
+passages carried over from STYLE.md unchanged disagree with the AI policy at /policies#ai-policy:
 the first item of Usage (a Claude Code session that edits prose is a user of
 this manual); the third item of Generative media (prose written with a model's
 help carries no label); and the whole of Writing with an assistant (models
@@ -42,7 +35,7 @@ drafting and editing prose). Each has its own marker comment where it sits.}
 ◊section[#:id "usage"]{Usage}
 
 ◊;{CONFLICT: the first item below lists a Claude Code session that edits prose
-among the users of this manual, which the AI policy rules out. Ryan to decide.}
+among the users of this manual, which the AI policy (/policies#ai-policy) rules out. Ryan to decide.}
 
 ◊list{
 - ◊em{Who it is for.}
@@ -619,7 +612,7 @@ For Claude Code sessions and any other model asked to draft, edit or review pros
 
 ◊;{CONFLICT: every item below except the checklist and the files-and-names
 item is about a model drafting or editing prose, which the AI policy at the
-top of this page rules out. Carried over from STYLE.md unchanged. Ryan to
+AI policy (/policies#ai-policy) rules out. Carried over from STYLE.md unchanged. Ryan to
 decide whether this section becomes review-only.}
 
 ◊list{
@@ -645,7 +638,7 @@ Ventilated prose (see ◊link["#source-conventions"]{Source conventions}) exists
 }
 
 ◊changelog{
-2026-11-08: Rewritten as a page of the site, with a section on AI policy added at the top. Section numbers are gone, as this manual requires of the site, and each cross-reference is now a link.
+2026-11-08: Rewritten as a page of the site. The AI policy lives on the policies page. Section numbers are gone, as this manual requires of the site, and each cross-reference is now a link.
 2026-11-03: Version 1.2. The tables in Metadata and Filetypes, whose cells were sentences, became lists; the rule for that is in Repository documents, because no editor wraps text inside a pipe-table cell. Open: the serial comma (◊code{D5}), ventilated prose as practice, the rename script.
 2026-11-02: Version 1.1 (afternoon). Panel figures in Figures, with SPEC ◊code{IMG-9}.
 2026-11-02: Version 1.0. First draft, from ◊code{SPEC.md} §17 and Gwern's style guide; the file-naming and filetype rules of Files are taken from that guide with local adaptations marked ◊em{Here}.
