@@ -789,11 +789,17 @@ every insert command does (EMACS-2), and a prefix argument reaches it."
     (call-interactively (alist-get choice choices nil nil #'equal))))
 
 (defun od-insert-link ()
-  "Insert a ◊link: to this page, to another page of this site, or to the web (§8)."
+  "Insert a ◊link, a ◊ref or an ◊anchor: everything that points, or is pointed at.
+A link goes to this page, to another page of this site, or to the web (§8).
+A figure or table is referred to by number (`od-insert-ref'). An anchor
+\(`od-insert-anchor') is the place a link on this page points at; it may
+stand inside an ◊aside (ASIDE-9)."
   (interactive)
   (od--menu "Link to" '(("this page" . od-insert-link-internal)
                         ("this site" . od-insert-link-essay)
-                        ("other site" . od-insert-link-external))))
+                        ("other site" . od-insert-link-external)
+                        ("figure or table" . od-insert-ref)
+                        ("anchor" . od-insert-anchor))))
 
 (defun od-glossary ()
   "The glossary: insert a ◊term, make a new term, or open a term's file (§7).
@@ -817,13 +823,6 @@ break or rule."
                        ("margin note" . od-insert-margin)
                        ("break" . od-insert-break)
                        ("rule" . od-insert-rule))))
-
-(defun od-insert-reference ()
-  "Insert a cross-reference: a ◊ref to a figure or table, or an ◊anchor.
-An anchor marks a place in the text for a link to point at."
-  (interactive)
-  (od--menu "Reference" '(("ref to a figure or table" . od-insert-ref)
-                          ("anchor" . od-insert-anchor))))
 
 (defun od-insert-block ()
   "Insert a block of text: a ◊list, a ◊blockquote or an ◊epigraph.
@@ -990,7 +989,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; :command the command under C-c o that inserts it (VOCAB-5, SPEC EMACS-6);
 ;;          `od-insert-tag' (C-c o j) for the tags with no command of their own;
 ;;          a menu (EMACS-7) for the tags reached through one: `od-insert-element',
-;;          `od-insert-link', `od-glossary', `od-insert-reference', `od-insert-block'
+;;          `od-insert-link', `od-glossary', `od-insert-block'
 ;; :only    the one kind of file where the tag belongs (see `od-file-kind')
 ;; :inside  the tag it must stand inside (◊sense inside ◊term, TERM-9)
 ;; :not     kinds of file where the tag is refused (KIND-2: no epistemic
@@ -1013,8 +1012,8 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (em            :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (strong        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (code          :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
-    (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-reference)
-    (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-reference)
+    (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-link)
+    (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-link)
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
     (rule          :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
@@ -1293,7 +1292,7 @@ changelog and no contents; everything else is the same.
    - links: {od-insert-link}, then this page, this site or other site
    - a figure: put the image in img/, then {od-insert-element}, figure (or
      panels, for several side by side); a table: {od-insert-element}, table;
-     refer to either with {od-insert-reference}, ref; {od-insert-reference},
+     refer to either with {od-insert-link}, figure or table; {od-insert-link},
      anchor marks a place in the text to link to
    - a note to yourself: M-; (hidden from the page)
    - jump between sections: {od-goto-section} (or imenu)
@@ -2785,9 +2784,8 @@ title. A blog entry renames the same way, under /blog/."
     (define-key m (kbd "C-c o c") #'od-insert-cite)
     (define-key m (kbd "C-c o e") #'od-new-reference)    ; a work's commentary file (BIB-3)
     (define-key m (kbd "C-c o g") #'od-glossary)         ; insert, new, open
-    (define-key m (kbd "C-c o l") #'od-insert-link)      ; this page, this site, other site
+    (define-key m (kbd "C-c o l") #'od-insert-link)      ; this page, this site, other site, figure or table, anchor
     (define-key m (kbd "C-c o i") #'od-insert-element)   ; section, figure, panels, table, summary, aside, margin, break, rule
-    (define-key m (kbd "C-c o r") #'od-insert-reference) ; ref, anchor
     (define-key m (kbd "C-c o b") #'od-insert-block)     ; list, block quotation, epigraph
     (define-key m (kbd "C-c o w") #'od-wrap)             ; em, strong, sc, code (toggles)
     (define-key m (kbd "C-c o o") #'od-toggle-italic)
@@ -2849,8 +2847,8 @@ opens a guide to starting, publishing and revising an essay. Inside a pipe
 table, Org's table keys work (TAB aligns, M-arrows move rows and columns).
 
 The lower-case keys under `C-c o' are menus (EMACS-7): one key, then a
-choice by `completing-read': `C-c o g' the glossary, `C-c o l' a link,
-`C-c o i' an element of the page, `C-c o r' a cross-reference, `C-c o b'
+choice by `completing-read': `C-c o g' the glossary, `C-c o l' a link (or a figure reference, or an anchor),
+`C-c o i' an element of the page, `C-c o b'
 a block of text, `C-c o w' an inline tag. The rest:
 
 \\{occurrent-mode-map}"

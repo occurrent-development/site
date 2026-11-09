@@ -11,7 +11,7 @@ I've given a brief description of each below because it might be useful to other
 
 I used to use an electrician's backpack, but my enthusiasm got the better of me. I've upgraded to an electrician's crate.
 
-◊figure["img/kit-1.jpeg" #:id "the-bag" #:title "The Bag" #:alt "An electrician's crate packed with clinical equipment." #:licence "own"]{}
+◊figure["img/kit-1.jpeg" #:id "the-bag-img" #:title "The Bag" #:alt "An electrician's crate packed with clinical equipment." #:licence "own"]{}
 
 ◊break{}
 
@@ -56,9 +56,9 @@ VorOtek sells these. Just a half-mirror that sticks onto the O-Scope so someone 
 Verdict: TBA.◊br{}
 Cost: $180.}
 
-◊figure["img/ent-kit.jpeg" #:id "ent-kit-1" #:title "ENT Kit 1" #:alt "The ENT instruments described in this section, laid out together." #:licence "own"]{Clockwise from top left: St Clair Thomson mirrors, Thudicum specula, cotton wool balls, immersion oil for dermatoscope, Q-tips, wooden tongue depressors, Lack tongue depressors.}
+◊figure["img/ent-kit.jpeg" #:id "ent-kit-img-1" #:title "ENT Kit 1" #:alt "The ENT instruments described in this section, laid out together." #:licence "own"]{Clockwise from top left: St Clair Thomson mirrors, Thudicum specula, cotton wool balls, immersion oil for dermatoscope, Q-tips, wooden tongue depressors, Lack tongue depressors.}
 
-◊figure["img/ent-kit-2.jpeg" #:id "ent-kit-2" #:title "ENT Kit 2" #:alt "A second view of the ENT instruments described in this section." #:licence "own"]{Top to bottom: O-Scope teaching mirror, curettes, alligator forceps.}
+◊figure["img/ent-kit-2.jpeg" #:id "ent-kit-img-2" #:title "ENT Kit 2" #:alt "A second view of the ENT instruments described in this section." #:licence "own"]{Top to bottom: O-Scope teaching mirror, ◊link["/blog/the-vorotek-o-scope#instruments-for-getting-things-out-of-ears"]{curettes}, alligator forceps.}
 
 ◊section[#:id "other-medical-equipment"]{Other Medical Equipment}
 ◊subsubsection[#:id "stethoscope"]{Stethoscope.}
@@ -76,7 +76,7 @@ Verdict: Outstanding◊br{}
 Cost: ~$300, but now hard to find.}
 
 ◊subsubsection[#:id "ophthalmoscope"]{Ophthalmoscope.}
-I use a Heine ophthalmoscope that my Dad gave me when I got into medical school. I've had it on me every day since I started as an intern---it's looked in thousands of eyes. With the O-Scope I have no need for a dedicated otoscope, so now I only carry the ophthalmoscope head. I can't tell you how much better the Heine is than the Welch Allyn---no way would a Welch Allyn still be working after all those years of solid use! ◊aside{I do not like Welch Allyn, though it seems that they've done a good job of convincing people that they make quality kit. It seems to me that the company's focus is on compensating for poor examination technique at the expense of solid build quality. They're all made of plastic with small, flimsy, proprietary, mission-critical parts that you will lose or break. Your kids will not inherit a Welch Allyn anything that they will want to use. Heine, on the other hand, make bullet-proof tools. Both are expensive, but Heine is ◊em{far} better.}
+I use a Heine ophthalmoscope that my Dad gave me when I got into medical school. I've had it on me every day since I started as an intern---it's looked in thousands of eyes. With the O-Scope I have no need for a dedicated otoscope, so now I only carry the ophthalmoscope head. I can't tell you how much better the Heine is than the Welch Allyn---no way would a Welch Allyn still be working after all those years of solid use! ◊aside{◊anchor["welch-allyn-complaint"]I do not like Welch Allyn, though it seems that they've done a good job of convincing people that they make quality kit. It seems to me that the company's focus is on compensating for poor examination technique at the expense of solid build quality. They're all made of plastic with small, flimsy, proprietary, mission-critical parts that you will lose or break. Your kids will not inherit a Welch Allyn anything that they will want to use. Heine, on the other hand, make bullet-proof tools. Both are expensive, but Heine is ◊em{far} better.}
 
 I use an ophthalmoscope frequently for the Brückner test and, occasionally, to look at the fundus◊aside{In my opinion the Welch Allyn panophthalmoscope is, for the paediatrician, a gimmick (I own one). Firstly, it's useless for red reflex, so you'll need to have a regular ophthalmoscope anyway. Secondly, if a paediatrician wants to look in the back of the eye it's to exclude raised ◊sc{ICP}. You don't need a wide field of view for that, you need to see the disc and the vessels. The magnification you get with a traditional ophthalmoscope means you're much more able to appreciate the disc and see spontaneous retinal venous pulsations.}. I look at the fundus for even the slightest indication---not because it's indicated, but to maintain the skill. I can usually assess spontaneous retinal venous pulsations from 4 (occasionally 3) years of age. (Years of practice; helps to be an avid enthusiast!) Those pulsations are really useful: their presence makes raised ◊sc{ICP} very unlikely (except if there is co-occurring raised intra-ocular pressure, which is more a point of trivia); the absence of pulsations tells you nothing about the intracranial pressure.◊cite["jacksSpontaneousRetinalVenous2003"].
 
@@ -88,12 +88,13 @@ Cost: Usually around $1,500. Go for build quality over feature set.}
 
 ◊section[#:id "dermatology-stuff"]{Dermatology Stuff}
 ◊subsubsection[#:id "dermatoscope"]{Dermatoscope.}
-◊figure["img/dermatoscope.jpeg" #:id "heine-delta-20-dermatoscope" #:title "Heine Delta 20 Dermatoscope" #:alt "" #:licence "own"]{}
 I use a Heine Delta 20 dermatoscope. I don't use it much, but it is good for hunting scabies or head lice.
 
 ◊em{Use: Every month or so.◊br{}
 Verdict: I like it, but I'd swap it for a Dino-Lite. That's me being an enthusiast though, for normies it ain't worth it.◊br{}
 Cost: About $1,500--$2,000.}
+
+◊figure["img/dermatoscope.jpeg" #:id "dermatoscope-img" #:title "Heine Delta 20 Dermatoscope" #:alt "" #:licence "own"]{}
 
 ◊subsubsection[#:id "woods-light"]{Wood's light.}
 I previously carried an old mercury vapour discharge Wood's light. It wasn't well made, and there were issues with the circuit. I now have a smaller and more robust ◊sc{LED} one.◊aside{The mercury vapour light had an emission spectrum of around 320--400 nm, with a peak at 365 nm. Most ◊sc{LED} ultraviolet lights have a single peak at 365 nm, with a much narrower emission spectrum---but there are other peaks at longer wavelengths. How much does this matter? Not sure!}. I use it when I'm looking for hypopigmented macules or at dermatoses. I always wear orange filter glasses when using it, both to protect my eyes and because it improves contrast.
@@ -138,6 +139,8 @@ Better than a hand for visual acuity / fields! I like having them, but don't use
 Verdict: You don't need one, but they really do the job well.◊br{}
 Cost: $30.}
 
+◊figure["img/eye-covers.jpg" #:id "eye-occluders-img" #:title "Eye occluders" #:alt "" #:licence "own" #:width 0.5]{}
+
 ◊section[#:id "stuff-for-measuring-stuff"]{Stuff for Measuring Stuff}
 ◊subsubsection[#:id "tape-measure"]{Tape measure.}
 I like the ones in sewing kits; they're usually plastic◊aside{The paper ones are annoying and can cause paper cuts on the tops of ears when measuring head circumference (if you're not careful).} with fibreglass embedded so they don't stretch. Easy to clean with a Tuffy wipe.
@@ -153,12 +156,16 @@ Very rarely used, but does what it says on the tin.
 Verdict: I like having it. I think it's worth having one.◊br{}
 Cost: ~$100.}
 
+◊figure["img/orchidometer.jpg" #:id "orchidometer-img" #:title "Orchidometer" #:alt "" #:licence "own" #:width 0.5]{}
+
 ◊subsubsection[#:id "craniometer"]{Craniometer.}
-This is for assessing plagiocephaly. I never really liked using it, and I don't really see babies these days.
+This is for assessing plagiocephaly. I never really liked using it, and I don't really see babies these days. (Now removed from bag)
 
 ◊em{Use: Not for years.◊br{}
 Verdict: I can't recommend this.◊br{}
 Cost: Over $200 (inexplicably).}
+
+◊figure["img/craniometer.jpg" #:id "craniometer-img" #:title "Craniometer" #:alt "" #:licence "own" #:width 0.5]{}
 
 ◊subsubsection[#:id "goniometer"]{Goniometer.}
 I don't use this much, but it is good for documenting knee angles in kids with obesity (I have a few of these).
@@ -167,10 +174,19 @@ I don't use this much, but it is good for documenting knee angles in kids with o
 Verdict: Hard to recommend.◊br{}
 Cost: Cheap on Amazon.}
 
+◊figure["img/goniometer.jpg" #:id "goniometer-img" #:title "Goniometer" #:alt "" #:licence "own" #:width 0.5]{}
+
+◊subsubsection[#:id "callipers"]{Callipers}
+These are called inside/outside callipers, I got them cheap from an archeology shop of all places. They're just for measuring things, and I've never found anything better for measuring facial dimensions, like for FASD. I do that extremely rarely.
+
+◊em{Use: Maybe once a year.◊br{}
+Verdict: They do the job very well.◊br{}
+Cost: ~$20 online.}
+
+◊figure["img/callipers.jpg" #:id "callipers-img" #:title "Callipers" #:alt "" #:licence "own" #:width 0.5]{}
+
 ◊section[#:id "maths-kit"]{Maths Kit}
 This is just a little bag of tricks for trying to establish a child's numeracy understanding.
-
-◊figure["img/maths-kit.jpeg" #:id "maths-kit-figure" #:title "Maths Kit" #:alt "" #:licence "own"]{Clockwise from top left: Tangram, tens set, pencils, play money.}
 
 ◊subsubsection[#:id "wooden-tens-set"]{Wooden tens set.}
 I use this frequently. Usually when I am trying to get an idea of a kid's fundamental numeracy skills I start with some problems on a sheet of paper, but if they find that too hard then it is helpful to pull these out to see whether they actually get the concept of units, tens, hundreds. Easy to do some basic arithmetic with these. And stacking the little blocks takes serious fine motor skill!
@@ -195,6 +211,8 @@ Cost: $8.50 at Office Works.}
 
 ◊subsubsection[#:id "wooden-pencils"]{Wooden pencils.}
 I write maths problems of varying difficulty, they use pencil and paper to solve them.
+
+◊figure["img/maths-kit.jpeg" #:id "maths-kit-img" #:title "Maths Kit" #:alt "" #:licence "own"]{Clockwise from top left: Tangram, tens set, pencils, play money.}
 
 ◊section[#:id "reference-sheets-and-assorted-documents" #:short "Reference sheets"]{Reference Sheets and Assorted Documents}
 I have a folder with the following:

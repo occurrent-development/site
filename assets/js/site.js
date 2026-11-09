@@ -874,6 +874,57 @@ function schedulePreviewEnd() {
   }, 250);
 }
 
+// ── A link to an anchor inside an aside (ASIDE-9) ──────────────────────────
+// An ◊anchor in an aside keeps its id in the Asides list, the copy shown
+// without scripts and hidden when they run (the inline copy names it in
+// data-anchor). So a link or a URL naming it lands nowhere visible until
+// the aside is opened: this opens it at its circle (in the margin, or as a
+// popup in tiers M and S) and brings the anchor into view inside it.
+
+function circleOfAsideLi(li) {
+  return article && [...article.querySelectorAll(".circle-link, a.aside-phrase[data-targets]")]
+    .find((c) => c.dataset.targets.split(" ").includes(li.id)) || null;
+}
+
+function asideAnchor(id) {
+  const li = id && byId(id)?.closest("#asides li[id^='aside-']");
+  const circle = li && circleOfAsideLi(li);
+  return circle ? { circle, id } : null;
+}
+
+async function revealAnchor(id) {
+  const hit = asideAnchor(id);
+  if (!hit) return false;
+  const { circle } = hit;
+  const mark = `[data-anchor="${CSS.escape(id)}"]`;
+  close();
+  circle.scrollIntoView({ block: "center" });
+  const stub = stubFor(circle);
+  if (stub) {
+    if (marginOpen?.stub !== stub) toggleMargin(stub);
+    stub.querySelector(mark)?.scrollIntoView({ block: "nearest" });
+  } else {
+    await openFor(circle, { pinned: true });
+    document.querySelector(`.popup ${mark}`)?.scrollIntoView({ block: "nearest" });
+  }
+  return true;
+}
+
+const hashId = () => { try { return decodeURIComponent(location.hash.slice(1)); } catch { return ""; } };
+addEventListener("hashchange", () => { revealAnchor(hashId()); });
+// the same link followed twice changes no hash, so no hashchange
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a.link.same");
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+  if (a.getAttribute("href") !== location.hash || !asideAnchor(hashId())) return;
+  e.preventDefault();
+  revealAnchor(hashId());
+});
+// a URL that names one, once the first layout has made the margin
+function revealFromUrl() {
+  if (location.hash.length > 1) requestAnimationFrame(() => requestAnimationFrame(() => revealAnchor(hashId())));
+}
+
 // ── Events ────────────────────────────────────────────────────────────────
 
 document.addEventListener("click", (e) => {
@@ -1725,6 +1776,8 @@ new ResizeObserver(scheduleLayout).observe(page);
 // last pass (BAR-1d, LAYOUT-1a).
 if (article) new ResizeObserver(scheduleLayout).observe(article, { box: "border-box" });   // the column keeps its width; the margins change
 addEventListener("load", scheduleLayout);
+if (document.readyState === "complete") revealFromUrl();
+else addEventListener("load", revealFromUrl);
 
 // TABLE-4/5: the table script loads only on pages that need it.
 if (document.querySelector("table[data-sortable], .table-wrap table tbody tr:nth-child(15)")) {

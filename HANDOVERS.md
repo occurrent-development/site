@@ -186,7 +186,7 @@ When this is built, fold the new IDs into `SPEC.md` §16 and point it here for d
 
 | Thing | State |
 |---|---|
-| `emacs/occurrent.el` | A **minor mode**, `occurrent-mode`, meant to sit on top of some major mode for `.pm` files. Pickers for cites, terms, links, sections, tags and (since 2026-10-15) figure/table references (`od-insert-ref`, `C-c o r`, reading `#:id`/`#:title` from `◊figure`, `◊table` and `◊table-csv` in the buffer); `imenu`; `outline-minor-mode`; three font-lock rules that dim `◊name`, `#:keyword` and brackets; `fill-paragraph` protection for `◊define-meta` lines (SRC-4); `od-preview` via `make serve`; the macOS Option-key fix (EMACS-1). Keys under `C-c o`, lozenge on `C-c ;`. |
+| `emacs/occurrent.el` | A **minor mode**, `occurrent-mode`, meant to sit on top of some major mode for `.pm` files. Pickers for cites, terms, links, sections, tags and (since 2026-10-15) figure/table references (`od-insert-ref`, now `C-c o l`, *figure or table*, reading `#:id`/`#:title` from `◊figure`, `◊table` and `◊table-csv` in the buffer); `imenu`; `outline-minor-mode`; three font-lock rules that dim `◊name`, `#:keyword` and brackets; `fill-paragraph` protection for `◊define-meta` lines (SRC-4); `od-preview` via `make serve`; the macOS Option-key fix (EMACS-1). Keys under `C-c o`, lozenge on `C-c ;`. |
 | Major mode | None of ours. The comment in `occurrent.el` assumes `pollen-mode` from MELPA (`lijunsong/pollen-mode`, v1.0, LGPL). |
 | Build | `make` (tests, fonts, render, validate, assemble `public/`), offline. `make refresh` is the only networked step (Zotero export → `refs/refs.bib`, pandoc → `data/cite-cache.json`, InvertOrNot → `data/invert.json`). |
 | Deploy | Push to `main` on `github.com/occurrent-development/site` → GitHub Actions builds and deploys to the Cloudflare Worker. Other branches build but do not deploy. Nothing generated is committed. |
@@ -454,10 +454,10 @@ Nothing else. `occurrent-mode-hook` is where Ryan adds `flyspell-mode`, `visual-
 | `i` | `od-insert-element`: section, figure, panels, table, summary, aside, margin note, break, rule | `P` | `od-publish` |
 | `j` | `od-insert-tag` | `R` | `od-rename-post` |
 | `k` | `od-check` | `T` | `od-set-tags` |
-| `l` | `od-insert-link`: this page, this site, other site | `U` | `od-up` |
+| `l` | `od-insert-link`: this page, this site, other site, figure or table, anchor | `U` | `od-up` |
 | `o` | `od-toggle-italic` | `<` | `od-promote` |
 | `p` | `od-preview` | `>` | `od-demote` |
-| `r` | `od-insert-reference`: ref to a figure or table, anchor | | |
+| | *(`r` removed 2026-11-09: its choices moved into `l`; `od-insert-reference` is gone)* | | |
 | `u` | `od-unwrap` | | |
 | `w` | `od-wrap`: em, strong, sc, code (a toggle) | | |
 

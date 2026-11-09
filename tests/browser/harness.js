@@ -496,15 +496,15 @@ async function tests() {
     expect(w.getComputedStyle(epi.querySelector("em")).fontStyle === "normal", "emphasis in the italic epigraph is not roman");
   });
 
-  await test("IMG-2: #:width 0.5 is half the column, flush left, words in the margin, Expand on its corner; whole column at S", async () => {
+  await test("IMG-2: #:width 0.5 is half the column, centred, words in the margin, Expand on its corner; whole column at S", async () => {
     await resize(1400, 900);
     const fig = d.getElementById("pillar");
     fig.scrollIntoView({ block: "center" });
     await settle(200);
     const body = rect(fig.querySelector(".exhibit-body")), img = rect(fig.querySelector("img"));
     const col = rect(d.querySelector("article p"));
-    near(img.left, col.left, 1, "the image's left against the text's");
     near(img.width, col.width / 2, 2, "the image against half the column");
+    near(img.left, col.left + (col.width - img.width) / 2, 1, "the image is not centred in the column");
     expect(rect(fig.querySelector(".exhibit-title")).left > col.right, "the title is not in the margin at L");
     const ex = rect(fig.querySelector(".expand"));
     expect(ex.right <= img.right + 0.5 && ex.right > img.right - 20 && ex.top < img.top + 20, "Expand is not on the image's top-right corner");

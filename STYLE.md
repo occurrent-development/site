@@ -297,7 +297,7 @@ What the site looks like is specified in `SPEC.md` §4, §7–§11 and decided o
 
 - **Stance.** The page is a printed page that happens to be alive. Every interactive thing is a quieter version of something print already does: a margin note, a footnote, a cross-reference. If a feature has no print ancestor, it needs a very good reason.
 - **Two marks only**: the arrow (takes you away) and the circle (you stay here). No third mark, ever (`MARK-1`). A reader learns the system in one essay.
-- **Typography carries the hierarchy.** Size, case, weight and space, in that order of preference; colour last; rules sparingly; boxes never. Nothing is centred except the section-break glyph.
+- **Typography carries the hierarchy.** Size, case, weight and space, in that order of preference; colour last; rules sparingly; boxes never. Nothing is centred except the section-break glyph and a figure narrower than the column (IMG-2).
 - **Colour** is for links and the current section, one accent, and the rest of the page is the text colour and its muted step. If a colour appears in two unrelated places, one of them is wrong.
 - **Dark mode is a first-class theme**, not an inversion: every figure classified (`IMG-4`), every colour a property, every screenshot in the checks taken twice.
 - **Motion** is for state change only (a popup opening, the bar appearing), ≤ 200 ms, and absent under `prefers-reduced-motion`.

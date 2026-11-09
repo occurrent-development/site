@@ -232,6 +232,23 @@
   (check-true (fails? (λ () (root (link "#nowhere" "x")))))
   (check-true (fails? (λ () (root (link "mailto:x@y" "x"))))))
 
+(test-case "ASIDE-9: an anchor in an aside keeps its id in the Asides list; a link to it points toward the aside"
+  (define doc (root (section #:id "a" "A") "\n\n"
+                    (link "#in-aside" "before") " " (aside "A remark " (anchor "in-aside") "here.") " " (link "#in-aside" "after")))
+  ;; one element holds the id: the copy in the Asides list, shown without scripts
+  (define holders (find-all doc (λ (x) (and (attrs-have-key? x 'id) (equal? (attr-ref x 'id) "in-aside")))))
+  (check-equal? (length holders) 1)
+  (check-not-false (memq (car holders) (find-all (by-id doc "asides") txexpr?)))
+  ;; the hidden inline copy names it in data-anchor, for the script
+  (check-equal? (length (find-all (by-id doc "aside-text-1")
+                                  (λ (x) (and (attrs-have-key? x 'data-anchor) (equal? (attr-ref x 'data-anchor) "in-aside")))))
+                1)
+  ;; the link before the aside points down to it, the one after points up
+  (define dirs
+    (for/list ([a (in-list (find-all doc (λ (x) (has-class* x "same"))))])
+      (for/first ([m (in-list (find-all a (λ (x) (regexp-match? #rx"^mark " (classes x)))))]) (classes m))))
+  (check-equal? dirs '("mark m-down" "mark m-up")))
+
 (test-case "MARK-3: the last word and its mark never part"
   (define doc (root (link "https://example.org" "two words")))
   (define nw (car (find-all doc (λ (x) (equal? (classes x) "nw")))))

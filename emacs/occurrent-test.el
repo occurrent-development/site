@@ -710,6 +710,29 @@ The key is picked as \"k\"."
       (od-test-with "" (od-insert-element))
       (should (string-match-p "default rule" seen)))))
 
+(ert-deftest od-test-link-menu-anchor ()
+  "C-c o l offers anchor, and it inserts an ◊anchor, inside an ◊aside as anywhere (ASIDE-9)."
+  (od-test-with "An ◊aside{a remark about finalised} here."
+    (search-forward "finalised")
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (prompt coll &rest _)
+                 (if (string-prefix-p "Link to (default" prompt)
+                     (progn (should (assoc "anchor" coll)) "anchor")
+                   "unused")))
+              ((symbol-function 'read-string) (lambda (&rest _) "finalised-product")))
+      (od-insert-link))
+    (should (equal (buffer-string)
+                   "An ◊aside{a remark about finalised◊anchor[\"finalised-product\"]} here."))
+    (should (assoc "finalised-product" (od--ids))))
+  ;; the figure and table reference is in the same menu, and C-c o r is gone
+  (let (ran)
+    (od-test-with ""
+      (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "figure or table"))
+                ((symbol-function 'od-insert-ref) (lambda () (interactive) (setq ran t))))
+        (od-insert-link))
+      (should ran)
+      (should-not (lookup-key occurrent-mode-map (kbd "C-c o r"))))))
+
 (ert-deftest od-test-wrap-toggles ()
   "`od-wrap' inside the same tag takes it off; inside another, it nests."
   (od-test-with "One ◊em{word} here."

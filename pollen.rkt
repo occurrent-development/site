@@ -649,10 +649,17 @@
         [(cons e more) (loop (cons (walk e ctx) before) more)])))
   (map (λ (e) (walk e #f)) elems))
 
+;; ASIDE-9: an ◊anchor inside an aside keeps its id only in the Asides list,
+;; the copy that is shown without scripts; the hidden inline copy names it
+;; in data-anchor instead, so the script can find it without a duplicate id.
 (define (strip-ids x)
-  (if (txexpr? x)
-      (txexpr (get-tag x) (filter (λ (a) (not (eq? (car a) 'id))) (get-attrs x)) (map strip-ids (get-elements x)))
-      x))
+  (cond
+    [(not (txexpr? x)) x]
+    [(and (eq? (get-tag x) 'span) (null? (get-elements x)) (attrs-have-key? x 'id)
+          (not (attrs-have-key? x 'class)))
+     `(span ((data-anchor ,(attr-ref x 'id))))]
+    [else
+     (txexpr (get-tag x) (filter (λ (a) (not (eq? (car a) 'id))) (get-attrs x)) (map strip-ids (get-elements x)))]))
 
 ;; CARD-4: card facts entered by hand, keyed by URL.
 (define link-meta-cache #f)
@@ -1100,12 +1107,30 @@
       (set! i (add1 i))
       (when (attrs-have-key? x 'id) (hash-ref! order (attr-ref x 'id) i))
       (for-each walk (get-elements x))))
+  ;; ASIDE-9: an id inside the Asides list, the copy shown without scripts,
+  ;; stands where its aside does: a link before the aside points down to it
+  (let walk ([x doc])
+    (when (txexpr? x)
+      (define m (and (eq? (get-tag x) 'li) (attrs-have-key? x 'id)
+                     (regexp-match #rx"^aside-([0-9]+)$" (attr-ref x 'id))))
+      (define at (and m (hash-ref order (string-append "aside-text-" (cadr m)) #f)))
+      (if at
+          (for ([d (in-list (find-all x (λ (y) (and (not (eq? y x)) (attrs-have-key? y 'id)))))])
+            (hash-set! order (attr-ref d 'id) at))
+          (for-each walk (get-elements x)))))
   (define j 0)
+  ;; the walk below does not descend into a link, so it counts a link's
+  ;; elements here, to keep `j` in step with `i` above (ASIDE-9: until
+  ;; 2026-11-09 a link after another link counted too low, and an aside
+  ;; right after both could be taken to lie after the second)
+  (define (count-nodes x)
+    (if (txexpr? x) (add1 (for/sum ([e (in-list (get-elements x))]) (count-nodes e))) 0))
   (let walk ([x doc])
     (cond
       [(txexpr? x)
        (set! j (add1 j))
        (define here j)
+       (when (has-class? x "same") (set! j (+ j (sub1 (count-nodes x)))))
        (if (has-class? x "same")
            (let* ([id (substring (attr-ref x 'href) 1)]
                   [target (hash-ref order id (λ () (build-error "◊link target #~a does not exist on this page" id)))]

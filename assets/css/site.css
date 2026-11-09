@@ -864,12 +864,13 @@ ol.list > li::before {
 .exhibit-body { position: relative; }
 figure.figure img, figure.figure svg { display: block; width: 100%; height: auto; }
 /* IMG-2 (spec 1.27): #:width sets the image, or a panel figure's grid, at a
-   fraction of the column (--fig-width, 0.25 to 1), flush left; the title,
+   fraction of the column (--fig-width, 0.25 to 1), centred in the column
+   (2026-11-09; it was flush left); the title,
    caption and credit keep their places, so only the body narrows, and
    Expand, at the body's top right, stays on the image's corner. The
    lightbox takes the body's contents, not the body, so ignores it. Below
    tier M the fraction is dropped: half a phone's column is a thumbnail. */
-.exhibit[data-width] > .exhibit-body { width: calc(100% * var(--fig-width, 1)); }
+.exhibit[data-width] > .exhibit-body { width: calc(100% * var(--fig-width, 1)); margin-inline: auto; }
 @container page (width < 39em) {
   .exhibit[data-width] > .exhibit-body { width: auto; }
 }
@@ -1041,7 +1042,7 @@ ul.asides > li { margin: 0.5em 0; }
 /* the bibliography: hanging indents, in the bibliography's own order */
 ul.bibliography { margin: 0; padding: 0; list-style: none; }
 ul.bibliography > li { margin: 0.35em 0; padding-left: 1.5em; text-indent: -1.5em; }
-ol.notes > li:target, ul.asides > li:target, ul.bibliography > li:target, .term-entry:target {
+ol.notes > li:target, ul.asides > li:target, ul.asides > li:has(:target), ul.bibliography > li:target, .term-entry:target {
   background: color-mix(in srgb, var(--selection) 45%, transparent);
 }
 a.back { color: var(--text-muted); text-decoration: none; margin-left: 0.15em; }
