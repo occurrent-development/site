@@ -18,7 +18,7 @@
 ;;   fetched by CI) must not disappear while a page links to it.
 ;; - TERM-6: warns about glossary terms no page uses.
 ;; - POP-7: writes build/_x/<slug>/<id>.frag, one fragment per section (and
-;;   _page.frag with the title and abstract), fetched by cross-page popups,
+;;   _page.frag with the title, abstract and the body's opening), fetched by cross-page popups,
 ;;   and BIB-8's build/_x/references/<key>.frag, the reference card.
 ;;   Not .html: Cloudflare's HTML handling would redirect those.
 ;; - BIB-1: writes build/references/<key>.html.pm, one line of source per
@@ -341,10 +341,28 @@
   ;; the page's popup: title, subtitle, and the abstract from the document's header (SRC-4a)
   (define abstract-ps
     (map fragment-clean (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'p) (class? x "abstract"))))))
+  ;; and the body's opening (2026-11-09): what stands between the header and the first section
+  ;; (the intro, an epigraph), or, when the page begins with a section, that section
+  (define article (let ([as (find-all (hash-ref p 'doc) (λ (x) (eq? (get-tag x) 'article)))]) (and (pair? as) (car as))))
+  (define (lead-part? x)
+    (and (txexpr? x) (not (memq (get-tag x) '(header nav section))) (not (class? x "abstract"))))
+  (define lead
+    (if article
+        (let ([before (takef (get-elements article) (λ (x) (not (and (txexpr? x) (eq? (get-tag x) 'section)))))])
+          (filter values (map fragment-clean (filter lead-part? before))))
+        null))
+  (define body-ps
+    (cond [(pair? lead) lead]
+          [article
+           (let ([sec (findf (λ (x) (and (txexpr? x) (eq? (get-tag x) 'section) (not (class? x "endmatter"))))
+                             (get-elements article))])
+             (if sec (list (fragment-clean sec)) null))]
+          [else null]))
   (call-with-output-file (build-path dir "_page.frag") #:exists 'replace
     (λ (o) (write-string (->html `(div (h1 ,(or (meta 'title) ""))
                                        ,@(if (meta 'subtitle) `((p ((class "subtitle")) ,(meta 'subtitle))) null)
-                                       ,@abstract-ps))
+                                       ,@abstract-ps
+                                       ,@body-ps))
                          o)))
   (for ([sec (in-list (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'section) (attrs-have-key? x 'id)
                                                                (not (class? x "endmatter"))))))])

@@ -1007,8 +1007,10 @@
                 '("notes" "bibliography" "backlinks" "changelog"))
   (define bl (by-id doc "backlinks"))
   (check-equal? (length (find-all bl (λ (x) (has-class* x "context-entry")))) 1)
-  (check-not-false (member "/link-b" (hrefs bl)))
+  ;; laid out as Cited in is (2026-11-09): the post plain, its sections the links
+  (check-false (member "/link-b" (hrefs bl)))
   (check-not-false (member "/link-b#second" (hrefs bl)))
+  (check-equal? (length (find-all bl (λ (x) (has-class* x "cited-section")))) 1)
   (check-regexp-match #rx"B answers" (text bl))
   (check-regexp-match #rx"essay" (text (by-class bl "kind")))
   ;; REV-3: the changelog line, dated

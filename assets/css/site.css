@@ -763,6 +763,14 @@ a.circle-link + a.circle-link .circle, .nw + a.circle-link .circle { margin-left
    or a pinned popup), whatever the pointer does; hover only pairs it with
    its stub by colour. */
 .circle.is-open { background: var(--accent); }
+/* MARK-1d: an aside's mark is a play-button triangle, pointing right, hollow
+   until what it opens is open, then filled; the same size and place as the
+   circle. An inline SVG: an atomic box, so Safari paints only the triangle. */
+.circle.tri { border: 0; border-radius: 0; background: none; width: 0.44em; height: 0.44em; margin-left: 0.06em; vertical-align: 0.46em; }
+.circle.tri svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.circle.tri polygon { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
+.circle.tri.is-open { background: none; }
+.circle.tri.is-open polygon { fill: var(--accent); }
 a.term.hl, a.aside-phrase.hl, a.aside-phrase.is-open { color: var(--accent); }
 
 /* MARK-6: an invisible hit area of at least 24 × 24 px around annotated text. */

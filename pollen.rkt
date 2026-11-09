@@ -983,7 +983,14 @@
 (define (render-circles doc)
   (define circle-ids (make-hash))   ; target → id of the circle that opens it
   (define counter 0)
-  (define (circle-span) '(span ((class "circle"))))
+  ;; MARK-1d: a group of asides alone is a triangle, not a circle; the class
+  ;; stays "circle" for the script, which fills whichever it finds.
+  (define (circle-span [kinds ""])
+    (if (equal? kinds "aside")
+        '(span ((class "circle tri"))
+               (svg ((viewBox "0 0 10 10") (aria-hidden "true") (focusable "false"))
+                    (polygon ((points "1.7,1.1 8.7,5 1.7,8.9")))))
+        '(span ((class "circle")))))
   (define (walk x hidden?)
     (if (txexpr? x)
         (let ([h (or hidden? (attrs-have-key? x 'hidden))])
@@ -1034,7 +1041,7 @@
        (cons (txexpr 'a (append (get-attrs t) `((data-targets ,targets) (data-kinds ,kinds))
                                 (if cid `((id ,cid)) null))
                      (append init
-                             (list `(span ((class "nw")) ,@word ,WJ ,(circle-span)
+                             (list `(span ((class "nw")) ,@word ,WJ ,(circle-span kinds)
                                           ,(visually-hidden (format " (~a)" label))))))
              extras)]
       [else
@@ -1060,7 +1067,7 @@
                     (filter values (for/list ([k '(data-loc data-note)])
                                      (and (attrs-have-key? (car anns) k) (list k (attr-ref (car anns) k)))))
                     null))
-             ,(circle-span)))
+             ,(circle-span kinds)))
        (append (drop-right-blank visible) (list (od-bind circle)) extras)]))
   (define (drop-right-blank xs) (if (and (pair? xs) (blank? (last xs))) (drop-right xs 1) xs))
   (define rendered (walk doc #f))
@@ -1422,13 +1429,58 @@
        ,@(for*/list ([url (in-list order)] [r (in-list records)] #:when (equal? (hash-ref r 'from) url))
            (context-entry r))))
 
+;; VAL-4 (restructured 2026-11-09 to match Cited in, BIB-9): grouped by post in
+;; index order; the post plain, with its kind, since its sections are the
+;; links; each section one step in, a link, with the contexts of its links
+;; beneath it, clamped with More. A link made outside any section (before
+;; the first heading) has no section to name, so the post's title is the link.
+(define (backlinks-list records)
+  (define (section-title from sec)
+    (and (string? sec)
+         (let ([info (post-info from)]) (and info (hash-ref (hash-ref info 'sections (hasheq)) (string->symbol sec) #f)))))
+  (define (context-li r)
+    (define ctx (json->txexpr (hash-ref r 'context)))
+    `(li ((class "cite-entry context-entry"))
+         (div ((class "context")) ,@(get-elements ctx))
+         ,@(if (> (string-length (text-of ctx)) 170)
+               '((details ((class "context-more")) (summary (span ((class "more")) "More") (span ((class "less")) "Less"))))
+               null)))
+  `(ul ((class "cited-in backlinks"))
+       ,@(for/list ([url (in-list (index-order (map (λ (r) (hash-ref r 'from)) records)))])
+           (define rs (filter (λ (r) (equal? (hash-ref r 'from) url)) records))
+           ;; by section, in the order each first appears
+           (define secs (remove-duplicates (map (λ (r) (let ([sec (hash-ref r 'section #f)]) (and (section-title url sec) sec))) rs)))
+           (define named (filter values secs))
+           (define unnamed (filter (λ (r) (not (section-title url (hash-ref r 'section #f)))) rs))
+           `(li ((class "cited-post") (data-post ,url))
+                (p ((class "context-from"))
+                   ,(if (and (null? named) (pair? unnamed))
+                        `(a ((class "link xref") (href ,url)) ,@(with-mark (list (post-title url)) 'xref))
+                        (post-title url))
+                   " " ,(kind-label url))
+                ,@(append*
+                   (for/list ([sec (in-list named)])
+                     (define here (filter (λ (r) (equal? (hash-ref r 'section #f) sec)) rs))
+                     (list `(p ((class "cited-section"))
+                               (a ((class "link xref") (href ,(string-append url "#" sec)))
+                                  ,@(with-mark (list (typeset-string (section-title url sec))) 'xref)))
+                           `(ul ((class "cite-entries")) ,@(map context-li here)))))
+                ,@(if (and (pair? named) (pair? unnamed))
+                      ;; the page's own link, among its sections
+                      (list `(p ((class "cited-section"))
+                                (a ((class "link xref") (href ,url)) ,@(with-mark (list "Opening") 'xref)))
+                            `(ul ((class "cite-entries")) ,@(map context-li unnamed)))
+                      (if (and (null? named) (pair? unnamed))
+                          (list `(ul ((class "cite-entries")) ,@(map context-li unnamed)))
+                          null))))))
+
 ;; VAL-4: the posts and sections that link here.
 (define (backlinks-section)
   (define url (and (graph-page?) (page-url)))
   (define links (if url (backlinks-to url) null))
   (if (null? links)
       null
-      (list `(section ((class "endmatter") (id "backlinks")) (h2 "Backlinks") ,(context-list links)))))
+      (list `(section ((class "endmatter") (id "backlinks")) (h2 "Backlinks") ,(backlinks-list links)))))
 
 ;; REV-3: a post's own changelog, last in the end matter.
 (define (change-line c)
