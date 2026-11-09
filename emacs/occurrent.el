@@ -433,14 +433,23 @@ then blog entries under their own heading (KIND-6)."
          (url (car (split-string page "  ")))
          (sections (alist-get "sections" (cdr (assoc url pages)) nil nil #'equal))
          (whole "(whole page)")
-         (cands (cons (cons whole nil)
-                      (mapcar (lambda (s) (cons (format "%s%s  #%s"
-                                                        (make-string (* 2 (1- (alist-get "level" s nil nil #'equal))) ?\s)
-                                                        (alist-get "title" s nil nil #'equal)
-                                                        (alist-get "id" s nil nil #'equal))
-                                                (alist-get "id" s nil nil #'equal)))
-                              sections)))
-         (id (cdr (assoc (completing-read "Section: " cands nil t) cands))))
+         (anchors (alist-get "anchors" (cdr (assoc url pages)) nil nil #'equal))
+         (cands (append
+                 (list (cons whole nil))
+                 (mapcar (lambda (s) (cons (format "%s%s  #%s"
+                                                   (make-string (* 2 (1- (alist-get "level" s nil nil #'equal))) ?\s)
+                                                   (alist-get "title" s nil nil #'equal)
+                                                   (alist-get "id" s nil nil #'equal))
+                                           (alist-get "id" s nil nil #'equal)))
+                         sections)
+                 ;; an anchor, with the words around it, and where it stands (ASIDE-9)
+                 (mapcar (lambda (a) (cons (format "anchor%s: %s  #%s"
+                                                   (if (eq (alist-get "aside" a nil nil #'equal) t) " in an aside" "")
+                                                   (alist-get "context" a nil nil #'equal)
+                                                   (alist-get "id" a nil nil #'equal))
+                                           (alist-get "id" a nil nil #'equal)))
+                         anchors)))
+         (id (cdr (assoc (completing-read "Section or anchor: " cands nil t) cands))))
     (od--wrap (format "◊link[\"%s%s\"]{" url (if id (concat "#" id) "")) "}")))
 
 (defun od--site-pm-files ()
@@ -2020,7 +2029,8 @@ JUSTIFY is passed on to `fill-paragraph'."
         (cl-loop for (url . page) in pages
                  collect url
                  append (mapcar (lambda (sec) (concat url "#" (alist-get "id" sec nil nil #'equal)))
-                                (alist-get "sections" page nil nil #'equal)))))))
+                                (append (alist-get "sections" page nil nil #'equal)
+                                        (alist-get "anchors" page nil nil #'equal))))))))
 
 (defun od-completion-at-point ()
   "Complete tag names, keywords, keys, ids and link targets (EDIT-3)."

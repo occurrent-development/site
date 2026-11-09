@@ -197,6 +197,29 @@
 ;; ---------------------------------------------------------------------------
 ;; Every page, rendered now that the graph is written
 
+;; ASIDE-9, VAL-2: every ◊anchor on a page, an empty span whose only attribute
+;; is its id. One in an aside is found in the Asides list, the copy that holds
+;; the id. Each comes with its block (the paragraph, list item or aside it
+;; stands in) for the picker's context and the popup's extract (POP-7).
+(define (anchor-span? x)
+  (and (txexpr? x) (eq? (get-tag x) 'span) (null? (get-elements x))
+       (equal? (map car (get-attrs x)) '(id))))
+(define (aside-li? x)
+  (and (txexpr? x) (eq? (get-tag x) 'li) (regexp-match? #rx"^aside-[0-9]+$" (attr-ref x 'id ""))))
+(define (anchors-of doc)
+  (define out '())
+  (let walk ([x doc] [anc '()])
+    (when (txexpr? x)
+      (if (anchor-span? x)
+          (let* ([aside (findf aside-li? anc)]
+                 [block (or aside (findf (λ (a) (memq (get-tag a) '(li p blockquote figure))) anc))])
+            (set! out (cons (hasheq 'id (attr-ref x 'id) 'aside (and aside #t) 'block block) out)))
+          (for ([k (in-list (get-elements x))]) (walk k (cons x anc))))))
+  (reverse out))
+(define (anchor-context block)
+  (define t (if block (string-normalize-spaces (text-of block)) ""))
+  (if (> (string-length t) 70) (string-append (substring t 0 70) "…") t))
+
 (define all-pages
   (for/list ([node (in-list nodes)])
     (define-values (url src) (page-info node))
@@ -216,7 +239,7 @@
                     (attr-ref a 'href)))
     (hasheq 'url url 'src src 'doc doc 'out (symbol->string node) 'title (or (meta-text (get-metas src) 'title) "")
             'published (published? src (status-of src))
-            'sections sections 'ids ids 'xrefs xrefs)))
+            'sections sections 'anchors (anchors-of doc) 'ids ids 'xrefs xrefs)))
 
 ;; KIND-1: one slug, one post, across both folders; none of the site's own paths.
 (for ([e (in-list (check-post-slugs
@@ -265,7 +288,9 @@
   (define deployed (call-with-input-file deployed-file read-json))
   (for ([(url secs) (in-hash deployed)])
     (define now (hash-ref by-url (symbol->string url) #f))
-    (for ([s (in-list (hash-ref secs 'sections null))])
+    ;; an anchor is as permanent as a section (ASIDE-9); deploys before
+    ;; 2026-11-09 list none, so only later ones are guarded
+    (for ([s (in-list (append (hash-ref secs 'sections null) (hash-ref secs 'anchors null)))])
       (define id (hash-ref s 'id))
       (unless (and now (member id (hash-ref now 'ids)))
         (define linked (for/list ([l (in-list links)]
@@ -286,7 +311,10 @@
 (write-json-file (build-path "data" "anchors.json")
                  (for/hasheq ([p (in-list pages)])
                    (values (string->symbol (hash-ref p 'url))
-                           (hasheq 'title (hash-ref p 'title) 'sections (hash-ref p 'sections)))))
+                           (hasheq 'title (hash-ref p 'title) 'sections (hash-ref p 'sections)
+                                   'anchors (for/list ([a (in-list (hash-ref p 'anchors))])
+                                              (hasheq 'id (hash-ref a 'id) 'aside (hash-ref a 'aside)
+                                                      'context (anchor-context (hash-ref a 'block #f))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; POP-7, BIB-8: fragments for cross-page popups. Circles, self-links and
@@ -296,7 +324,7 @@
   (cond
     [(txexpr? x)
      (cond
-       [(or (class? x "circle-link") (class? x "circle") (class? x "self") (class? x "vh")
+       [(or (class? x "circle-link") (class? x "circle") (class? x "self") (class? x "vh") (class? x "back")
             (attrs-have-key? x 'hidden))
         #f]
        [else (txexpr (get-tag x) (filter (λ (a) (not (eq? (car a) 'id))) (get-attrs x))
@@ -321,7 +349,11 @@
   (for ([sec (in-list (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'section) (attrs-have-key? x 'id)
                                                                (not (class? x "endmatter"))))))])
     (call-with-output-file (build-path dir (string-append (attr-ref sec 'id) ".frag")) #:exists 'replace
-      (λ (o) (write-string (->html (fragment-clean sec)) o)))))
+      (λ (o) (write-string (->html (fragment-clean sec)) o))))
+  ;; ASIDE-9: an anchor's extract is the block it stands in, or its aside
+  (for ([a (in-list (hash-ref p 'anchors))] #:when (hash-ref a 'block #f))
+    (call-with-output-file (build-path dir (string-append (hash-ref a 'id) ".frag")) #:exists 'replace
+      (λ (o) (write-string (->html (fragment-clean (hash-ref a 'block))) o)))))
 
 ;; BIB-8: the reference card, the head of each work's page as a fragment
 (make-directory* (build-path x-dir "references"))

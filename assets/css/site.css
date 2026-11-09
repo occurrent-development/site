@@ -149,8 +149,10 @@ article { --tier: S; }
 /* L: the text block fits with 2em clear at either side: 8 + 2.5 + 36.5 +
    2.5 + 13 + 2 × 2 = 66.5em. Spare room widens the right margin first, up
    to 20em (at 73.5em), then the left, up to 13em (at 78.5em) (LAYOUT-6c).
-   The block is centred as a whole, so the column sits a little left of
-   centre (LAYOUT-6a). Each child of .page keeps its box starting at the
+   The block is anchored at the left, --edge from the window's edge (it was
+   centred as a whole until 2026-11-09): once both margins are at their
+   widest, further room is added to the right of the right margin, so the
+   contents and the menu do not drift as the window widens (LAYOUT-6a). Each child of .page keeps its box starting at the
    column, with the right margin in its padding, and is moved to the column's
    place by --lead; so everything placed in the right margin is placed from
    the column's edge, as before, and the left margin lies outside the box.
@@ -163,8 +165,7 @@ article { --tier: S; }
   .page > * {
     --margin: clamp(13em, 100cqi - var(--measure) - 2 * var(--margin-gap) - 8em - 2 * var(--edge), 20em);
     --left-margin: clamp(8em, 100cqi - var(--measure) - 2 * var(--margin-gap) - 20em - 2 * var(--edge), 13em);
-    --lead: calc((100cqi - var(--left-margin) - var(--measure) - 2 * var(--margin-gap) - var(--margin)) / 2
-                 + var(--left-margin) + var(--margin-gap));
+    --lead: calc(var(--edge) + var(--left-margin) + var(--margin-gap));   /* anchored at the left (2026-11-09) */
     width: calc(var(--measure) + var(--margin-gap) + var(--margin));
     padding-inline: 0 calc(var(--margin-gap) + var(--margin));
     margin-inline: var(--lead) auto;
@@ -177,10 +178,9 @@ article { --tier: S; }
    (TOC-1), the Scratch link and the dock. An outer container, .frame, decides whether they fit: their
    column and its gap (11 + 2.5em) plus tier L (66.5em) = 80em. When they do,
    that width is reserved at the left of .page, so the tiers above see only
-   what is left and centre the text block in it; the contents then sit just
-   left of the left margin, and since the space reserved and the space left
-   over are the same on both sides, contents, margins and column are centred
-   together. As the window narrows the contents go first (below 80em), then
+   what is left and place the text block in it, --edge from its left; the
+   contents then sit just left of the left margin, --edge from the window's
+   edge at every width. As the window narrows the contents go first (below 80em), then
    both margins together (below 66.5em). */
 @container frame (min-width: 80em) {
   .has-column > .page { padding-left: calc(var(--toc) + var(--margin-gap)); }
