@@ -175,6 +175,7 @@ An **essay** is something you will revise; an **entry** is something you said on
 - **Only the tag vocabulary** in `SPEC.md` §3.3. An unknown tag fails the build (`SRC-2`); do not invent one in an essay. A new tag is a SPEC change first.
 - **Comments** are `◊;` for a line and `◊;{…}` for a block. Use them for exceptions (§2), parked text and notes to a future editor; never for anything a reader should see.
 - **The lozenge** is typed with the Emacs key (`EMACS-1`), never pasted.
+- **Mathematics** (`MATH-1`) is TeX source in `◊m{…}`: `◊m{W_a^{\min}}` in a sentence, and an expression that needs room on its own lines with a blank line either side, `◊m[#:display #t]{\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i}`. Braces inside are fine when they balance (`◊m{\frac{a}{b}}`). Pollen counts every brace, a backslash before it or not, so source whose braces do not balance (`\left\{`, `\{`) is written between Pollen's other delimiters: `◊m|{\left\{ x : x > 0 \right.}|`. Use `◊m` for mathematics only, never to style words, and `◊latex{}` for the logo. A new expression needs `make refresh` (or `C-c o m`, *render*) before the page builds; commit `data/math-cache.json` with the page.
 - **Marks and punctuation.** A citation circle goes after the sentence's punctuation. An aside's circle sits where the aside belongs in the thought, usually at the end of the clause, before any citation. A margin note goes at the start of the sentence or item it glosses, never at the end of a block (`MNOTE-6`).
 
 ### 6.2 Metadata

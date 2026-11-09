@@ -4,13 +4,14 @@ Source for the site. `SPEC.md` is the build brief; `BACKLOG.md` lists what is de
 
 ## Building
 
-Needs Racket with the `pollen` package; Python 3 with `fonttools`, `brotli` and Pillow (`pip install -r tools/requirements.txt`); `avifenc` (libavif) for figures; and pandoc for `make refresh`.
+Needs Racket with the `pollen` package; Python 3 with `fonttools`, `brotli` and Pillow (`pip install -r tools/requirements.txt`); `avifenc` (libavif) for figures; and, for `make refresh` only, pandoc and TeX (MacTeX or TeX Live with LuaLaTeX, `unicode-math`, `preview`, the Libertinus fonts and `dvisvgm`, for the mathematics, MATH-1). `make` itself needs neither (BUILD-2).
 
 - `make`: Runs the tests, subsets the fonts, writes the link graph, renders every page and assembles `public/`. Works offline.
-- `make test`: Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`), and the covers step of `make refresh` (`tools/refs_test.py`).
+- `make test`: Typography rules and the root pass (`typography-test.rkt`, `pollen-test.rkt`), the covers step of `make refresh` (`tools/refs_test.py`), and the maths cache's shape (`tools/maths_test.py`, which also renders with TeX when it is installed).
 - `make test-browser`: The interactive layer in headless Chrome against the built site (`tools/browser_test.py`, `tests/browser/`); part of `make`, skipped without Chrome. `--browser firefox` or `--browser safari` runs it elsewhere by hand; `--shots DIR` saves the specimen screenshots.
 - `make serve`: Pollen's project server on http://localhost:8080 (pages at `/pages/<name>.html`, a work's page at `/build/references/<key>.html`). Previews drafts with their own backlinks and citations (below).
-- `make refresh`: Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, copies each cited work's cover (a `cover.jpg` attached to the item in Zotero) to `refs/covers/`, classifies new figures for dark mode into `data/invert.json`, and asks the Wayback Machine to keep a copy of each new external URL (`data/link-meta.json`). Run it after adding a citation, a cover, a figure or a link; commit the changed files.
+- `make refresh`: Copies the cited entries from your Zotero export into `refs/refs.bib`, has pandoc format them into `data/cite-cache.json`, copies each cited work's cover (a `cover.jpg` attached to the item in Zotero) to `refs/covers/`, sets each new `◊m` with LuaLaTeX into `data/math-cache.json`, classifies new figures for dark mode into `data/invert.json`, and asks the Wayback Machine to keep a copy of each new external URL (`data/link-meta.json`). Run it after adding a citation, a cover, a figure or a link; commit the changed files.
+- `make refresh-math`: The mathematics part of `make refresh` alone: every `◊m` not yet in `data/math-cache.json` set by LuaLaTeX in Libertinus Math, expressions no longer used dropped; TeX errors name the file and line. `C-c o m`, *render*, runs it.
 - `make refresh-cites`: The citation part of `make refresh` alone (entries, notes, covers): pandoc and local files, no network. `C-c o p` in Emacs runs it for you when a page cites a work at a locator not yet in the cache, then restarts the server.
 - `make clean`: Removes everything generated.
 
@@ -59,4 +60,4 @@ Every push builds on GitHub Actions (`.github/workflows/deploy.yml`). Pushes to 
 - `tests/`: fixtures rendered by the tests (`tests/refs/` for the covers step).
 - `references/<key>.pm`: optional commentary on a cited work, set on its page (SPEC BIB-3). The page itself, `/references/<key>`, is generated for every cited work.
 - `lib/walk.rkt`, `lib/graph.rkt`: the one walk that makes the link graph, and its reader.
-- `tools/`: font subsetting, image variants, the citation refresh (entries and covers), dark-mode classification, Wayback snapshots (`wayback.py`) and the monthly dead-link check (`linkcheck.py`, run by `.github/workflows/links.yml`, which opens an issue and never fails a build), and site-wide validation, which runs before rendering: it writes the link graph, the work pages' sources in `build/references/`, the cross-page fragments and reference cards in `build/_x/`, the Atom feed and the publish list.
+- `tools/`: font subsetting, image variants, the citation refresh (entries and covers), the mathematics (`maths.py`, MATH-1), dark-mode classification, Wayback snapshots (`wayback.py`) and the monthly dead-link check (`linkcheck.py`, run by `.github/workflows/links.yml`, which opens an issue and never fails a build), and site-wide validation, which runs before rendering: it writes the link graph, the work pages' sources in `build/references/`, the cross-page fragments and reference cards in `build/_x/`, the Atom feed and the publish list.
