@@ -861,6 +861,31 @@ const SCENARIOS = {
       await settle(300);
     }
   },
+  // MATH-1: the Mathematics section; at L its aside open in the margin
+  async maths() {
+    const sec = d.getElementById("mathematics");
+    await scroll(sec.offsetTop - 20);
+    if (tier() === "L" || tier() === "XL") {
+      const a = [...sec.querySelectorAll(".circle-link")].find((x) => (x.dataset.targets || "").startsWith("aside-"));
+      a?.click(); await settle(300);
+    }
+  },
+  async mathscard() {
+    const sec = d.getElementById("mathematics");
+    await scroll(sec.offsetTop + 120);
+    const a = [...sec.querySelectorAll(".circle-link")].find((x) => (x.dataset.targets || "").startsWith("note-"));
+    a?.click(); await settle(600);
+  },
+  async mathswide() {
+    const wide = [...d.querySelectorAll("#mathematics div.math-display")].pop();
+    await scroll(wide.offsetTop - 300);
+  },
+  async mathsaside() {
+    const sec = d.getElementById("mathematics");
+    const a = [...sec.querySelectorAll(".circle-link")].find((x) => (x.dataset.targets || "").startsWith("aside-"));
+    await scroll(sec.offsetTop + 500);
+    a?.click(); await settle(400);
+  },
   // a page from its top, with every image loaded (a work's cover)
   async loaded() {
     for (const img of d.querySelectorAll("article img")) { img.loading = "eager"; await img.decode().catch(() => {}); }

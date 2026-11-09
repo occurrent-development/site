@@ -3,6 +3,8 @@
 
     python3 tools/browser_test.py            run the tests against public/
     python3 tools/browser_test.py --shots D  also save the specimen screenshots to D
+    python3 tools/browser_test.py --shots D --only maths
+                                             only the shots whose names start with maths
     python3 tools/browser_test.py --browser firefox|safari
                                              run the tests in another browser (by hand;
                                              Safari opens a window and needs no driver)
@@ -88,6 +90,18 @@ SHOTS = [
     ("quote-l-1400", 1400, 900, "quote", "dark"),
     ("quote-s-390", 390, 844, "quote", "light"),
     ("quote-s-390", 390, 844, "quote", "dark"),
+    # MATH-1: the specimen's Mathematics section at tiers L and S, both themes:
+    # the aside open in the margin (L) or as a popup (S), a reference card, the wide expression
+    ("maths-l-1400", 1400, 900, "maths", "light"),
+    ("maths-l-1400", 1400, 900, "maths", "dark"),
+    ("maths-card-l-1400", 1400, 900, "mathscard", "light"),
+    ("maths-card-l-1400", 1400, 900, "mathscard", "dark"),
+    ("maths-s-390", 390, 844, "maths", "light"),
+    ("maths-s-390", 390, 844, "maths", "dark"),
+    ("maths-wide-s-390", 390, 844, "mathswide", "light"),
+    ("maths-wide-s-390", 390, 844, "mathswide", "dark"),
+    ("maths-aside-s-390", 390, 844, "mathsaside", "light"),
+    ("maths-aside-s-390", 390, 844, "mathsaside", "dark"),
 ]
 
 
@@ -263,7 +277,10 @@ def main():
             return 1
         failed += report(json.loads(RESULTS["body"]), "headless Chrome as a touch device")
         if shots:
+            only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else ""
             for name, w, h, scenario, theme, *page in SHOTS:
+                if not name.startswith(only):
+                    continue
                 out = os.path.join(shots, f"{name}-{theme}.png" if theme == "dark" else f"{name}.png")
                 DONE.clear()
                 # headless Chrome keeps a window at least ~500 px wide, so the
