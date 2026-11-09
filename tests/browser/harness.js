@@ -106,13 +106,16 @@ async function tests() {
     await load("/specimen");
   });
 
-  await test("LAYOUT-6a, TOC-2: at 2,560 px the contents, margins and column are one centred block, no gap", async () => {
+  await test("LAYOUT-6a, TOC-2: at 2,560 px the contents, margins and column are one block, no gap, anchored at the left", async () => {
     expect(tier() === "XL", `tier ${tier()}`);
     const a = rect(d.querySelector("article")), toc = rect(d.querySelector("nav.toc"));
     const gap = v("--margin-gap"), lm = cssLen("--left-margin"), rm = cssLen("--margin");
     near(toc.right + gap, a.left - gap - lm, 1, "contents' right edge + gap vs left margin's left edge");
+    // anchored at the left, --edge from the window's edge, and not centred (2026-11-09): the
+    // room beyond the margins' widest lies to the right of the right margin
     const leftSpace = toc.left, rightSpace = d.documentElement.clientWidth - (a.left + v("--measure") + gap + rm);
-    near(leftSpace, rightSpace, 2, "space left vs right of the block");
+    near(leftSpace, v("--edge"), 2, "the block's left space vs --edge");
+    expect(rightSpace > leftSpace + 100, `the block is not anchored at the left: ${leftSpace.toFixed(1)} left, ${rightSpace.toFixed(1)} right`);
   });
 
   // LAYOUT-1a (2026-11-03): the datum is the abstract's first line when there is one, else the first

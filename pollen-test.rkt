@@ -787,9 +787,10 @@
   (check-false (published? "blog/x/x.html.pm" "draft"))
   (check-true (published? "blog/x/x.html.pm" "published")))
 
-(test-case "KIND-3: an entry has no contents at any section count, and the essay header without the epistemic line"
+(test-case "KIND-3: an entry has contents as an essay does, and the essay header without the epistemic line"
   (define doc (fixture "blog/sectioned-entry/sectioned-entry.html.pm"))
-  (check-equal? (find-all doc (λ (x) (has-class* x "toc"))) '())
+  ;; TOC-1, 2026-11-09: three level-1 sections, so the entry has contents; with fewer it has none, as an essay
+  (check-not-false (findf (λ (x) (has-class* x "toc")) (find-all doc txexpr?)))
   (check-equal? (length (find-all doc (λ (x) (and (eq? (get-tag x) 'section) (has-class* x "level-1"))))) 3)
   (define header (car (get-elements doc)))
   (check-equal? (get-tag header) 'header)
@@ -801,7 +802,7 @@
   (check-not-false (has-class* (last (get-elements header)) "header-rule"))
   ;; LAYOUT-1b, KIND-4: its tags link to the blog's index
   (check-equal? (attr-ref (car (find-all block (λ (x) (has-class* x "tag-link")))) 'href) "/blog?tags=site")
-  ;; an essay with the same sections has contents, and its tags go to /essays
+  ;; an essay with the same sections has contents too, and its tags go to /essays
   (define essay (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-01" 'tags "site" 'here-path (path->string (build-path (current-directory) "essays" "x" "x.html.pm")))])
                   (root (section #:id "a" "A") "\n\n" "x" "\n\n" (section #:id "b" "B") "\n\n" "y" "\n\n" (section #:id "c" "C") "\n\n" "z")))
   (check-not-false (findf (λ (x) (has-class* x "toc")) (find-all essay txexpr?)))

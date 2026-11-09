@@ -1339,7 +1339,7 @@
   ;; BIB-1: a work's page (◊define-meta[reference]) has no contents, whatever its sections
   (define ref-key (let ([v (and (current-metas) (select-from-metas 'reference (current-metas)))])
                     (and v (not (equal? (string-trim (format "~a" v)) "")) (string-trim (format "~a" v)))))
-  (define toc (and (not entry?) (not ref-key) (make-toc toc-entries)))   ; KIND-3: entries have no contents
+  (define toc (and (not ref-key) (make-toc toc-entries)))   ; TOC-1, KIND-3 (2026-11-09): entries have contents as essays do
   ;; LAYOUT-1c, §17: the header closes itself, so a break straight after it
   ;; is a style error
   (when (and header (pair? nested) (has-class? (car nested) "break"))
