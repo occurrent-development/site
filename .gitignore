@@ -31,6 +31,8 @@ __pycache__/
 /refs/refs.local.bib
 /data/cite-cache.local.json
 /refs/covers.local/
+# Mathematics used only by drafts (tools/maths.py), likewise
+/data/math-cache.local.json
 
 # Machine-specific make settings
 local.mk

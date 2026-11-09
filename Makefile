@@ -6,12 +6,15 @@
 #   make test-emacs  the Emacs mode's tests (needs Emacs 29+)
 #   make serve     Pollen project server on http://localhost:8080, drafts' graph merged
 #   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json,
-#                  covers, invert.json, and Wayback snapshots in link-meta.json
+#                  covers, math-cache.json, invert.json, and Wayback snapshots in link-meta.json
 #   make refresh-cites  only refs.bib, cite-cache.json and covers (no network)
+#   make refresh-math   only math-cache.json: each ◊m set by LuaLaTeX (no network)
 #   make clean     remove everything the build generates
 #
 # Needs: Racket with the pollen package; Python 3 with fonttools, brotli and
-# Pillow (tools/requirements.txt); avifenc for figures; pandoc for `make refresh`.
+# Pillow (tools/requirements.txt); avifenc for figures; pandoc for `make refresh`;
+# and for `make refresh` only, TeX (MATH-1): LuaLaTeX with unicode-math, preview,
+# Libertinus and dvisvgm. `make` itself never needs TeX (BUILD-2).
 
 # Machine-specific settings, not committed. Set ZOTERO_BIB there to the Better
 # BibTeX auto-export of your Zotero library, e.g.
@@ -34,7 +37,7 @@ IMG_SRC   := $(shell find pages essays blog -path '*/img/*' -type f 2>/dev/null)
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
 
-.PHONY: all test test-browser test-emacs render publish serve refresh refresh-cites clean
+.PHONY: all test test-browser test-emacs render publish serve refresh refresh-cites refresh-math clean
 
 all: test publish test-browser
 
@@ -103,7 +106,7 @@ serve: $(FONTS) $(IMAGES)
 	$(RACO) make tools/validate.rkt && OD_PREVIEW=1 racket tools/validate.rkt --graph
 	OD_PREVIEW=1 $(RACO) pollen start . $(PORT)
 
-refresh: refresh-cites
+refresh: refresh-cites refresh-math
 	$(PYTHON) tools/invert.py
 	$(PYTHON) tools/wayback.py
 
@@ -111,6 +114,12 @@ refresh: refresh-cites
 # `od-preview` runs this when a page cites a work at a locator not yet cached.
 refresh-cites:
 	ZOTERO_BIB="$(ZOTERO_BIB)" $(PYTHON) tools/refs.py
+
+# The mathematics alone (MATH-1): every ◊m not yet in data/math-cache.json is
+# set by LuaLaTeX in Libertinus Math and converted by dvisvgm; expressions no
+# longer used are dropped. `od-render-math' runs this.
+refresh-math:
+	$(PYTHON) tools/maths.py
 
 clean:
 	$(RACO) pollen reset

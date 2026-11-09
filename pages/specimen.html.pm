@@ -515,6 +515,40 @@ A table can also come from a file, and be set smaller:
 ◊table-csv["data/budget.csv" #:id "budget" #:title "The performance budget"
 #:size "small"]
 
+◊section[#:id "mathematics" #:short "Mathematics"]{Mathematics}
+◊summary{Expressions set by TeX in Libertinus Math, inline and on their own line.}
+
+Mathematics is set by TeX in Libertinus Math, the text face's own companion,
+when the caches are refreshed, and arrives on the page as a drawing in the
+colour of the text: no script sets it in the reader's browser. An expression
+in a sentence, such as the minimum weight ◊m{W_a^{\min}} or the sample mean
+◊m{\bar{x}}, sits on the line without opening it up, so this line is as far
+from the next as any other. ◊em{In italic the expression is unchanged, as
+◊m{W_a^{\min}} is here}, because mathematical italic is not the text's
+italic.◊margin{A margin note holds ◊m{W_a^{\min}} too.} An expression that
+needs room is set on its own line and centred, the one centred thing in the
+column besides the break and the header's rule:
+
+◊m[#:display #t]{\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i}
+
+and the text continues below it with the same space above as below. In an
+aside the type is smaller, and so is the
+mathematics.◊aside{An aside's ◊m{W_a^{\min}} takes the aside's size, and a
+displayed expression is set to the aside's width:
+◊m[#:display #t]{\text{incidence} = \frac{\text{new cases}}{\text{person-time at risk}}}
+as it is in the popup the aside becomes on a narrow screen.} The card in a
+reference's popup can carry it as well ◊cite["hackingMakingPeople2006"]. An
+expression too wide for a phone scrolls sideways inside its own box, and the
+page does not:
+
+◊m[#:display #t]{\text{incidence rate} = \frac{\text{number of new cases of the condition during the period}}{\text{total person-time at risk during the period}}}
+
+◊subsection[#:id "maths-heading"]{A heading with ◊m{\bar{x}} in it}
+
+A heading takes an expression at its own size. An expression whose braces do
+not balance is written with Pollen's other delimiters, a bar inside each
+brace, as this one is: ◊m|{\left\{ x : x > 0 \right.}|.
+
 ◊section[#:id "to-come" #:short "Still to come"]{Still to come}
 ◊summary{What later phases add to the site, and to this page.}
 
@@ -534,5 +568,5 @@ from it, and every place it is cited. A post that another links to ends with
 its Backlinks, each with the passage that links to it; this page has one,
 from the placeholder essay. An essay's revisions are listed last, under
 Changelog, and collected on one page for the whole site. What remains is
-interactive figures, mathematics and a stylesheet for print. Each will be
-checked here as it is built.
+interactive figures and a stylesheet for print. Each will be checked here as
+it is built.

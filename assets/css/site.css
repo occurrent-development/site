@@ -223,6 +223,35 @@ strong, b { font-weight: 600; }
   margin: 0 -0.125em 0 -0.1667em;
 }
 
+/* MATH-1: ◊m, set by TeX at `make refresh` and inlined as SVG in the text's
+   colour (IMG-5). Its width, height and vertical-align are in em, written on
+   the element by the build from TeX's own measurements, so it takes the size
+   of the text around it (an aside's, a popup's, a heading's) and sits on the
+   baseline as TeX set it (TYPE-17, MARK-2). Nothing here may give it a
+   width or a height: figure.figure svg would, so it is undone. */
+svg.math { display: inline; overflow: visible; fill: currentColor; }
+figure.figure svg.math, .lb-stage svg.math { display: inline; max-width: none; }
+/* Display: on its own line, centred (LAYOUT-1), never wider than whatever
+   holds it (the column, an aside, a popup); wider, it scrolls inside its own
+   box. A paragraph holding only the expression becomes a div (the build's
+   lift-display-maths), spaced as a paragraph is; inside a paragraph it is a
+   span set as a block, with a smaller even space. */
+.math-display {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15em 0;              /* room for the ink TeX's box leaves out; a scrollbar never clips it */
+  margin: 0.5em 0;
+  text-align: center;
+  text-indent: 0;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+div.math-display { margin: var(--parskip, 1em) 0; }
+.math-display > svg.math { display: block; margin: 0 auto; }
+
 code {
   font-family: "Libertinus Mono", ui-monospace, Menlo, monospace;
   font-size: 0.86em;                    /* Mono's x-height is larger than the text face's */
@@ -1768,6 +1797,9 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .stub.is-open { color: var(--text); max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
 .stub.is-open:not(.is-preview) { border-right-color: var(--accent); }
 .stub:focus-visible { outline-offset: 3px; }
+/* MATH-1: a stub is one line of the aside's opening words; an expression set
+   on its own line has no place in it until the aside opens. */
+.stub:not(.is-open) .math-display { display: none; }
 
 /* ── Headings in sans (LAYOUT-2a, chosen 2026-10-15) ──────────────────────
    Level-2 and level-3 headings, figure and table titles, table column

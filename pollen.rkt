@@ -28,6 +28,7 @@
          "lib/tables.rkt"
          "lib/figures.rkt"
          "lib/graph.rkt"
+         "lib/maths.rkt"
          (only-in xml string->xexpr))
 
 (provide root
@@ -35,6 +36,8 @@
          section subsection subsubsection summary
          ;; standard elements (§3.3)
          em strong sc code blockquote epigraph br anchor latex
+         ;; mathematics, pre-rendered at `make refresh` (MATH-1)
+         m
          (rename-out [section-break break]) rule
          ;; annotations (§4–7)
          link cite term sense aside margin
@@ -64,6 +67,8 @@
   (define-runtime-path cite-cache-local "data/cite-cache.local.json")
   (define-runtime-path link-meta "data/link-meta.json")
   (define-runtime-path invert "data/invert.json")
+  (define-runtime-path math-cache "data/math-cache.json")
+  (define-runtime-path math-cache-local "data/math-cache.local.json")
   (define-runtime-path typography "typography.rkt")
   (define-runtime-path head-js "assets/js/theme-head.js")
   (define-runtime-path site-js "assets/js/site.js")
@@ -83,7 +88,7 @@
       footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section table ul
       od-summary od-abstract od-epistemic od-changelog))
   (define cache-watchlist
-    (list css fonts images cite-cache cite-cache-local link-meta invert typography head-js site-js specimen-css site-data
+    (list css fonts images cite-cache cite-cache-local link-meta invert math-cache math-cache-local typography head-js site-js specimen-css site-data
           links links-local)))
 
 (require (prefix-in files: (submod "." setup)))
@@ -1370,7 +1375,8 @@
                             ;; CITE-10: … Bibliography · Backlinks · Changelog
                             (if endmatter? (backlinks-section) null)
                             (if (and endmatter? (pair? changelogs)) (list (changelog-section (car changelogs))) null)))
-  (define doc (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated)))))))
+  ;; MATH-1: a display expression alone in its paragraph is its own block
+  (define doc (lift-display-maths (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated))))))))
   (check-unique-ids doc)
   (check-quotes doc)
   doc)

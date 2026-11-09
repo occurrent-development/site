@@ -1033,7 +1033,8 @@
 
 (test-case "BIB-1, BIB-9: a work's page: the head, then one Cited in, by post in index order, then by position"
   (define page (in-graph (λ () (reference-page "hackingMakingPeople2006"))))
-  (check-equal? (map (λ (x) (or (attr-ref x 'id #f) (attr-ref x 'class #f))) (get-elements page))
+  ;; the specimen's placeholder commentary (MATH-1) may stand between them
+  (check-equal? (remove "commentary" (map (λ (x) (or (attr-ref x 'id #f) (attr-ref x 'class #f))) (get-elements page)))
                 '("ref-head" "cited-in"))
   (check-false (by-id page "quoted"))
   (check-false (by-class page "ref-entry"))            ; no Chicago entry on the page
@@ -1233,3 +1234,95 @@
   (check-equal? (attr-ref (rule) 'class) "break rule")
   (check-equal? (attr-ref (rule "  \n") 'class) "break rule")
   (check-regexp-match #rx"no text" (or (message-of (λ () (rule "words"))) "did not fail")))
+
+;; ---------------------------------------------------------------------------
+;; MATH-1: ◊m, pre-rendered at `make refresh` (tools/maths.py), inlined from
+;; data/math-cache.json. The fixture expressions live in tests/maths.html.pm
+;; and tests/glossary/with-maths.pm, so the cache always holds them.
+
+(define (maths x) (find-all x (λ (e) (and (eq? (get-tag e) 'svg) (has-class* e "math")))))
+;; Every attribute anywhere in x, as (name . value)
+(define (all-attrs x) (append-map get-attrs (find-all x txexpr?)))
+(define (no-ids-or-refs? x)
+  (not (for/or ([a (in-list (all-attrs x))])
+         (or (eq? (car a) 'id) (memq (car a) '(href xlink:href))
+             (regexp-match? #rx"url\\(#" (format "~a" (cadr a)))))))
+
+(test-case "MATH-1: a cached expression is its SVG, inline, in the text's colour, sized in em, named by its source"
+  (define s (m "W_a^{\\min}"))
+  (check-equal? (get-tag s) 'svg)
+  (check-equal? (attr-ref s 'class) "math")
+  (check-equal? (attr-ref s 'fill) "currentColor")          ; IMG-5
+  (check-equal? (attr-ref s 'role) "img")
+  (check-equal? (attr-ref s 'aria-label) "W_a^{\\min}")
+  (check-regexp-match #px"^width:[0-9.]+em;height:[0-9.]+em;vertical-align:-[0-9.]+em$" (attr-ref s 'style))
+  (check-true (pair? (get-elements s)))
+  (check-true (no-ids-or-refs? s) "an id or a reference in the SVG would collide when it is on a page twice")
+  ;; nested braces arrive from Pollen's reader as one string; white space is one space
+  (check-equal? (m "\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i")
+                (m "\\bar{x}\n  =  \\frac{1}{n}\\sum_{i=1}^{n}" " x_i")))
+
+(test-case "MATH-1: an expression missing from the cache fails the build, saying to run make refresh"
+  (check-regexp-match #rx"run `make refresh`" (or (message-of (λ () (m "\\notInTheCache{x}"))) "did not fail"))
+  ;; a form not rendered is missing too: this expression is cached inline only
+  (check-regexp-match #rx"run `make refresh`"
+                      (or (message-of (λ () (m #:display #t "\\left\\{ x : x > 0 \\right."))) "did not fail")))
+
+(test-case "MATH-1: an empty body, a tag inside, or a #:display that is not a boolean fails"
+  (check-regexp-match #rx"empty" (or (message-of (λ () (m))) "did not fail"))
+  (check-regexp-match #rx"empty" (or (message-of (λ () (m " \n "))) "did not fail"))
+  (check-regexp-match #rx"TeX source only" (or (message-of (λ () (m "x" (em "y")))) "did not fail"))
+  (check-regexp-match #rx"#t or #f" (or (message-of (λ () (m #:display "yes" "W_a^{\\min}"))) "did not fail")))
+
+(test-case "MATH-1, LAYOUT-1: display is its own centred block; alone in a paragraph it is the block itself"
+  (define d (m #:display #t "W_a^{\\min}"))
+  (check-equal? (get-tag d) 'span)
+  (check-equal? (attr-ref d 'class) "math-display")
+  (check-equal? (length (maths d)) 1)
+  ;; inline and display are different renderings of the same source (\\sum's limits)
+  (define mean "\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i")
+  (check-not-equal? (attr-ref (car (maths (m #:display #t mean))) 'style) (attr-ref (m mean) 'style))
+  (define doc (with-title (λ () (root "Before." "\n\n" (m #:display #t "W_a^{\\min}") "\n\n" "After, "
+                                       (m #:display #t "W_a^{\\min}") " inside."))))
+  (define blocks (find-all doc (λ (x) (has-class* x "math-display"))))
+  (check-equal? (map get-tag blocks) '(div span))            ; lifted; kept in its paragraph
+  (check-false (findf (λ (p) (and (eq? (get-tag p) 'p) (pair? (find-all p (tag? 'div))))) (find-all doc txexpr?))))
+
+(test-case "MATH-1: read by Pollen; braces nested and unbalanced; punctuation stays with the expression"
+  (define doc (fixture "maths.html.pm"))
+  (check-equal? (map (λ (s) (attr-ref s 'aria-label)) (take (maths doc) 4))
+                '("W_a^{\\min}" "\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i"
+                  "\\text{incidence} = \\frac{\\text{new cases}}{\\text{person-time at risk}}"
+                  "\\left\\{ x : x > 0 \\right."))
+  (define last-inline (fourth (maths doc)))
+  (define nw (findf (λ (x) (and (has-class* x "nw") (memq last-inline (get-elements x)))) (find-all doc txexpr?)))
+  (check-not-false nw "the full stop after the expression is not bound to it")
+  (check-equal? (last (get-elements nw)) "."))
+
+(test-case "MATH-1: in an aside, both copies carry the SVG and no id; the page's ids stay unique"
+  (define doc (fixture "maths.html.pm"))
+  (define hidden (findf (λ (x) (attrs-have-key? x 'hidden)) (find-all doc txexpr?)))
+  (define listed (by-id doc "aside-1"))
+  (for ([copy (list hidden listed)])
+    (check-equal? (length (maths copy)) 2)
+    (check-equal? (length (find-all copy (λ (x) (has-class* x "math-display")))) 1))
+  (check-true (no-ids-or-refs? (txexpr 'div null (maths doc)))))
+
+(test-case "MATH-1: a glossary definition carries it into the Terms entry the popup is built from"
+  (parameterize ([current-glossary-dir (path->complete-path (build-path "tests" "glossary"))])
+    (define doc (with-title (λ () (root "A " (term "with-maths" "term") " here."))))
+    (define entry (by-id doc "term-with-maths"))
+    (check-equal? (length (maths entry)) 2)
+    (check-not-false (by-class entry "math-display"))
+    (check-true (no-ids-or-refs? (txexpr 'div null (maths entry))))))
+
+(test-case "MATH-1: the reference card (a popup's fragment) carries it, without ids"
+  ;; the specimen's placeholder commentary (references/hackingMakingPeople2006.pm)
+  (define card (in-graph (λ () (reference-card "hackingMakingPeople2006"))))
+  (check-true (>= (length (maths card)) 1) "no maths in the card: has the placeholder commentary been replaced?")
+  (check-true (no-ids-or-refs? (txexpr 'div null (maths card)))))
+
+(test-case "MATH-1: a page without ◊m carries no maths markup"
+  (define doc (with-title (λ () (root "Plain text, " (em "and italic") (aside "an aside") "."))))
+  (check-equal? (maths doc) '())
+  (check-false (regexp-match? #rx"math" (format "~s" doc))))

@@ -754,4 +754,105 @@ The key is picked as \"k\"."
       (should (equal (buffer-string) (format "Text.\n\n◊changelog{\n%s: First.\n}\n" today))))))
 
 (provide 'occurrent-test)
+;;; MATH-1: C-c o m, one menu (EMACS-7)
+
+(defun od-test-region (from to)
+  "Select from the first FROM to the end of the first TO after it."
+  (goto-char (point-min)) (search-forward from) (set-mark (match-beginning 0))
+  (search-forward to) (activate-mark))
+
+(ert-deftest od-test-math-key-and-vocabulary ()
+  "The maths menu has its key, and ◊m with #:display is not an error (FL-6)."
+  (should (eq (lookup-key occurrent-mode-map (kbd "C-c o m")) 'od-math))
+  (should-not (lookup-key occurrent-mode-map (kbd "C-c o $")))
+  (should (eq (od--tag-get 'm :command) 'od-math))
+  (should (equal (od--tag-get 'm :kw) '(display)))
+  (od-test-errors-are "A weight ◊m{W_a^{\\min}} and ◊m[#:display #t]{\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i} here." nil)
+  (od-test-errors-are "◊m|{\\left\\{ x \\right.}| here." nil)
+  (od-test-errors-are "◊m[#:display \"yes\"]{x}" '("\"yes\"")))
+
+(ert-deftest od-test-math-inline ()
+  ;; a region is wrapped; no region, point between the braces
+  (od-test-with "The weight W_a^{\\min} here."
+    (od-test-region "W_a" "}")
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "inline")))
+      (od-math))
+    (should (equal (buffer-string) "The weight ◊m{W_a^{\\min}} here.")))
+  (od-test-with "A mean  here."
+    (search-forward "mean ")
+    (od-insert-math-inline) (insert "\\bar{x}")
+    (should (equal (buffer-string) "A mean ◊m{\\bar{x}} here.")))
+  ;; braces that do not balance take the other delimiters
+  (od-test-with "Set \\left\\{ x \\right. here."
+    (od-test-region "\\left" "right.")
+    (od-insert-math-inline)
+    (should (equal (buffer-string) "Set ◊m|{\\left\\{ x \\right.}| here."))))
+
+(ert-deftest od-test-math-block ()
+  ;; a region inside a paragraph goes onto its own lines, a blank line either side
+  (od-test-with "Text, then \\bar{x} = 1 and on.\n"
+    (od-test-region "\\bar" "= 1")
+    (od-insert-math-block)
+    (should (equal (buffer-string) "Text, then\n\n◊m[#:display #t]{\\bar{x} = 1}\n\nand on.\n"))
+    (should (looking-at "and on")))
+  ;; no region: the block is made and point is between its braces
+  (od-test-with "Before.\n"
+    (goto-char (point-max))
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "block")))
+      (od-math))
+    (insert "x_i")
+    (should (equal (buffer-string) "Before.\n\n◊m[#:display #t]{x_i}\n"))))
+
+(ert-deftest od-test-math-toggle ()
+  ;; inline to block, and back again to exactly the text it came from
+  (let ((inline "Text, then ◊m{\\bar{x} = 1} and on.\n")
+        (block "Text, then\n\n◊m[#:display #t]{\\bar{x} = 1}\n\nand on.\n"))
+    (od-test-with inline
+      (search-forward "bar")
+      (od-toggle-math)
+      (should (equal (buffer-string) block))
+      (should (looking-at "{x} = 1"))      ; point stays in the source
+      (od-toggle-math)
+      (should (equal (buffer-string) inline))
+      (should (looking-at "{x} = 1"))))
+  ;; a block between a heading and a list is not joined into either
+  (od-test-with "◊section[#:id \"s\"]{S}\n\n◊m[#:display #t]{x}\n\n◊list{\n- a\n}\n"
+    (search-forward "{x")
+    (od-toggle-math)
+    (should (equal (buffer-string) "◊section[#:id \"s\"]{S}\n\n◊m{x}\n\n◊list{\n- a\n}\n")))
+  ;; punctuation after a block joins without a space
+  (od-test-with "So\n\n◊m[#:display #t]{x}\n\n."
+    (search-forward "{x")
+    (od-toggle-math)
+    (should (equal (buffer-string) "So ◊m{x}.")))
+  (od-test-with "No maths here."
+    (should-error (od-toggle-math) :type 'user-error)))
+
+(ert-deftest od-test-math-unwrap ()
+  (od-test-with "A ◊m{W_a^{\\min}} here."
+    (search-forward "min")
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "unwrap")))
+      (od-math))
+    (should (equal (buffer-string) "A W_a^{\\min} here.")))
+  (od-test-with "A ◊m|{\\left\\{ x \\right.}| here."
+    (search-forward "x")
+    (od-unwrap-math)
+    (should (equal (buffer-string) "A \\left\\{ x \\right. here."))))
+
+(ert-deftest od-test-math-render ()
+  "Render runs make refresh-math as `od-check' runs make; TeX's errors are links."
+  (let (ran)
+    (cl-letf (((symbol-function 'od--run) (lambda (cmd &rest _) (setq ran cmd)))
+              ((symbol-function 'od-root) (lambda () default-directory)))
+      (od-test-with "x" (od-render-math)))
+    (should (equal ran "make refresh-math")))
+  ;; tools/maths.py's lines are links to the expression in its source
+  (let ((rx (nth 1 (assq 'od-tex-error compilation-error-regexp-alist-alist)))
+        (line "pages/specimen.html.pm:151:43: TeX error in ◊m{\\foo} (inline): Undefined control sequence"))
+    (should (memq 'od-tex-error (with-temp-buffer (od-check-mode) compilation-error-regexp-alist)))
+    (should (string-match rx line))
+    (should (equal (match-string 1 line) "pages/specimen.html.pm"))
+    (should (equal (match-string 2 line) "151"))
+    (should (equal (match-string 3 line) "43"))))
+
 ;;; occurrent-test.el ends here

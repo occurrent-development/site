@@ -554,6 +554,7 @@ async function tests() {
     expect(w.getComputedStyle(m.querySelector(".chevron")).display !== "none", "the chevron does not show");
   });
 
+  await mathsTests();
   await senseElsewhere();
 
   const out = document.getElementById("results");
@@ -571,6 +572,83 @@ async function done(body = "") {
   if (params.get("run")) await new Promise((r) => { frame.onload = r; frame.src = "about:blank"; });
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   await fetch("/__results", { method: "POST", body });
+}
+
+// MATH-1: ◊m on the specimen's Mathematics section, at tier L. The SVG is
+// the page's own (no script draws it); these check how it sits.
+const mathsIn = (x) => [...x.querySelectorAll("svg.math")];
+// Swap every expression in p for an empty box of its width (so the lines
+// break where they did), measure, and put them back.
+function heightWithout(p) {
+  const swaps = mathsIn(p).filter((s) => !s.closest(".math-display")).map((s) => {
+    const t = d.createElement("span");
+    t.style.cssText = `display:inline-block;height:0;width:${rect(s).width}px`;
+    s.replaceWith(t);
+    return [s, t];
+  });
+  const h = rect(p).height;
+  for (const [s, t] of swaps) t.replaceWith(s);
+  return h;
+}
+const fits = (inner, outer, what) => expect(rect(inner).width <= rect(outer).width + 0.5,
+  `${what}: ${rect(inner).width.toFixed(1)} px in ${rect(outer).width.toFixed(1)} px`);
+async function mathsTests() {
+  await load("/specimen", 1400, 900);
+  const sec = d.getElementById("mathematics");
+  await test("MATH-1, MARK-2: a line with an inline expression, W_a^min included, is no taller than one without", async () => {
+    expect(tier() === "L", `tier ${tier()}`);
+    const ps = [...sec.querySelectorAll("p")].filter((p) => mathsIn(p).some((s) => !s.closest(".math-display, .aside, .stub")));
+    expect(ps.length >= 2, "no paragraphs with inline maths");
+    for (const p of ps) near(rect(p).height, heightWithout(p), 0.5, `paragraph "${p.textContent.slice(0, 30)}…"`);
+    const label = mathsIn(sec).map((s) => s.getAttribute("aria-label"));
+    expect(label.includes("W_a^{\\min}"), `no W_a^{\\min}: ${label}`);
+    expect(mathsIn(sec).every((s) => s.getAttribute("role") === "img" && s.getAttribute("fill") === "currentColor"), "an expression with no role or not in currentColor");
+  });
+  await test("MATH-1, LAYOUT-1: a display expression is centred on its own line, evenly spaced, in the text's colour", async () => {
+    const block = sec.querySelector("div.math-display");
+    const svg = block.querySelector("svg.math");
+    const col = rect(block), r = rect(svg);
+    near(r.left - col.left, col.right - r.right, 1, "space left vs right of the expression");
+    const above = col.top - rect(block.previousElementSibling).bottom, below = rect(block.nextElementSibling).top - col.bottom;
+    near(above, below, 1, "space above vs below");
+    for (const theme of ["light", "dark"]) {
+      d.documentElement.dataset.theme = theme;
+      await settle(100);
+      expect(w.getComputedStyle(svg).color === w.getComputedStyle(block.previousElementSibling).color, `${theme}: not the text's colour`);
+    }
+    delete d.documentElement.dataset.theme;
+  });
+  await test("MATH-1: in an opened aside, inline maths at the aside's size, display at its width; closed, the stub is one line", async () => {
+    const stub = [...d.querySelectorAll("article .stub")].find((s) => s.querySelector(".math-display"));
+    expect(stub, "no aside with maths in the margin");
+    expect(stub.offsetHeight <= 1.5 * parseFloat(w.getComputedStyle(stub).lineHeight), "the closed stub is taller than a line");
+    stub.scrollIntoView({ block: "center" });
+    await settle(200);
+    stub._trigger.click();
+    await settle(150);
+    const inl = mathsIn(stub).find((s) => !s.closest(".math-display"));
+    const ratio = parseFloat(inl.style.height) * parseFloat(w.getComputedStyle(stub).fontSize);
+    near(rect(inl).height, ratio, 0.5, "inline maths' height vs the aside's em");
+    const disp = stub.querySelector(".math-display");
+    fits(disp, stub, "the display expression's box vs the aside");
+    expect(stub.scrollWidth <= stub.clientWidth + 1, "the aside is wider than itself");
+    key("Escape");
+    await settle(100);
+  });
+  await test("MATH-1, POP-7: a reference card in a popup carries maths at the popup's width, without ids", async () => {
+    const t = [...sec.querySelectorAll(".circle-link")].find((a) => (a.dataset.targets || "").startsWith("note-"));
+    t.scrollIntoView({ block: "center" });
+    await settle(100);
+    t.click(); await settle(400);
+    const box = pinned()[0];
+    const card = box?.querySelector(".ref-card");
+    expect(card && mathsIn(card).length >= 2, "no maths in the card");
+    expect(!card.querySelector("svg.math [id], svg.math[id]"), "an id in the card's maths");
+    fits(card.querySelector(".math-display"), box, "the display expression vs the popup");
+    expect(box.scrollWidth <= box.clientWidth + 1, "the popup is wider than itself");
+    const ids = [...d.querySelectorAll("[id]")].map((e) => e.id);
+    expect(ids.length === new Set(ids).size, "a duplicate id on the page with the card open");
+  });
 }
 
 // On a touch device (the browser told it has no hover and a coarse
@@ -626,6 +704,25 @@ async function touchTests() {
   await test("POP-12: no scratch pad on touch devices", async () => {
     expect(!d.querySelector(".menu-scratch"), "Scratch in a menu");
     expect(!d.querySelector(".toc-scratch"), "Scratch under the contents");
+  });
+  await test("MATH-1: at tier S the wide expression scrolls in its own box; the page does not widen", async () => {
+    expect(d.documentElement.scrollWidth <= w.innerWidth, `the page is ${d.documentElement.scrollWidth} px wide in ${w.innerWidth}`);
+    const wide = [...d.querySelectorAll("article div.math-display")].find((b) => b.scrollWidth > b.clientWidth + 1);
+    expect(wide, "no display expression is wider than the column");
+    expect(w.getComputedStyle(wide).overflowX === "auto", "it does not scroll");
+    fits(wide, d.querySelector("#mathematics p"), "the wide expression's box vs the column");
+  });
+  await test("MATH-1: an aside with maths opens as a popin holding both forms, as wide as the popin", async () => {
+    const t = [...d.querySelectorAll("#mathematics .circle-link")].find((a) => (a.dataset.targets || "").startsWith("aside-"));
+    t.scrollIntoView({ block: "center" });
+    await settle(100);
+    t.click(); await settle(300);
+    const box = d.querySelector(".popup.is-popin");
+    expect(box && mathsIn(box).length === 2, "no popin, or not both expressions in it");
+    fits(box.querySelector(".math-display"), box, "the display expression vs the popin");
+    expect(box.scrollWidth <= box.clientWidth + 1, "the popin is wider than itself");
+    box.querySelector(".popup-close")?.click();
+    await settle(100);
   });
   await test("POP-5: a definition opens as a popin", async () => {
     await scroll(0);

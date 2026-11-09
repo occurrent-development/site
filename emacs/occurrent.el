@@ -841,6 +841,206 @@ See §3.4 and LAYOUT-4c."
                       ("block quotation" . od-insert-blockquote)
                       ("epigraph" . od-insert-epigraph))))
 
+;;; Mathematics (MATH-1) --------------------------------------------------------
+
+(defun od-math ()
+  "Mathematics, ◊m: insert it inline or on its own line, toggle, render, unwrap.
+TeX source goes between the braces; `make refresh' sets it in Libertinus
+Math (MATH-1). render runs that step now, as `od-check' runs the build."
+  (interactive)
+  (od--menu "Maths" '(("inline" . od-insert-math-inline)
+                      ("block" . od-insert-math-block)
+                      ("toggle" . od-toggle-math)
+                      ("render" . od-render-math)
+                      ("unwrap" . od-unwrap-math))))
+
+(defun od--braces-balance-p (text)
+  "Non-nil when the braces in TEXT balance, as Pollen counts them.
+Pollen counts every brace, a backslash before it or not, so TeX's \\{
+needs the other delimiters: ◊m|{ … }|."
+  (let ((depth 0) (ok t))
+    (dolist (c (string-to-list text))
+      (cond ((eq c ?{) (setq depth (1+ depth)))
+            ((eq c ?}) (setq depth (1- depth)) (when (< depth 0) (setq ok nil)))))
+    (and ok (= depth 0))))
+
+(defun od--math-delimiters (text)
+  "The opening and closing braces for TEXT: { and }, or |{ and }| if it needs them."
+  (if (od--braces-balance-p (or text "")) '("{" . "}") '("|{" . "}|")))
+
+(defun od--math-parse (start)
+  "Parse the ◊m tag at START, or return nil.
+The result is a plist: :start, :end, :args (the bracketed text or nil),
+:args-beg and :args-end (the brackets' positions), :body-beg and :body-end
+\(the TeX source), :bars (non-nil for ◊m|{ … }|) and :display."
+  (save-excursion
+    (goto-char start)
+    (when (looking-at "◊m\\([[{|]\\)")
+      (goto-char (match-beginning 1))
+      (let (args args-beg args-end body-beg body-end end bars)
+        (when (eq (char-after) ?\[)
+          (setq args-beg (point))
+          (when (search-forward "]" (line-end-position 2) t)
+            (setq args-end (point)
+                  args (buffer-substring-no-properties (1+ args-beg) (1- args-end)))))
+        (cond
+         ((and (or args (not args-beg)) (looking-at "|{"))
+          (setq bars t body-beg (+ (point) 2))
+          (when (search-forward "}|" nil t)
+            (setq body-end (- (point) 2) end (point))))
+         ((and (or args (not args-beg)) (eq (char-after) ?{))
+          (setq body-beg (1+ (point)))
+          (let ((depth 0) (done nil))
+            (while (and (not done) (not (eobp)))
+              (pcase (char-after)
+                (?{ (setq depth (1+ depth)))
+                (?} (setq depth (1- depth))
+                    (when (= depth 0) (setq body-end (point) end (1+ (point)) done t))))
+              (forward-char 1)))))
+        (when end
+          (list :start start :end end :args args :args-beg args-beg :args-end args-end
+                :body-beg body-beg :body-end body-end :bars bars
+                :display (and args (string-match-p "#:display[ \t\n]+#t\\_>" args) t)))))))
+
+(defun od--math-at (&optional pos)
+  "The ◊m tag around POS (default point), parsed by `od--math-parse', or nil."
+  (let ((pos (or pos (point))) found)
+    (save-excursion
+      (goto-char (min (point-max) (+ pos 2)))
+      (while (and (not found) (re-search-backward "◊m[[{|]" nil t))
+        (let ((m (od--math-parse (point))))
+          (when (and m (<= (plist-get m :start) pos) (<= pos (plist-get m :end)))
+            (setq found m)))))
+    found))
+
+(defun od-insert-math-inline ()
+  "Wrap the region in ◊m{…}, or insert ◊m{} with point inside (MATH-1).
+Source whose braces do not balance is wrapped in ◊m|{…}| instead."
+  (interactive)
+  (let ((d (od--math-delimiters (od--region-text))))
+    (od--wrap (concat "◊m" (car d)) (cdr d))))
+
+(defun od--math-block-spacing (start end)
+  "Put the text from START to END on its own lines, a blank line either side.
+START and END are markers. Space at the join is dropped."
+  (save-excursion
+    (goto-char end)
+    (delete-horizontal-space)
+    (cond ((eobp) (insert "\n"))
+          ((looking-at "\n[ \t]*\n")) ; already followed by a blank line
+          ((looking-at "\n") (insert "\n"))
+          (t (insert "\n\n")))
+    (goto-char start)
+    (delete-horizontal-space)
+    (cond ((bobp))
+          ((looking-back "\n[ \t]*\n" (max (point-min) (- (point) 40))))
+          ((bolp) (insert "\n"))
+          (t (insert "\n\n")))))
+
+(defun od-insert-math-block ()
+  "Insert ◊m[#:display #t]{…} on its own lines, a blank line either side (MATH-1).
+The region becomes its source and point goes after the block, where the
+writing continues; with no region, point is left between the braces."
+  (interactive)
+  (let* ((text (od--region-text))
+         (d (od--math-delimiters text))
+         (start (copy-marker (if text (region-beginning) (point))))
+         (end (copy-marker (if text (region-end) (point)) t))
+         inside)
+    (when text (delete-region start end))
+    (goto-char start)
+    (insert "◊m[#:display #t]" (car d) (or text ""))
+    (setq inside (point-marker))
+    (insert (cdr d))
+    (set-marker end (point))
+    (od--math-block-spacing start end)
+    (if text
+        (progn (goto-char end) (skip-chars-forward "\n"))
+      (goto-char inside))
+    (deactivate-mark)
+    (set-marker start nil) (set-marker end nil) (set-marker inside nil)))
+
+(defun od--math-neighbour-is-prose-p (forward)
+  "Non-nil when the nearest text in direction FORWARD is running prose.
+Not a heading, a meta line or another block tag, which a joined
+expression would run into."
+  (save-excursion
+    (if forward (skip-chars-forward " \t\n") (skip-chars-backward " \t\n"))
+    (and (not (if forward (eobp) (bobp)))
+         (progn (beginning-of-line)
+                (not (looking-at-p (concat "[ \t]*\\(}\\|◊\\(define-meta\\|section\\|subsection\\|subsubsection\\|summary\\|"
+                                           "break\\|rule\\|list\\|figure\\|panels\\|table\\|blockquote\\|epigraph\\|changelog\\)\\_>\\)")))))))
+
+(defun od-toggle-math ()
+  "Flip the ◊m around point between inline and on its own line (MATH-1).
+Inline to block puts it on its own lines with a blank line either side,
+splitting the paragraph; block to inline joins it back into the running
+text around it, where there is prose to join. Point stays in the source."
+  (interactive)
+  (let ((m (od--math-at)))
+    (unless m (user-error "Point is not in an ◊m"))
+    (let* ((offset (- (max (point) (plist-get m :body-beg)) (plist-get m :body-beg)))
+           (start (copy-marker (plist-get m :start)))
+           (end (copy-marker (plist-get m :end) t))
+           (args (plist-get m :args))
+           (display (plist-get m :display)))
+      ;; the tag's head: ◊m[#:display #t] or ◊m, other arguments kept
+      (let* ((rest (and args (string-trim (replace-regexp-in-string "#:display[ \t\n]+#[tf]\\_>" "" args))))
+             (head (cond (display (if (and rest (not (string-empty-p rest))) (format "◊m[%s]" rest) "◊m"))
+                         (t (if (and rest (not (string-empty-p rest))) (format "◊m[%s #:display #t]" rest) "◊m[#:display #t]")))))
+        (goto-char start)
+        (delete-region start (or (plist-get m :args-end) (+ start 2)))
+        (insert head))
+      (if display
+          ;; join: one space each side where there is prose, else leave the lines
+          (progn
+            (goto-char end)
+            (when (od--math-neighbour-is-prose-p t)
+              (let ((p (point)))
+                (skip-chars-forward " \t\n")
+                (if (memq (char-after) '(?. ?, ?\; ?: ?! ?? ?\)))
+                    (delete-region p (point))
+                  (delete-region p (point)) (insert " "))))
+            (goto-char start)
+            (when (od--math-neighbour-is-prose-p nil)
+              (let ((p (point)))
+                (skip-chars-backward " \t\n")
+                (delete-region (point) p)
+                (insert " "))))
+        (od--math-block-spacing start end))
+      (let ((m2 (save-excursion (goto-char start) (skip-chars-forward " \t\n") (od--math-parse (point)))))
+        (goto-char (min (+ (plist-get m2 :body-beg) offset) (plist-get m2 :body-end))))
+      (set-marker start nil) (set-marker end nil))))
+
+(defun od-unwrap-math ()
+  "Remove the ◊m around point, keeping its TeX source (as `od-unwrap' does)."
+  (interactive)
+  (let ((m (od--math-at)))
+    (unless m (user-error "Point is not in an ◊m"))
+    (let ((here (- (max (point) (plist-get m :body-beg)) (plist-get m :body-beg)))
+          (text (buffer-substring (plist-get m :body-beg) (plist-get m :body-end))))
+      (delete-region (plist-get m :start) (plist-get m :end))
+      (goto-char (plist-get m :start))
+      (save-excursion (insert text))
+      (forward-char (min here (length text))))))
+
+(defun od-render-math ()
+  "Set every new ◊m with TeX now: `make refresh-math', in *od-check* (MATH-1).
+New expressions go into data/math-cache.json, to be committed with the
+page. When TeX refuses one, point goes to it in its source, with TeX's
+message in *od-check*."
+  (interactive)
+  (save-some-buffers (not (called-interactively-p 'any))
+                     (lambda () (and buffer-file-name (string-prefix-p (expand-file-name (od-root)) buffer-file-name))))
+  (od--run "make refresh-math"
+           (lambda (ok)
+             (if ok
+                 (message "Mathematics rendered; commit data/math-cache.json with the page")
+               (let ((buf (get-buffer "*od-check*")))
+                 (when buf
+                   (let ((next-error-last-buffer buf))
+                     (ignore-errors (first-error)))))))))
+
 ;;; Preview ------------------------------------------------------------------
 
 (defun od--server-up-p ()
@@ -875,18 +1075,23 @@ See §3.4 and LAYOUT-4c."
     (od--server-up-p)))
 
 (defun od--serve-needs-refresh-p ()
-  "Non-nil when *od-serve* ended on a citation form missing from the cache (CITE-9)."
+  "Which cache *od-serve* stopped for, or nil: the make target that fills it.
+\"refresh-cites\" for a citation form missing from the cache (CITE-9),
+\"refresh-math\" for an ◊m not yet rendered (MATH-1)."
   (with-current-buffer (get-buffer-create "*od-serve*")
     (save-excursion
       (goto-char (point-min))
-      (re-search-forward "no cached note for .*run `make refresh`" nil t))))
+      (cond ((re-search-forward "no cached note for .*run `make refresh`" nil t) "refresh-cites")
+            ((progn (goto-char (point-min))
+                    (re-search-forward "math-cache\\.json; run `make refresh`" nil t))
+             "refresh-math")))))
 
-(defun od--refresh-cites ()
-  "Run `make refresh-cites' synchronously; non-nil when it succeeded.
+(defun od--refresh-cites (&optional target)
+  "Run `make refresh-cites' (or make TARGET) synchronously; non-nil on success.
 Its output follows the server's in *od-serve*."
-  (let ((default-directory (od-root)))
-    (message "Refreshing the citation caches (make refresh-cites)...")
-    (eq 0 (call-process "make" nil "*od-serve*" nil "refresh-cites"))))
+  (let ((default-directory (od-root)) (target (or target "refresh-cites")))
+    (message "Refreshing the caches (make %s)..." target)
+    (eq 0 (call-process "make" nil "*od-serve*" nil target))))
 
 (defun od-preview ()
   "Render this file on the Pollen project server and open it in a browser.
@@ -897,8 +1102,9 @@ server, up to 90 seconds.
 If the build stops because a work is cited at a locator not yet in the
 citation cache (CITE-9), runs `make refresh-cites' and starts the server
 again, once: the new form is then in data/cite-cache.json, to be committed
-with the page.  Any other failure shows *od-serve* with the error instead
-of opening a browser on a dead port."
+with the page. An ◊m not yet rendered (MATH-1) is handled the same way,
+with `make refresh-math'.  Any other failure shows *od-serve* with the
+error instead of opening a browser on a dead port."
   (interactive)
   (save-buffer)
   (let* ((root (od-root))
@@ -909,8 +1115,8 @@ of opening a browser on a dead port."
         (message "Starting the Pollen server (make serve)...")
         (unless (od--serve-wait proc 90)
           (if (and (not (process-live-p proc))
-                   (od--serve-needs-refresh-p)
-                   (od--refresh-cites))
+                   (let ((target (od--serve-needs-refresh-p)))
+                     (and target (od--refresh-cites target))))
               (progn
                 (setq proc (od--serve-start))
                 (message "Citation caches refreshed; starting the Pollen server again...")
@@ -927,8 +1133,8 @@ of opening a browser on a dead port."
 ;;;###autoload
 (defun od-refresh ()
   "Run the whole `make refresh' (BUILD-3): citation caches, covers, the
-dark-mode classification of new figures and Wayback snapshots of new
-external links.  `od-publish' runs it too; `od-preview' runs only the
+mathematics (MATH-1), the dark-mode classification of new figures and
+Wayback snapshots of new external links.  `od-publish' runs it too; `od-preview' runs only the
 citation part when a page needs it.  The server, if running, is restarted
 afterwards so it reads the new caches."
   (interactive)
@@ -1027,6 +1233,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
     (rule          :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
     (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
+    (m             :pos nil    :kw (display)                                             :req ()                    :body t   :block nil :built t :command od-math)
     (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
     (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
     (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
@@ -1050,6 +1257,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; Keyword values the build accepts, where it accepts only a few (FL-6).
 (defconst od--keyword-values
   '((italic "#t" "#f")                        ; LAYOUT-4c
+    (display "#t" "#f")                       ; ◊m, MATH-1
     (kind "\"essay\"" "\"entry\""))          ; ◊index, KIND-4; ◊header-sample
   "Keywords whose value must be one of a list.")
 
@@ -1193,9 +1401,27 @@ Return the position after the tag."
                when (memq (char-after i) '(?- ?_)) do (od--put-syntax i "_"))
       (when (eq (char-after p) ?\[)
         (setq p (or (od--scan-args p limit) (1+ p))))
-      (when (eq (char-after p) ?\{)
+      (cond
+       ((eq (char-after p) ?\{)
         (setq p (or (od--scan-body p limit) (1+ p))))
+       ((and (eq (char-after p) ?|) (eq (char-after (1+ p)) ?\{))   ; ◊m|{ … }|
+        (setq p (or (od--scan-bar-body (1+ p) limit) (+ p 2)))))
       p)))
+
+(defun od--scan-bar-body (open limit)
+  "Mark the body Pollen delimits with |{ and }|, whose `{' is at OPEN.
+Braces inside need not balance (TeX's \\{ in ◊m|{ … }|, MATH-1), so they
+are punctuation. Return the position after its `}|', or nil if it is not
+closed before LIMIT."
+  (save-excursion
+    (goto-char (1+ open))
+    (when (search-forward "}|" limit t)
+      (let ((close (- (point) 2)))
+        (cl-loop for i from (1+ open) below close
+                 when (memq (char-after i) '(?{ ?})) do (od--put-syntax i "."))
+        (od--put-syntax open "(}")
+        (od--put-syntax close "){")
+        (point)))))
 
 (defun od-syntax-propertize (start end)
   "Give brackets, braces and quotes their syntax where a tag owns them (SYN-2).
@@ -1293,6 +1519,11 @@ changelog and no contents; everything else is the same.
      the paragraph, item or sentence it glosses
    - emphasis and the other inline tags: {od-wrap} (inside one already,
      it takes the tag off again); the LaTeX logo: {od-insert-tag}, latex
+   - mathematics: {od-math}, then inline or block, with the TeX source
+     between the braces (toggle flips one to the other; unwrap takes the
+     tag off). render sets new expressions with TeX now and, if TeX
+     refuses one, takes you to it; {od-preview} does the same when a page
+     needs it. Commit data/math-cache.json with the page.
    - a block of text: {od-insert-block}, then list (C-u for numbers), block
      quotation or epigraph; italic or roman: {od-toggle-italic}
    - a section break or rule, or a section's one-line summary:
@@ -1460,10 +1691,16 @@ Return a plist: :start :name :name-end :args (OPEN . CLOSE-or-nil)
           (let ((e (ignore-errors (scan-lists p 1 0))))
             (setq args (cons p e))
             (when e (setq p e))))
-        (when (and (or (null args) (cdr args)) (eq (char-after p) ?\{))
+        (cond
+         ((and (or (null args) (cdr args)) (eq (char-after p) ?\{))
           (let ((e (ignore-errors (scan-lists p 1 0))))
             (setq body (cons p e))
             (when e (setq p e))))
+         ;; Pollen's other delimiters, |{ … }| (MATH-1): the body is the braces' part
+         ((and (or (null args) (cdr args)) (eq (char-after p) ?|) (eq (char-after (1+ p)) ?\{))
+          (let ((e (ignore-errors (scan-lists (1+ p) 1 0))))
+            (setq body (cons (1+ p) e))
+            (when e (setq p (1+ e))))))
         (list :start start :name name :name-end name-end :args args :body body :end p)))))
 
 (defun od--args (open close)
@@ -2303,9 +2540,12 @@ it. Point ends on the caption line, before the closing brace."
 (add-to-list 'compilation-error-regexp-alist-alist
              '(od-warning "^warning: \\([^:\n]+\\.\\(?:pm\\|rkt\\|p\\|csv\\)\\): " 1 nil nil 1))
 
+(add-to-list 'compilation-error-regexp-alist-alist   ; tools/maths.py (MATH-1)
+             '(od-tex-error "^\\([^:\n]+\\.pm\\):\\([0-9]+\\):\\([0-9]+\\): TeX error" 1 2 3 2))
+
 (define-compilation-mode od-check-mode "od-check"
   "Output of `od-check': build errors name a file, and `next-error' opens it."
-  (setq-local compilation-error-regexp-alist '(od-build-error od-warning)))
+  (setq-local compilation-error-regexp-alist '(od-build-error od-warning od-tex-error)))
 
 (defvar od--run-function #'od--run-compile
   "How `od-check' and the publishing commands run a command (a seam for tests).")
@@ -2351,7 +2591,7 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
 (defconst od-email "ryan@occurrentdevelopment.com" "The only address commits may carry.")
 (defconst od--forbidden-rx "\\(-Notes\\.md\\|\\.docx\\|\\.graffle\\|\\.tex\\)\\'"
   "Files that never enter the public repository (BUILD-3a).")
-(defconst od--caches '("refs/refs.bib" "data/cite-cache.json" "data/invert.json" "data/link-meta.json")
+(defconst od--caches '("refs/refs.bib" "data/cite-cache.json" "data/math-cache.json" "data/invert.json" "data/link-meta.json")
   "The committed caches `make refresh' updates (BUILD-3).")
 
 (defun od--git (&rest args)
@@ -2798,6 +3038,7 @@ title. A blog entry renames the same way, under /blog/."
     (define-key m (kbd "C-c o i") #'od-insert-element)   ; section, figure, panels, table, summary, aside, margin, break, rule
     (define-key m (kbd "C-c o b") #'od-insert-block)     ; list, block quotation, epigraph
     (define-key m (kbd "C-c o w") #'od-wrap)             ; em, strong, sc, code (toggles)
+    (define-key m (kbd "C-c o m") #'od-math)             ; inline, block, toggle, render, unwrap (MATH-1)
     (define-key m (kbd "C-c o o") #'od-toggle-italic)
     (define-key m (kbd "C-c o j") #'od-insert-tag)
     (define-key m (kbd "C-c o u") #'od-unwrap)
@@ -2859,7 +3100,7 @@ table, Org's table keys work (TAB aligns, M-arrows move rows and columns).
 The lower-case keys under `C-c o' are menus (EMACS-7): one key, then a
 choice by `completing-read': `C-c o g' the glossary, `C-c o l' a link (or a figure reference, or an anchor),
 `C-c o i' an element of the page, `C-c o b'
-a block of text, `C-c o w' an inline tag. The rest:
+a block of text, `C-c o w' an inline tag, `C-c o m' mathematics. The rest:
 
 \\{occurrent-mode-map}"
   :syntax-table od-syntax-table
