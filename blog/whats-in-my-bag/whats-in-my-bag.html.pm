@@ -97,7 +97,7 @@ Cost: ~$1,500--$2,000.}
 ◊figure["img/dermatoscope.jpeg" #:id "dermatoscope-img" #:title "Heine Delta 20 Dermatoscope" #:alt "" #:licence "own"]{}
 
 ◊subsubsection[#:id "woods-light"]{Wood's light.}
-I previously carried an old mercury vapour discharge Wood's light. It wasn't well made, and there were issues with the circuit. I now have a smaller and more robust ◊sc{LED} one.◊aside{The mercury vapour light had an emission spectrum of around 320--400 nm, with a peak at 365 nm. Most ◊sc{LED} ultraviolet lights have a single peak at 365 nm, with a much narrower emission spectrum---but there are other peaks at longer wavelengths. How much does this matter? Not sure!}. I use it when I'm looking for hypopigmented macules or at dermatoses. I always wear orange filter glasses when using it, both to protect my eyes and because it improves contrast.
+I previously carried an old mercury vapour discharge Wood's light. It wasn't well made, and there were issues with the circuit. I now have a smaller and more robust ◊sc{LED} one◊aside{The mercury vapour light had an emission spectrum of around 320--400 nm, with a peak at 365 nm. Most ◊sc{LED} ultraviolet lights have a single peak at 365 nm, with a much narrower emission spectrum---but there are other peaks at longer wavelengths. How much does this matter? Not sure!}. I use it when I'm looking for hypopigmented macules or at dermatoses. I always wear orange filter glasses when using it, both to protect my eyes and because it improves contrast.
 
 ◊em{Use: A couple of times per year.◊br{}
 Verdict: To be honest it's always a disappointing experience (but that could be my ignorance!). Maybe worth it that one time you find an ash-leaf macule.◊br{}
