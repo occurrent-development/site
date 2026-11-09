@@ -1,4 +1,14 @@
 {
+ "068874424d63c42b3f3b3c3a98be74093debb9f3bbcee440c2d5f8284e5689fe": {
+  "checked": "2026-11-09",
+  "file": "blog/whats-in-my-bag/img/orchidometer.jpg",
+  "invert": false
+ },
+ "10fa5ba3f296a1c89df136dddf91133f884e24c236e417b021996c9afc220fbf": {
+  "checked": "2026-11-09",
+  "file": "blog/whats-in-my-bag/img/craniometer.jpg",
+  "invert": false
+ },
  "1dcffb3ced9fa5cb8395c04853bf586f8056b545e4f2a7389edb8ea3e420ca4c": {
   "checked": "2026-11-03",
   "file": "pages/img/2026-11-02-lucas-pillow-specimen-ball-a.jpg",
@@ -8,6 +18,16 @@
   "checked": "2026-11-07",
   "file": "blog/whats-in-my-bag/img/vorotek-promotional.jpg",
   "invert": true
+ },
+ "46c199afd1ce771b69e3df9b98629f41883c3aca05f9896e70f2ab957aae2250": {
+  "checked": "2026-11-09",
+  "file": "blog/whats-in-my-bag/img/eye-covers.jpg",
+  "invert": false
+ },
+ "526539a69b45f545d03dbca3ffdad5083fdf61946a2a689b8a9b0445422abb1e": {
+  "checked": "2026-11-09",
+  "file": "blog/whats-in-my-bag/img/callipers.jpg",
+  "invert": false
  },
  "5bb95978fd439c0d4756eb7fb61bf59befcbcc91c53f71ce8c213a217d81e757": {
   "checked": "2026-11-06",
@@ -37,6 +57,11 @@
  "c6cf3857a56e5451e6b1e845618416c1811905916a455feb1a223a37dd8e4ab7": {
   "checked": "2026-11-08",
   "file": "blog/whats-in-my-bag/img/kit-1.jpeg",
+  "invert": false
+ },
+ "d63437a70b2ace03c18cfd3e52a521f7c55c083037fa8bd0b28dd1bdd1c5cee0": {
+  "checked": "2026-11-09",
+  "file": "blog/whats-in-my-bag/img/goniometer.jpg",
   "invert": false
  },
  "d69785ec138841ef9eb12b1c1a71dc4bb4f5f47a2b87baeb90571968c1cbacba": {

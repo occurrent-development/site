@@ -88,11 +88,11 @@ Cost: Usually around $1,500. Go for build quality over feature set.}
 
 ◊section[#:id "dermatology-stuff"]{Dermatology Stuff}
 ◊subsubsection[#:id "dermatoscope"]{Dermatoscope.}
-I use a Heine Delta 20 dermatoscope. I don't use it much, but it is good for hunting scabies or head lice.
+I use a Heine Delta 20 dermatoscope. I don't use it much, but it is good for hunting scabies or head lice◊cite["haliasosDermoscopyPediatricDermatologist2013b" #:note "For those considering a dermatoscope this, and its two companion pieces, is a fantastic paper."]. I'd replace it with a Dino-Lite for that in a heartbeat. But note that I really have this because I'm an enthusiast; I can't recommend most paediatricians carry a dermatoscope.
 
 ◊em{Use: Every month or so.◊br{}
-Verdict: I like it, but I'd swap it for a Dino-Lite. That's me being an enthusiast though, for normies it ain't worth it.◊br{}
-Cost: About $1,500--$2,000.}
+Verdict: Not worth the cost for most paediatricians.◊br{}
+Cost: ~$1,500--$2,000.}
 
 ◊figure["img/dermatoscope.jpeg" #:id "dermatoscope-img" #:title "Heine Delta 20 Dermatoscope" #:alt "" #:licence "own"]{}
 

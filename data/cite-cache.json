@@ -107,7 +107,7 @@
    ],
    "."
   ],
-  "order": 5,
+  "order": 6,
   "doi": "10.1097/INF.0000000000001189",
   "url": "https://doi.org/10.1097/INF.0000000000001189",
   "csl": {
@@ -225,7 +225,7 @@
    ],
    "."
   ],
-  "order": 9,
+  "order": 10,
   "doi": "10.1007/s00431-024-05544-0",
   "url": "https://doi.org/10.1007/s00431-024-05544-0",
   "csl": {
@@ -319,7 +319,7 @@
    ],
    "."
   ],
-  "order": 4,
+  "order": 5,
   "doi": "10.1136/jnnp.74.1.7",
   "url": "https://doi.org/10.1136/jnnp.74.1.7",
   "csl": {
@@ -354,6 +354,125 @@
    "Jacks"
   ],
   "year": "2003",
+  "type": "Article"
+ },
+ "haliasosDermoscopyPediatricDermatologist2013b": {
+  "full": {
+   "": [
+    "Elena C. Haliasos et al., “Dermoscopy for the Pediatric Dermatologist Part I: Dermoscopy of Pediatric Infectious and Inflammatory Skin Lesions and Hair Disorders,” ",
+    [
+     "em",
+     {},
+     "Pediatric Dermatology"
+    ],
+    " 30, no. 2 (2013): 163–71, ",
+    [
+     "a",
+     {
+      "href": "https://doi.org/10.1111/pde.12097"
+     },
+     "https://doi.org/10.1111/pde.12097"
+    ],
+    "."
+   ]
+  },
+  "short": {
+   "": [
+    "Haliasos et al., “Dermoscopy for the Pediatric Dermatologist Part I.”"
+   ]
+  },
+  "bib": [
+   "Haliasos, Elena C., Miryam Kerner, Natalia Jaimes-Lopez, et al. “Dermoscopy for the Pediatric Dermatologist Part I: Dermoscopy of Pediatric Infectious and Inflammatory Skin Lesions and Hair Disorders.” ",
+   [
+    "em",
+    {},
+    "Pediatric Dermatology"
+   ],
+   " 30, no. 2 (2013): 163–71. ",
+   [
+    "a",
+    {
+     "href": "https://doi.org/10.1111/pde.12097"
+    },
+    "https://doi.org/10.1111/pde.12097"
+   ],
+   "."
+  ],
+  "order": 4,
+  "doi": "10.1111/pde.12097",
+  "url": "https://doi.org/10.1111/pde.12097",
+  "csl": {
+   "DOI": "10.1111/pde.12097",
+   "ISSN": "07368046",
+   "author": [
+    {
+     "family": "Haliasos",
+     "given": "Elena C."
+    },
+    {
+     "family": "Kerner",
+     "given": "Miryam"
+    },
+    {
+     "family": "Jaimes-Lopez",
+     "given": "Natalia"
+    },
+    {
+     "family": "Rudnicka",
+     "given": "Lidia"
+    },
+    {
+     "family": "Zalaudek",
+     "given": "Iris"
+    },
+    {
+     "family": "Malvehy",
+     "given": "Josep"
+    },
+    {
+     "family": "Hofmann-Wellenhof",
+     "given": "Rainer"
+    },
+    {
+     "family": "Braun",
+     "given": "Ralph P."
+    },
+    {
+     "family": "Marghoob",
+     "given": "Ashfaq A."
+    }
+   ],
+   "container-title": "Pediatric Dermatology",
+   "id": "haliasosDermoscopyPediatricDermatologist2013b",
+   "issue": "2",
+   "issued": {
+    "date-parts": [
+     [
+      2013,
+      3
+     ]
+    ]
+   },
+   "language": "en-US",
+   "page": "163-171",
+   "title": "Dermoscopy for the Pediatric Dermatologist Part I: Dermoscopy of Pediatric Infectious and Inflammatory Skin Lesions and Hair Disorders",
+   "title-short": "Dermoscopy for the Pediatric Dermatologist Part I",
+   "type": "article-journal",
+   "volume": "30"
+  },
+  "title": "Dermoscopy for the Pediatric Dermatologist Part I: Dermoscopy of Pediatric Infectious and Inflammatory Skin Lesions and Hair Disorders",
+  "authors": [
+   "Haliasos",
+   "Kerner",
+   "Jaimes-Lopez",
+   "Rudnicka",
+   "Zalaudek",
+   "Malvehy",
+   "Hofmann-Wellenhof",
+   "Braun",
+   "Marghoob"
+  ],
+  "year": "2013",
   "type": "Article"
  },
  "hackingLoopingEffectsHuman1996": {
@@ -464,7 +583,7 @@
    ],
    ". Second edition. Graphics press, 2001."
   ],
-  "order": 8,
+  "order": 9,
   "doi": null,
   "url": null,
   "csl": {
@@ -565,7 +684,7 @@
    ],
    ". Vintage, 1991."
   ],
-  "order": 7,
+  "order": 8,
   "doi": null,
   "url": null,
   "csl": {
