@@ -1273,7 +1273,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; folder decides it (KIND-1), so `kind' is in no list.
 (defconst od-meta-keys
   '((essay    . (title subtitle status published tags specimen unlisted endmatter toc))
-    (glossary . (term aliases see-also added)))
+    (glossary . (term aliases see-also added status)))
   "Allowed ◊define-meta keys: `essay' for pages and posts, `glossary' for terms.")
 
 (defconst od-statuses '("draft" "published" "revised" "superseded")

@@ -1174,7 +1174,7 @@
 ;; ---------------------------------------------------------------------------
 ;; Phase 3c: the glossary
 
-(require (only-in "lib/glossary.rkt" current-glossary-dir term-ref))
+(require (only-in "lib/glossary.rkt" current-glossary-dir term-ref glossary-ids term-draft? draft-term-ids))
 
 (test-case "TERM-2, D18: the first paragraph is the definition, the rest of the file the More"
   (parameterize ([current-glossary-dir (path->complete-path (build-path "tests" "glossary"))])
@@ -1188,6 +1188,16 @@
   (check-equal? (length (hash-ref (term-ref "occurrent") 'more)) 1)   ; unwrapped from ◊more
   ;; ◊more is gone
   (check-true (fails? (λ () (eval '(more "x") (module->namespace (string->path (path->string (build-path (current-directory) "pollen.rkt")))))))))
+
+(test-case "TERM-10: a draft term loads leniently, is off the glossary page and is known as a draft"
+  (parameterize ([current-glossary-dir (path->complete-path (build-path "tests" "glossary"))])
+    (check-true (term-draft? "draft-term"))
+    (check-false (term-draft? "one-paragraph"))
+    (check-equal? (draft-term-ids) '("draft-term"))
+    (check-false (member "draft-term" (glossary-ids)))
+    (check-not-false (member "one-paragraph" (glossary-ids)))
+    ;; a draft's dangling see-also is dropped, not an error
+    (check-equal? (hash-ref (term-ref "draft-term") 'see-also) '())))
 
 (test-case "TERM-2: a definition holds paragraphs only"
   (define (as-term thunk)

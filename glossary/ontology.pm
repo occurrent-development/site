@@ -4,6 +4,7 @@
 ◊; ◊define-meta[aliases]{}
 ◊; ◊define-meta[see-also]{}
 ◊define-meta[added]{2026-11-09}
+◊define-meta[status]{draft}
 
 From the Greek ὄν, ὄντος (ṓn, óntos: ◊em{being}) + λόγος (lógos: ◊em{account}). Literally translates as "an account of what ◊em{is}".
 

@@ -49,7 +49,8 @@
          (only-in "../lib/util.rkt" text-of published? output->url check-post-slugs post-kind site-value)
          "../lib/walk.rkt"
          (only-in "../lib/cite.rkt" cite-keys cite-key-known? cite-facts)
-         (only-in "../pollen.rkt" reference-card format-date))
+         (only-in "../pollen.rkt" reference-card format-date)
+         (only-in "../lib/glossary.rkt" draft-term-ids))
 
 (define graph-only? (make-parameter #f))
 (command-line #:once-each [("--graph") "Write the link graph and reference sources only" (graph-only? #t)])
@@ -301,12 +302,19 @@
             (fail "published anchor ~a#~a has gone, but ~a link to it" url id (string-join linked ", "))
             (warn "published anchor ~a#~a has gone; links to it from elsewhere will break" url id))))))
 
+;; TERM-10: draft terms. A published page may not mark one; an unused draft is no warning.
+(define draft-terms (draft-term-ids))
+(for* ([(url us) (in-hash (hash-ref published-graph 'terms))]
+       [u (in-list us)]
+       #:when (member (hash-ref u 'id) draft-terms))
+  (fail "~a uses the draft glossary term ~s (set its status to published, or remove the term)" url (hash-ref u 'id)))
+
 ;; TERM-6: unused terms
 (define used (remove-duplicates (map (λ (u) (hash-ref u 'id)) (append* (hash-values (hash-ref published-graph 'terms))))))
 (for ([f (in-list (if (directory-exists? "glossary") (directory-list "glossary") null))]
       #:when (regexp-match? #rx"\\.pm$" (path->string f)))
   (define id (path->string (path-replace-extension f #"")))
-  (unless (member id used) (warn "glossary term ~s is not used by any page" id)))
+  (unless (or (member id used) (member id draft-terms)) (warn "glossary term ~s is not used by any page" id)))
 
 (write-json-file (build-path "data" "anchors.json")
                  (for/hasheq ([p (in-list pages)])
