@@ -1120,6 +1120,12 @@ function setupMargin() {
       a.setAttribute("aria-expanded", "false");
       a._trigger = t;
       if (t) t._stub = a;
+      // a folded stub is one line (its ◊br is hidden in CSS): leave a space where each
+      // break was, so the words either side do not run together; once only
+      for (const br of a.querySelectorAll("br:not([data-sp])")) {
+        br.dataset.sp = "";
+        br.after(" ");
+      }
     } else {
       a.hidden = true;
       a.classList.remove("in-margin", "stub", "is-open", "hl");

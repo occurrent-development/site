@@ -264,6 +264,14 @@ blockquote { margin: 1em 0 1em 1.5em; }
    sets it italic. Its source is set as an epigraph's. */
 blockquote.quote { font-style: normal; }
 blockquote.quote.italic { font-style: italic; }
+/* LAYOUT-4f: a block quotation carries a rule down its left edge, as in a
+   quoted email: the opened aside's rule (2px, the accent), with a little room
+   between it and the text. The margin stays outside the rule. */
+blockquote.quote {
+  box-sizing: border-box;
+  border-left: 2px solid var(--accent);
+  padding-left: 0.75em;
+}
 blockquote.quote footer { font-style: normal; text-align: right; margin-top: 0.25em; }
 blockquote.quote footer::before { content: "— "; }
 blockquote + p { text-indent: 0; }
@@ -1793,6 +1801,9 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
   border-right: 2px solid var(--stub-rule);
 }
 .stub.is-open { white-space: normal; text-overflow: clip; }
+/* a ◊br inside an aside breaks the line only when the aside is open; folded, it is
+   one line (the script leaves a space where the break was) */
+.stub:not(.is-open) br { display: none; }
 .stub:hover, .stub.hl, .stub:focus-visible { color: var(--accent); }
 .stub.is-open { color: var(--text); max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
 .stub.is-open:not(.is-preview) { border-right-color: var(--accent); }

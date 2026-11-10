@@ -808,6 +808,18 @@
   (check-not-false (findf (λ (x) (has-class* x "toc")) (find-all essay txexpr?)))
   (check-equal? (attr-ref (car (find-all essay (λ (x) (has-class* x "tag-link")))) 'href) "/essays?tags=site"))
 
+(test-case "TOC-3: ◊define-meta[toc]{none} suppresses the contents; the sections remain"
+  (define (essay-with toc)
+    (parameterize ([current-metas (hasheq 'title "T" 'status "published" 'published "2026-10-01" 'tags "site"
+                                          'toc toc
+                                          'here-path (path->string (build-path (current-directory) "essays" "x" "x.html.pm")))])
+      (root (section #:id "a" "A") "\n\n" "x" "\n\n" (section #:id "b" "B") "\n\n" "y" "\n\n" (section #:id "c" "C") "\n\n" "z")))
+  (define off (essay-with "none"))
+  (check-false (findf (λ (x) (has-class* x "toc")) (find-all off txexpr?)))
+  (check-equal? (length (find-all off (λ (x) (and (eq? (get-tag x) 'section) (has-class* x "level-1"))))) 3)
+  ;; any other value (or none) leaves the contents as TOC-1 gives them
+  (check-not-false (findf (λ (x) (has-class* x "toc")) (find-all (essay-with "yes") txexpr?))))
+
 (test-case "KIND-4, INDEX-1a: the blog index has three cells in every row: Title · Date · Tags"
   (define idx (index #:kind "entry" #:pagetree "tests/index.ptree"))
   (check-equal? (map (λ (th) (string-trim (text th))) (find-all (car (find-all idx (tag? 'thead))) (tag? 'th)))

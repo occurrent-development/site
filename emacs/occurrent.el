@@ -1272,7 +1272,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; VOCAB-4: meta keys by kind of file. A post's kind is never a meta: the
 ;; folder decides it (KIND-1), so `kind' is in no list.
 (defconst od-meta-keys
-  '((essay    . (title subtitle status published tags specimen unlisted endmatter))
+  '((essay    . (title subtitle status published tags specimen unlisted endmatter toc))
     (glossary . (term aliases see-also added)))
   "Allowed ◊define-meta keys: `essay' for pages and posts, `glossary' for terms.")
 
