@@ -8,9 +8,13 @@
          txexpr
          "util.rkt")
 
-(provide make-exhibit)
+(provide make-exhibit exhibit-kind-label)
 
-;; kind: "figure" or "table". title, body, caption, credit: element lists
+;; The label a kind of exhibit carries, before its number (IMG-7, FORMULA-1).
+(define (exhibit-kind-label kind)
+  (case kind [("table") "Table"] [("formula") "Formula"] [else "Figure"]))
+
+;; kind: "figure", "table" or "formula". title, body, caption, credit: element lists
 ;; (caption and credit may be empty). attrs: extra attributes for <figure>.
 ;; lead: elements set first among the words, before the caption: a panel
 ;; figure's lettered lines (IMG-9).
@@ -23,7 +27,7 @@
   `(figure ((class ,(string-trim (string-append "exhibit " cls)))
             (id ,id) (data-kind ,kind) (aria-labelledby ,title-id) ,@attrs)
            (div ((class "exhibit-title") (id ,title-id))
-                (span ((class "exhibit-label")) ,(if (equal? kind "table") "Table" "Figure")) " " ,@title)
+                (span ((class "exhibit-label")) ,(exhibit-kind-label kind)) " " ,@title)
            (div ((class "exhibit-body")) ,@body)
            ,@(if (and (null? lead) (null? caption) (null? credit)) null
                  `((figcaption ((class "exhibit-meta"))

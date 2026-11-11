@@ -214,7 +214,7 @@ When this is built, fold the new IDs into `SPEC.md` §16 and point it here for d
 
 The highlighter, the completer and the checker all read **one table**, `od-vocabulary`, in `occurrent.el`.
 
-**VOCAB-1 (MUST)** Each entry gives: tag name; whether it takes a **positional argument** in `[...]` (`link`, `cite`, `term`, `anchor`, `ref`, `table-csv`, `figure`, `embed`, `sort-key`, `define-meta`); its allowed **keyword arguments**, marking which are **required**; whether it takes a **body** in `{...}` (`cite`, `anchor`, `ref`, `br`, `break`, `table-csv` do not); and whether it must start a line (**block**: `define-meta`, `section`, `subsection`, `subsubsection`, `summary`, `break`, `list`, `table`, `table-csv`, `figure`, `embed`, `epigraph`, `blockquote`, `changelog`). Seed it from SPEC §3.3 and the `provide` form in `pollen.rkt`:
+**VOCAB-1 (MUST)** Each entry gives: tag name; whether it takes a **positional argument** in `[...]` (`link`, `cite`, `term`, `anchor`, `ref`, `table-csv`, `figure`, `embed`, `sort-key`, `define-meta`); its allowed **keyword arguments**, marking which are **required**; whether it takes a **body** in `{...}` (`cite`, `anchor`, `ref`, `br`, `break`, `table-csv` do not); and whether it must start a line (**block**: `define-meta`, `section`, `subsection`, `subsubsection`, `summary`, `break`, `list`, `table`, `table-csv`, `figure`, `formula`, `embed`, `epigraph`, `blockquote`, `changelog`). Seed it from SPEC §3.3 and the `provide` form in `pollen.rkt`:
 
 | Tag | Positional | Keywords | Body | Block |
 |---|---|---|---|---|
@@ -235,6 +235,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `table-csv` | path | as `table` | no | yes |
 | `sort-key` | value | — | yes | no |
 | `figure` | src | `#:id` (required) `#:title` (required) `#:alt` (required) `#:licence` (required) `#:credit` `#:invert` | caption | yes |
+| `formula` | — | `#:id` (required) `#:title` (required) `#:caption` `#:source` | TeX source, as `m` | yes |
 | `sense` | — | — | yes | no (inside `◊term` only; TERM-9) |
 | `index` | — | `#:kind` (required: `"essay"` or `"entry"`) | no | yes (`/essays` and `/blog` only; KIND-4) |
 | `latest` | count | — | no | yes (the home page only; HOME-1) |

@@ -446,6 +446,48 @@
   (check-true (and (regexp-match? #rx"Table\u00A02" (text-of (car links))) #t))
   (check-true (fails? (λ () (root "See " (ref "nowhere") ".")))))
 
+;; FORMULA-1: ◊formula is an exhibit of its own kind. The expression is in the
+;; maths cache because tests/maths.html.pm uses it (tools/maths.py reads tests/).
+(test-case "FORMULA-1: numbered apart from figures and tables; boxed; words in the exhibit's frame"
+  (define tex "\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i")
+  (define (tab id) (table #:id id #:title "T" "| a |" "\n" "|---|" "\n" "| 1 |" "\n"))
+  (define doc (root "See " (ref "second") "." "\n\n" (formula #:id "first" #:title "The mean" #:caption "Of n values." #:source "Textbook" tex)
+                    "\n\n" (tab "t1") "\n\n" (formula #:id "second" #:title "Again" tex)))
+  (define labels (map text-of (find-all doc (λ (x) (has-class* x "exhibit-label")))))
+  (check-equal? labels '("Formula\u00A01" "Table\u00A01" "Formula\u00A02"))
+  (define first-formula (car (find-all doc (λ (x) (and (has-class* x "formula") (equal? (attr-ref x 'id) "first"))))))
+  (check-equal? (attr-ref first-formula 'data-kind) "formula")
+  ;; the expression is a display expression inside one box
+  (define boxes (find-all first-formula (λ (x) (has-class* x "formula-box"))))
+  (check-equal? (length boxes) 1)
+  (check-equal? (length (find-all (car boxes) (λ (x) (has-class* x "math-display")))) 1)
+  (check-equal? (length (find-all first-formula (λ (e) (and (eq? (get-tag e) 'svg) (has-class* e "math"))))) 1)
+  ;; the words: caption, then the source as the credit line (IMG-3a)
+  (define meta (car (find-all first-formula (λ (x) (has-class* x "exhibit-meta")))))
+  (check-equal? (map (λ (x) (classes x)) (filter txexpr? (get-elements meta))) '("exhibit-caption" "credit"))
+  (check-equal? (text-of (car (find-all meta (λ (x) (has-class* x "exhibit-caption"))))) "Of n values.")
+  (define links (find-all doc (λ (x) (and ((tag? 'a) x) (has-class* x "same")))))
+  (check-true (and (regexp-match? #rx"Formula\u00A02" (text-of (car links))) #t))
+  ;; no caption, no source: no words
+  (check-equal? (find-all (car (find-all doc (λ (x) (and (has-class* x "formula") (equal? (attr-ref x 'id) "second")))))
+                          (λ (x) (has-class* x "exhibit-meta")))
+                '())
+  ;; id and title are required, and the body is TeX only
+  (check-true (fails? (λ () (root (formula #:title "T" tex)))))
+  (check-true (fails? (λ () (root (formula #:id "x" tex)))))
+  (check-true (fails? (λ () (root (formula #:id "x" #:title "T" "a " '(em "b"))))))
+  (check-true (fails? (λ () (root (formula #:id "x" #:title "T"))))))
+
+;; MATH-1: a bracket round an inline expression never parts from it.
+(test-case "MATH-1: ( ◊m ) is one unbreakable unit"
+  (define tex "W_a^{\\min}")
+  (define doc (root "Here is a weight (" (m tex) "), then (" (m tex) ") and (" (m tex) ")." ))
+  (define units (find-all doc (λ (x) (has-class* x "nw"))))
+  (check-equal? (length units) 3)
+  (check-equal? (map (λ (u) (list (car (get-elements u)) (last (get-elements u)))) units)
+                (list (list "(" "),") (list "(" ")") (list "(" ").")))
+  (check-true (andmap (λ (u) (= 1 (length (find-all u (λ (e) (and (eq? (get-tag e) 'svg) (has-class* e "math"))))))) units)))
+
 ;; IMG-9: tests/panels/, read by Pollen itself
 (test-case "IMG-9: one exhibit; panels lifted in order, lettered by the build; the rest is the caption"
   (define doc (fixture "panels/panels.html.pm"))

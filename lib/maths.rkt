@@ -15,9 +15,10 @@
          json
          file/sha1
          txexpr
-         "util.rkt")
+         "util.rkt"
+         "exhibits.rkt")
 
-(provide m math-source lift-display-maths math? math-display?)
+(provide m make-formula math-source lift-display-maths math? math-display?)
 
 (define cache #f)
 (define cache-stamp #f)
@@ -53,18 +54,22 @@
 ;; ◊m{…} inline; ◊m[#:display #t]{…} on its own line, centred (LAYOUT-1).
 ;; A body with braces that do not balance is written ◊m|{ … }|.
 (define (m #:display [display #f] . xs)
+  (math-element xs display "◊m"))
+
+;; The tag's output; WHAT names the tag in a build error (◊m or ◊formula).
+(define (math-element xs display what)
   (unless (boolean? display)
-    (build-error "◊m's #:display is #t or #f (got ~s)" display))
+    (build-error "~a's #:display is #t or #f (got ~s)" what display))
   (unless (andmap string? xs)
-    (build-error "◊m takes TeX source only, with no tags inside it; for braces that do not balance write ◊m|{ … }| (MATH-1)"))
+    (build-error "~a takes TeX source only, with no tags inside it; for braces that do not balance write ~a|{ … }| (MATH-1)" what what))
   (define tex (math-source xs))
-  (when (equal? tex "") (build-error "◊m is empty: write the TeX source between the braces (MATH-1)"))
+  (when (equal? tex "") (build-error "~a is empty: write the TeX source between the braces (MATH-1)" what))
   (define form (if display 'display 'inline))
   (define entry (hash-ref (the-cache) (string->symbol (bytes->hex-string (sha256-bytes (string->bytes/utf-8 tex)))) #f))
   (define r (and entry (equal? (hash-ref entry 'tex #f) tex) (hash-ref entry form #f)))
   (unless r
-    (build-error "◊m~a{~a} is not in data/math-cache.json; run `make refresh` (MATH-1)"
-                 (if display "[#:display #t]" "") tex))
+    (build-error "~a~a{~a} is not in data/math-cache.json; run `make refresh` (MATH-1)"
+                 what (if display "[#:display #t]" "") tex))
   (define svg
     `(svg ((class "math")
            (viewBox ,(hash-ref r 'viewBox))
@@ -78,18 +83,41 @@
           ,@(map json->x (hash-ref r 'body))))
   (if display `(span ((class "math-display")) ,svg) svg))
 
+;; FORMULA-1: ◊formula, a displayed expression as an exhibit, like a figure or
+;; a table: "Formula 1", a title, and in the margin an optional comment and
+;; source. The expression sits in a box as wide as it is, centred in the
+;; column (CSS). TITLE, CAPTION and SOURCE are element lists or #f.
+(define (make-formula xs #:id id #:title title #:caption caption #:source source)
+  (define expr (math-element xs #t "◊formula"))
+  (make-exhibit "formula" id title
+                (list `(div ((class "formula-box")) ,expr))
+                (or caption null)
+                (or source null)
+                #:class "formula"))
+
 (define (math? x) (and (txexpr? x) (eq? (get-tag x) 'svg) (has-class? x "math")))
 (define (math-display? x) (and (txexpr? x) (eq? (get-tag x) 'span) (has-class? x "math-display")))
 
 (define (blank? x) (and (string? x) (regexp-match? #px"^\\s*$" x)))
 (define trailing #px"^[.,;:!?…)\\]’”]+")
+;; an opening bracket or quote straight before an inline expression goes with it
+(define leading #px"[(\\[“‘«]+$")
+;; the punctuation that opens STRS, if any: (values (list "…") the rest)
+(define (take-trailing strs)
+  (cond
+    [(and (pair? strs) (string? (car strs)) (regexp-match? trailing (car strs)))
+     (define p (car (regexp-match trailing (car strs))))
+     (define after (substring (car strs) (string-length p)))
+     (values (list p) (if (equal? after "") (cdr strs) (cons after (cdr strs))))]
+    [else (values '() strs)]))
 
 ;; Two passes over the finished page:
 ;; - a paragraph that holds nothing but one display expression becomes the
 ;;   expression's own block, so it is spaced as a block, evenly above and
 ;;   below, rather than as a paragraph holding a block. Inside a paragraph
 ;;   (text before or after it) it stays a span set as a block (CSS).
-;; - punctuation straight after an inline expression stays on its line.
+;; - punctuation straight after an inline expression stays on its line, and so
+;;   does an opening bracket straight before it: "(◊m{x})" never breaks.
 (define (lift-display-maths doc)
   (let walk ([x doc])
     (cond
@@ -103,12 +131,18 @@
        (txexpr (get-tag x) (get-attrs x)
                (let loop ([els (map walk (get-elements x))])
                  (match els
-                   [(list* (? math? s) (? string? t) rest)
-                    #:when (regexp-match? trailing t)
-                    (define p (car (regexp-match trailing t)))
-                    (define after (substring t (string-length p)))
-                    (list* `(span ((class "nw")) ,s ,p)
-                           (loop (if (equal? after "") rest (cons after rest))))]
+                   ;; "(", the expression and what closes it never part (MATH-1)
+                   [(list* (? string? t) (? math? s) rest)
+                    #:when (regexp-match? leading t)
+                    (define o (car (regexp-match leading t)))
+                    (define before (substring t 0 (- (string-length t) (string-length o))))
+                    (define-values (tail rest*) (take-trailing rest))
+                    (append (if (equal? before "") '() (list before))
+                            (cons `(span ((class "nw")) ,o ,s ,@tail) (loop rest*)))]
+                   [(list* (? math? s) rest)
+                    #:when (let-values ([(tail r) (take-trailing rest)]) (pair? tail))
+                    (define-values (tail rest*) (take-trailing rest))
+                    (cons `(span ((class "nw")) ,s ,@tail) (loop rest*))]
                    [(cons e rest) (cons e (loop rest))]
                    ['() '()])))]
       [else x])))

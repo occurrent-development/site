@@ -543,6 +543,19 @@ page does not:
 
 ◊m[#:display #t]{\text{incidence rate} = \frac{\text{number of new cases of the condition during the period}}{\text{total person-time at risk during the period}}}
 
+An expression the essay returns to, or one that wants a comment, is a
+◊em{formula}: framed as a figure or a table is, numbered on its own
+(◊ref["sample-mean"] is the first), with its title and its comment in the right
+margin, and the expression in a box as wide as it needs to be, set off by the
+same rule as an aside's:
+
+◊formula[#:id "sample-mean" #:title "The sample mean" #:caption "The comment sits in the margin, as a figure's does, and may run on for several lines without moving the text."]{\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i}
+
+A formula too wide for the column keeps the column's width, and the
+expression scrolls inside its box:
+
+◊formula[#:id "incidence-rate" #:title "The incidence rate"]{\text{incidence rate} = \frac{\text{number of new cases of the condition during the period}}{\text{total person-time at risk during the period}}}
+
 ◊subsection[#:id "maths-heading"]{A heading with ◊m{\bar{x}} in it}
 
 A heading takes an expression at its own size. An expression whose braces do

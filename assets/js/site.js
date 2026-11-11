@@ -731,6 +731,7 @@ let lightbox = null;   // { box, shade, from }
 
 function setupExhibits() {
   for (const fig of article?.querySelectorAll(".exhibit") || []) {
+    if (fig.dataset.kind === "formula") continue;   // FORMULA-1: a formula has no Expand; it scrolls in its box
     const label = fig.querySelector(".exhibit-label")?.textContent.replace(/\u00A0/g, " ") || "";
     const b = el("button", { type: "button", class: "expand", "aria-label": `Expand ${label}`.trim(), title: "Expand" }, icon(EXPAND));
     fig.querySelector(".exhibit-body")?.append(b);

@@ -142,6 +142,24 @@
   (od-test-errors-are "A ◊sense{loose} word." '("◊sense"))
   (od-test-errors-are "◊more{Longer text.}" '("◊more")))
 
+(ert-deftest od-test-insert-formula ()
+  "FORMULA-1: `od-insert-formula' makes a ◊formula with id and title, point in the TeX;
+the ids list sees it as a formula, and a ◊ref to it is not an error."
+  (od-test-with ""
+    (cl-letf (((symbol-function 'read-string) (lambda (&rest _) "The sample mean")))
+      (od-insert-formula))
+    (should (looking-at-p "}"))
+    (should (string-match-p "\\`◊formula\\[#:id \"[a-z0-9-]+\" #:title \"The sample mean\"\\]{" (buffer-string)))
+    (insert "\\bar{x}")
+    (let ((e (car (od--ids))))
+      (should (eq (nth 1 e) 'formula))
+      (should (equal (nth 3 e) "The sample mean"))
+      (should (assoc (nth 0 e) (od--id-candidates '(formula)))))
+    (goto-char (point-max))
+    (insert (format "\n\nSee ◊ref[\"%s\"]." (car (car (od--ids)))))
+    (font-lock-ensure)
+    (should-not (od-test-errors))))
+
 (ert-deftest od-test-insert-panels ()
   "IMG-9: `od-insert-panels' asks how many panels and how they sit, then every image in turn."
   (let ((answers '()))
@@ -727,7 +745,7 @@ The key is picked as \"k\"."
   ;; the figure and table reference is in the same menu, and C-c o r is gone
   (let (ran)
     (od-test-with ""
-      (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "figure or table"))
+      (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "figure, table or formula"))
                 ((symbol-function 'od-insert-ref) (lambda () (interactive) (setq ran t))))
         (od-insert-link))
       (should ran)

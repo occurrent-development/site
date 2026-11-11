@@ -27,6 +27,13 @@ class Scan(unittest.TestCase):
             (False, "W_a^{\\min}"), (False, "\\frac{a}{b}"), (True, "\\bar{x} = 1"),
             (False, "\\left\\{ x \\right."), (False, "y")])
 
+    def test_formula_is_always_display(self):
+        # FORMULA-1: ◊formula's body is TeX, set on its own line whatever the arguments
+        text = ('◊formula[#:id "mean" #:title "The mean" #:caption "Of n values."]{\\bar{x} = \\frac{1}{n}}\n'
+                '◊formula[#:id "set" #:title "A set"]|{\\left\\{ x \\right.}| and ◊m{y}')
+        self.assertEqual(self.found(text), [
+            (True, "\\bar{x} = \\frac{1}{n}"), (True, "\\left\\{ x \\right."), (False, "y")])
+
     def test_comments_are_skipped_and_positions_kept(self):
         text = "◊; ◊m{commented}\nLine two ◊m{x}"
         [(offset, _, body)] = list(maths.scan(text))

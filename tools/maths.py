@@ -90,7 +90,7 @@ def digest(tex):
 
 # ── Finding ◊m in the sources ───────────────────────────────────────────────
 
-M_TAG = re.compile(r"◊m(?=[\[{|])")
+M_TAG = re.compile(r"◊(m|formula)(?=[\[{|])")   # ◊formula is always display (FORMULA-1)
 DISPLAY = re.compile(r"#:display\s+#t\b")
 
 
@@ -119,12 +119,12 @@ def scan(text):
     text = blank_comments(text)
     for m in M_TAG.finditer(text):
         i = m.end()
-        display = False
+        display = m.group(1) == "formula"
         if text.startswith("[", i):
             close = text.find("]", i)
             if close < 0:
                 continue
-            display = bool(DISPLAY.search(text[i:close]))
+            display = display or bool(DISPLAY.search(text[i:close]))
             i = close + 1
         if text.startswith("|{", i):              # ◊m|{ … }|: braces need not balance
             close = text.find("}|", i + 2)

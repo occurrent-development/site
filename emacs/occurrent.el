@@ -807,7 +807,7 @@ stand inside an ◊aside (ASIDE-9)."
   (od--menu "Link to" '(("this page" . od-insert-link-internal)
                         ("this site" . od-insert-link-essay)
                         ("other site" . od-insert-link-external)
-                        ("figure or table" . od-insert-ref)
+                        ("figure, table or formula" . od-insert-ref)
                         ("anchor" . od-insert-anchor))))
 
 (defun od-glossary ()
@@ -820,13 +820,14 @@ A prefix argument reaches `od-insert-term': the term gets a ◊sense (TERM-9)."
 
 (defun od-insert-element ()
   "Insert an element of the page, chosen from a menu.
-A heading, figure, panels, table, summary, aside, margin note, section
-break or rule."
+A heading, figure, panels, table, formula, summary, aside, margin note,
+section break or rule."
   (interactive)
   (od--menu "Insert" '(("section" . od-insert-section)
                        ("figure" . od-insert-figure)
                        ("panels" . od-insert-panels)
                        ("table" . od-insert-table)
+                       ("formula" . od-insert-formula)
                        ("summary" . od-insert-summary)
                        ("aside" . od-insert-aside)
                        ("margin note" . od-insert-margin)
@@ -969,7 +970,7 @@ expression would run into."
     (and (not (if forward (eobp) (bobp)))
          (progn (beginning-of-line)
                 (not (looking-at-p (concat "[ \t]*\\(}\\|◊\\(define-meta\\|section\\|subsection\\|subsubsection\\|summary\\|"
-                                           "break\\|rule\\|list\\|figure\\|panels\\|table\\|blockquote\\|epigraph\\|changelog\\)\\_>\\)")))))))
+                                           "break\\|rule\\|list\\|figure\\|panels\\|formula\\|table\\|blockquote\\|epigraph\\|changelog\\)\\_>\\)")))))))
 
 (defun od-toggle-math ()
   "Flip the ◊m around point between inline and on its own line (MATH-1).
@@ -1149,11 +1150,11 @@ afterwards so it reads the new caches."
 ;;; Figures and tables (IMG-7) ---------------------------------------------------
 
 (defun od-insert-ref ()
-  "Insert ◊ref[\"id\"] for a figure or table in this file."
+  "Insert ◊ref[\"id\"] for a figure, table or formula in this file."
   (interactive)
-  (let ((cands (od--id-candidates '(figure table))))
-    (unless cands (user-error "No figure or table with an #:id in this file"))
-    (insert (format "◊ref[\"%s\"]" (cdr (assoc (completing-read "Figure or table: " cands nil t) cands))))))
+  (let ((cands (od--id-candidates '(figure table formula))))
+    (unless cands (user-error "No figure, table or formula with an #:id in this file"))
+    (insert (format "◊ref[\"%s\"]" (cdr (assoc (completing-read "Figure, table or formula: " cands nil t) cands))))))
 
 ;;; Tags (INDEX-3) --------------------------------------------------------------
 
@@ -1241,6 +1242,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
     (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
     (figure        :pos src    :kw (id title alt licence credit invert width)            :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
+    (formula       :pos nil    :kw (id title caption source)                             :req (id title)            :body t   :block t   :built t :command od-insert-formula)
     (panels        :pos nil    :kw (id title licence credit columns width)               :req (id title licence)    :body t   :block t   :built t :command od-insert-element)
     (panel         :pos src    :kw (alt licence credit invert)                           :req (alt)                 :body t   :block t   :built t :command od-insert-tag :inside panels)
     (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
@@ -1762,7 +1764,7 @@ Each is (KIND TEXT BEG END), KIND being `string', `keyword' or `token'."
 
 (defun od--ids ()
   "Ids defined in this buffer, in order: a list of (ID KIND POS TITLE).
-KIND is `heading', `figure' (a ◊panels too, IMG-9), `table' or `anchor'."
+KIND is `heading', `figure' (a ◊panels too, IMG-9), `table', `formula' or `anchor'."
   (if (eq (car od--ids-cache) (buffer-chars-modified-tick))
       (cdr od--ids-cache)
     (let (out)
@@ -1770,18 +1772,18 @@ KIND is `heading', `figure' (a ◊panels too, IMG-9), `table' or `anchor'."
         (save-match-data
           (syntax-propertize (point-max))
           (goto-char (point-min))
-          (while (re-search-forward "◊\\(section\\|subsection\\|subsubsection\\|figure\\|panels\\|table-csv\\|table\\|anchor\\)\\[" nil t)
+          (while (re-search-forward "◊\\(section\\|subsection\\|subsubsection\\|figure\\|panels\\|formula\\|table-csv\\|table\\|anchor\\)\\[" nil t)
             (let* ((start (match-beginning 0))
                    (name (match-string-no-properties 1))
                    (tag (od--tag-parse start))
                    (args (plist-get tag :args))
                    (split (and (cdr args) (od--args-split (od--args (car args) (cdr args)))))
                    (kw (lambda (k) (let ((e (assq k (cdr split)))) (and e (nth 2 e) (nth 1 (nth 2 e))))))
-                   (kind (pcase name ((or "figure" "panels") 'figure) ((or "table" "table-csv") 'table) ("anchor" 'anchor) (_ 'heading)))
+                   (kind (pcase name ((or "figure" "panels") 'figure) ((or "table" "table-csv") 'table) ("formula" 'formula) ("anchor" 'anchor) (_ 'heading)))
                    (id (if (eq kind 'anchor) (and (car split) (nth 1 (car split))) (funcall kw 'id)))
                    (body (plist-get tag :body))
                    (title (pcase kind
-                            ((or 'figure 'table) (funcall kw 'title))
+                            ((or 'figure 'table 'formula) (funcall kw 'title))
                             ('heading (and body (cdr body)
                                            (buffer-substring-no-properties (1+ (car body)) (1- (cdr body))))))))
               (when id
@@ -1798,7 +1800,7 @@ KIND is `heading', `figure' (a ◊panels too, IMG-9), `table' or `anchor'."
   (cl-loop for (id kind _pos title) in (od--ids)
            when (or (null kinds) (memq kind kinds))
            collect (cons (format "%-24s %s: %s" id
-                                 (pcase kind ('heading "Section") ('figure "Figure") ('table "Table") (_ "Anchor"))
+                                 (pcase kind ('heading "Section") ('figure "Figure") ('table "Table") ('formula "Formula") (_ "Anchor"))
                                  (or title ""))
                          id)))
 
@@ -2056,10 +2058,10 @@ That is a same-page ◊link to a missing id, or a ◊ref to a non-exhibit."
       ("ref"
        (let ((e (assoc v ids)))
          (cond ((null e) (od--error (nth 2 pos) (nth 3 pos)
-                                    (format "no figure or table in this file has the id %s (IMG-7)" v)))
-               ((not (memq (nth 1 e) '(figure table)))
+                                    (format "no figure, table or formula in this file has the id %s (IMG-7)" v)))
+               ((not (memq (nth 1 e) '(figure table formula)))
                 (od--error (nth 2 pos) (nth 3 pos)
-                           (format "#%s is a %s: ◊ref is for figures and tables; use ◊link" v (nth 1 e))))))))))
+                           (format "#%s is a %s: ◊ref is for figures, tables and formulas; use ◊link" v (nth 1 e))))))))))
 
 (defun od--fontify-meta-key (pos kind)
   "Highlight the key of ◊define-meta at POS, checked against KIND (FL-4)."
@@ -2287,7 +2289,7 @@ JUSTIFY is passed on to `fill-paragraph'."
             ("cite" (let ((keys (ignore-errors (mapcar #'cdr (od--bib-candidates)))))
                       (and keys (list sbeg (point) keys :exclusive 'no))))
             ("term" (list sbeg (point) (mapcar #'car (ignore-errors (od--terms))) :exclusive 'no))
-            ("ref" (list sbeg (point) (mapcar #'cdr (od--id-candidates '(figure table)))))
+            ("ref" (list sbeg (point) (mapcar #'cdr (od--id-candidates '(figure table formula)))))
             ("link"
              (cond ((string-prefix-p "#" typed)
                     (list (1+ sbeg) (point) (mapcar #'cdr (od--id-candidates))))
@@ -2515,6 +2517,16 @@ it. Point ends on the caption line, before the closing brace."
                     (if (= columns (min n 3)) "" (format " #:columns %d" columns))
                     width))
     (apply #'insert panels)
+    (save-excursion (insert "}\n"))))
+
+(defun od-insert-formula ()
+  "Insert a ◊formula with title and id, point in the TeX (FORMULA-1).
+Run `od-render-math' (C-c o m, render) to set it; the build needs it cached."
+  (interactive)
+  (let* ((title (string-trim (read-string "Title: ")))
+         (id (od--new-id title)))
+    (unless (bolp) (insert "\n"))
+    (insert (format "◊formula[#:id \"%s\" #:title \"%s\"]{" id (od--quote title)))
     (save-excursion (insert "}\n"))))
 
 (defun od-insert-table ()

@@ -153,6 +153,12 @@ Every post has depth, and the reader controls how far down they go. Place each t
 - **Several images that make one point are one figure**, a `◊panels` with lettered panels (`IMG-9`), never a composite image and never three figures in a row. The letters are the build's; the caption refers to them (*the lesion outlined in B*) and the text with `◊ref[id #:panel "b"]`. Each panel's body is its caption, set in the margin under the title as *A. …*, *B. …*: a name or what to notice in that panel; what the panels show together goes in the figure's caption after them, if anything does. Two to six panels; if the figure wants more, it is two figures.
 - **Interactive figures** (`◊embed`) carry a static fallback that makes the same point.
 
+### 5.4a Formulas
+
+- A **formula** (`◊formula`, `FORMULA-1`) is for an expression the essay comes back to, names or comments on: it has an `#:id` and a `#:title`, is numbered *Formula 1*, and is referred to with `◊ref[id]`. An expression the text only shows in passing is a bare `◊m[#:display #t]`, with no number and no box.
+- The **title** names the formula (*The sample mean*), as a figure's names what it shows. The **comment** (`#:caption`) is what to notice: a definition of the symbols, a condition, what the result means. It is a plain string, so no cites or terms in it; put those in the text. The **source** (`#:source`) is whose it is, if it is not yours.
+- One expression to a formula. Several that belong together are one expression set with `aligned`, not three formulas in a row.
+
 ### 5.5 Essays and entries
 
 An **essay** is something you will revise; an **entry** is something you said on a date (`KIND-2`). If you can imagine amending it next year, it is an essay. If it would be wrong to amend it, because the point is what you thought at the time, it is an entry. Breadth and informality are symptoms of the second kind, not the rule for it. An entry that acquires an epistemic status, a changelog or a contents list has become an essay: move it rather than bending the rules. Entries may link to and quote essays freely; an essay cites an entry only as it would cite any dated source.

@@ -29,6 +29,7 @@
          "lib/figures.rkt"
          "lib/graph.rkt"
          "lib/maths.rkt"
+         (only-in "lib/exhibits.rkt" exhibit-kind-label)
          (only-in xml string->xexpr))
 
 (provide root
@@ -43,8 +44,8 @@
          link cite term sense aside margin
          ;; the essay header's text (LAYOUT-1, SRC-4a)
          abstract epistemic
-         ;; lists, tables, figures (§3.4, §9)
-         (rename-out [od-list list]) table table-csv sort-key figure panels panel ref
+         ;; lists, tables, figures, formulas (§3.4, §9)
+         (rename-out [od-list list]) table table-csv sort-key figure panels panel formula ref
          ;; the home page (§13a); the specimen's sample header (THEME-7)
          index recent header-sample
          ;; revisions (REV-3) and the pages built from the link graph (Phase 3):
@@ -333,6 +334,13 @@
   (make-figure src caption #:id id #:title (and title (list (norm title)))
                #:alt (norm alt) #:licence licence #:credit (norm credit)
                #:width width #:invert invert))
+
+;; FORMULA-1: a displayed expression framed as a figure or table is: numbered
+;; ("Formula 1"), titled, with an optional comment (#:caption) and source
+;; (#:source) in the right margin. The body is the TeX source, as for ◊m.
+(define (formula #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f] . xs)
+  (make-formula xs #:id id #:title (and title (list (norm title)))
+                #:caption (and caption (list (norm caption))) #:source (and source (list (norm source)))))
 
 ;; IMG-9: a figure of lettered panels. ◊panel elements in the body are lifted
 ;; out in source order and the rest is the caption; the root pass letters them.
@@ -1201,7 +1209,7 @@
            (define kind (attr-ref x 'data-kind))
            (define n (add1 (hash-ref counts kind 0)))
            (hash-set! counts kind n)
-           (define label (format "~a\u00A0~a" (if (equal? kind "table") "Table" "Figure") n))
+           (define label (format "~a\u00A0~a" (exhibit-kind-label kind) n))
            (hash-set! labels (attr-ref x 'id) label)
            (fill x label)]
           [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]

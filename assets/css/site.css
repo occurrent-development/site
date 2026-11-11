@@ -990,6 +990,27 @@ figure.figure .figure-svg { color: var(--text); }
   .table-wrap .exhibit-title { padding-right: 0.6em; }
 }
 
+/* FORMULA-1: ◊formula, a displayed expression as an exhibit. The frame is the
+   figure's and the table's (title, caption and source in the right margin in
+   tier L, above and below in the narrower tiers); the body is the expression
+   in a box. The box is as wide as the expression, no wider, centred in the
+   column, with the rule of an aside's stub (ASIDE-3): the same 2px and the
+   same colour. An expression wider than the column scrolls inside its box.
+   Padding is in em of the text: 1em above and below, 2em at the sides, 1em
+   at the sides in tier S, where the column is narrow. */
+.formula-box {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 1em 2em;
+  border: 2px solid var(--stub-rule);
+}
+.formula-box > .math-display { margin: 0; }
+@container page (width < 39em) {
+  .formula-box { padding-inline: 1em; }
+}
+
 /* IMG-8: Expand, at the top right of every figure and table */
 .expand {
   appearance: none;
