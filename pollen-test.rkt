@@ -472,9 +472,10 @@
   (check-equal? (find-all (car (find-all doc (λ (x) (and (has-class* x "formula") (equal? (attr-ref x 'id) "second")))))
                           (λ (x) (has-class* x "exhibit-meta")))
                 '())
-  ;; id and title are required, and the body is TeX only
+  ;; the id is required, and the body is TeX only
   (check-true (fails? (λ () (root (formula #:title "T" tex)))))
-  (check-true (fails? (λ () (root (formula #:id "x" tex)))))
+  ;; the title is optional: the label stands alone
+  (check-equal? (text-of (car (find-all (root (formula #:id "x" tex)) (λ (x) (has-class* x "exhibit-title"))))) "Formula\u00A01")
   (check-true (fails? (λ () (root (formula #:id "x" #:title "T" "a " '(em "b"))))))
   (check-true (fails? (λ () (root (formula #:id "x" #:title "T"))))))
 

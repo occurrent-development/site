@@ -19,15 +19,17 @@
 ;; lead: elements set first among the words, before the caption: a panel
 ;; figure's lettered lines (IMG-9).
 (define (make-exhibit kind id title body caption credit #:class [cls ""] #:attrs [attrs null]
-                      #:lead [lead null])
+                      #:lead [lead null] #:untitled-ok [untitled-ok #f])
   (check-id id (string->symbol (format "~a #:id" kind)))
-  (when (or (not title) (null? title) (equal? (string-trim (text-of title)) ""))
+  ;; a formula may go without a title: it is then "Formula 1" and nothing more
+  (define untitled? (or (not title) (null? title) (equal? (string-trim (text-of title)) "")))
+  (when (and untitled? (not untitled-ok))
     (build-error "~a ~s needs a #:title" kind id))
   (define title-id (string-append id "-title"))
   `(figure ((class ,(string-trim (string-append "exhibit " cls)))
             (id ,id) (data-kind ,kind) (aria-labelledby ,title-id) ,@attrs)
            (div ((class "exhibit-title") (id ,title-id))
-                (span ((class "exhibit-label")) ,(exhibit-kind-label kind)) " " ,@title)
+                (span ((class "exhibit-label")) ,(exhibit-kind-label kind)) ,@(if untitled? null (cons " " title)))
            (div ((class "exhibit-body")) ,@body)
            ,@(if (and (null? lead) (null? caption) (null? credit)) null
                  `((figcaption ((class "exhibit-meta"))

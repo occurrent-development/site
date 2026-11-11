@@ -845,12 +845,14 @@ See §3.4 and LAYOUT-4c."
 ;;; Mathematics (MATH-1) --------------------------------------------------------
 
 (defun od-math ()
-  "Mathematics, ◊m: insert it inline or on its own line, toggle, render, unwrap.
+  "Mathematics, ◊m: insert it inline, on its own line or as a numbered formula
+(◊formula, FORMULA-1), toggle, render, unwrap.
 TeX source goes between the braces; `make refresh' sets it in Libertinus
 Math (MATH-1). render runs that step now, as `od-check' runs the build."
   (interactive)
   (od--menu "Maths" '(("inline" . od-insert-math-inline)
                       ("block" . od-insert-math-block)
+                      ("formula" . od-insert-formula)
                       ("toggle" . od-toggle-math)
                       ("render" . od-render-math)
                       ("unwrap" . od-unwrap-math))))
@@ -1242,7 +1244,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
     (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
     (figure        :pos src    :kw (id title alt licence credit invert width)            :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
-    (formula       :pos nil    :kw (id title caption source)                             :req (id title)            :body t   :block t   :built t :command od-insert-formula)
+    (formula       :pos nil    :kw (id title caption source)                             :req (id)               :body t   :block t   :built t :command od-insert-formula)
     (panels        :pos nil    :kw (id title licence credit columns width)               :req (id title licence)    :body t   :block t   :built t :command od-insert-element)
     (panel         :pos src    :kw (alt licence credit invert)                           :req (alt)                 :body t   :block t   :built t :command od-insert-tag :inside panels)
     (index         :pos nil    :kw (kind)                                                :req (kind)                :body nil :block t   :built t :command od-insert-tag :only index)
@@ -2422,9 +2424,9 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
     "cc-by-nc-4.0" "cc-by-nc-sa-4.0" "cc-by-nc-nd-4.0")
   "Licences a figure may declare (IMG-6).")
 
-(defun od--new-id (title)
-  "Ask for a permanent id, proposed from TITLE and checked against this file."
-  (let ((id (read-string "Id (permanent): " (od-slugify title))))
+(defun od--new-id (title &optional proposal)
+  "Ask for a permanent id, proposed from TITLE (or PROPOSAL) and checked against this file."
+  (let ((id (read-string "Id (permanent): " (or proposal (od-slugify title)))))
     (unless (od--valid-id-p id) (user-error "Ids are lowercase and hyphenated"))
     (when (assoc id (od--ids)) (user-error "#%s is already used in this file" id))
     id))
@@ -2519,15 +2521,52 @@ it. Point ends on the caption line, before the closing brace."
     (apply #'insert panels)
     (save-excursion (insert "}\n"))))
 
+(defun od--next-formula-id ()
+  "The id proposed for an untitled formula: formula-N, N one more than the largest in this file.
+An id is permanent, so N is never a position: deleting a formula does not renumber the rest."
+  (let ((n 0))
+    (dolist (e (od--ids))
+      (when (string-match "\\`formula-\\([0-9]+\\)\\'" (car e))
+        (setq n (max n (string-to-number (match-string 1 (car e)))))))
+    (format "formula-%d" (1+ n))))
+
 (defun od-insert-formula ()
-  "Insert a ◊formula with title and id, point in the TeX (FORMULA-1).
-Run `od-render-math' (C-c o m, render) to set it; the build needs it cached."
+  "Insert a complete ◊formula: title, id, comment and source (FORMULA-1).
+Asks for the title, which may be left empty (the formula is then just
+\"Formula N\", and the id proposed is formula-N), then the id, the comment
+\(#:caption) and the source (#:source), either of which may be left empty and
+is then left out, as a figure's optional credit is. The region, if there is one,
+becomes the TeX; otherwise point is left between the braces. Like
+`od-insert-math-block' it stands on its own lines, and the expression
+needs `od-render-math' (C-c o m, render) before the build can use it."
   (interactive)
-  (let* ((title (string-trim (read-string "Title: ")))
-         (id (od--new-id title)))
-    (unless (bolp) (insert "\n"))
-    (insert (format "◊formula[#:id \"%s\" #:title \"%s\"]{" id (od--quote title)))
-    (save-excursion (insert "}\n"))))
+  (let* ((text (od--region-text))
+         (beg (and text (copy-marker (region-beginning))))
+         (end (and text (copy-marker (region-end) t)))
+         (title (string-trim (read-string "Title (empty for just \"Formula N\"): ")))
+         (id (od--new-id title (and (string-empty-p title) (od--next-formula-id))))
+         (caption (string-trim (read-string "Comment, in the margin (empty for none): ")))
+         (source (string-trim (read-string "Source (empty for none): ")))
+         (d (od--math-delimiters text))
+         (start (copy-marker (or beg (point))))
+         (stop (copy-marker (or end (point)) t))
+         inside)
+    (when text (delete-region start stop))
+    (goto-char start)
+    (insert (format "◊formula[#:id \"%s\"%s%s%s]%s%s"
+                    id (if (string-empty-p title) "" (format " #:title \"%s\"" (od--quote title)))
+                    (if (string-empty-p caption) "" (format " #:caption \"%s\"" (od--quote caption)))
+                    (if (string-empty-p source) "" (format " #:source \"%s\"" (od--quote source)))
+                    (car d) (or text "")))
+    (setq inside (point-marker))
+    (insert (cdr d))
+    (set-marker stop (point))
+    (od--math-block-spacing start stop)
+    (if text
+        (progn (goto-char stop) (skip-chars-forward "\n"))
+      (goto-char inside))
+    (deactivate-mark)
+    (dolist (m (list start stop inside beg end)) (when m (set-marker m nil)))))
 
 (defun od-insert-table ()
   "Insert a ◊table with title, id and an Org-style skeleton (EDIT-7, EDIT-10)."

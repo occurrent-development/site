@@ -86,14 +86,16 @@
 ;; FORMULA-1: ◊formula, a displayed expression as an exhibit, like a figure or
 ;; a table: "Formula 1", a title, and in the margin an optional comment and
 ;; source. The expression sits in a box as wide as it is, centred in the
-;; column (CSS). TITLE, CAPTION and SOURCE are element lists or #f.
+;; column (CSS). TITLE, CAPTION and SOURCE are element lists or #f; the id is
+;; required (a ◊ref and a link need it), the title is not.
 (define (make-formula xs #:id id #:title title #:caption caption #:source source)
   (define expr (math-element xs #t "◊formula"))
   (make-exhibit "formula" id title
                 (list `(div ((class "formula-box")) ,expr))
                 (or caption null)
                 (or source null)
-                #:class "formula"))
+                #:class "formula"
+                #:untitled-ok #t))   ; FORMULA-1: the title is optional
 
 (define (math? x) (and (txexpr? x) (eq? (get-tag x) 'svg) (has-class? x "math")))
 (define (math-display? x) (and (txexpr? x) (eq? (get-tag x) 'span) (has-class? x "math-display")))

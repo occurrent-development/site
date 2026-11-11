@@ -155,7 +155,7 @@ Every post has depth, and the reader controls how far down they go. Place each t
 
 ### 5.4a Formulas
 
-- A **formula** (`◊formula`, `FORMULA-1`) is for an expression the essay comes back to, names or comments on: it has an `#:id` and a `#:title`, is numbered *Formula 1*, and is referred to with `◊ref[id]`. An expression the text only shows in passing is a bare `◊m[#:display #t]`, with no number and no box.
+- A **formula** (`◊formula`, `FORMULA-1`) is for an expression the essay comes back to, names or comments on: it has an `#:id` (the title is optional: untitled, it is just *Formula 1*), is numbered *Formula 1*, and is referred to with `◊ref[id]`. An expression the text only shows in passing is a bare `◊m[#:display #t]`, with no number and no box.
 - The **title** names the formula (*The sample mean*), as a figure's names what it shows. The **comment** (`#:caption`) is what to notice: a definition of the symbols, a condition, what the result means. It is a plain string, so no cites or terms in it; put those in the text. The **source** (`#:source`) is whose it is, if it is not yours.
 - One expression to a formula. Several that belong together are one expression set with `aligned`, not three formulas in a row.
 

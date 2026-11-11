@@ -143,13 +143,16 @@
   (od-test-errors-are "◊more{Longer text.}" '("◊more")))
 
 (ert-deftest od-test-insert-formula ()
-  "FORMULA-1: `od-insert-formula' makes a ◊formula with id and title, point in the TeX;
-the ids list sees it as a formula, and a ◊ref to it is not an error."
+  "FORMULA-1: `od-insert-formula' asks for title, id, comment and source, leaves out an empty
+one, wraps the region as the TeX, and the ids list sees a formula."
+  ;; no region: title, comment, source; point inside the braces
   (od-test-with ""
-    (cl-letf (((symbol-function 'read-string) (lambda (&rest _) "The sample mean")))
-      (od-insert-formula))
+    (let ((answers (list "The sample mean" "sample-mean" "What to notice." "")))
+      (cl-letf (((symbol-function 'read-string) (lambda (&rest _) (pop answers))))
+        (od-insert-formula)))
     (should (looking-at-p "}"))
-    (should (string-match-p "\\`◊formula\\[#:id \"[a-z0-9-]+\" #:title \"The sample mean\"\\]{" (buffer-string)))
+    (should (string-match-p "◊formula\\[#:id \"[a-z0-9-]+\" #:title \"The sample mean\" #:caption \"What to notice.\"\\]{" (buffer-string)))
+    (should-not (string-match-p "#:source" (buffer-string)))
     (insert "\\bar{x}")
     (let ((e (car (od--ids))))
       (should (eq (nth 1 e) 'formula))
@@ -158,7 +161,26 @@ the ids list sees it as a formula, and a ◊ref to it is not an error."
     (goto-char (point-max))
     (insert (format "\n\nSee ◊ref[\"%s\"]." (car (car (od--ids)))))
     (font-lock-ensure)
-    (should-not (od-test-errors))))
+    (should-not (od-test-errors)))
+  ;; a region becomes the TeX, and both optional arguments are written when given
+  (od-test-with "\\bar{x} = 1"
+    (set-mark (point-min)) (goto-char (point-max)) (activate-mark)
+    (let ((answers (list "Mean" "mean" "" "after Rothman")))
+      (cl-letf (((symbol-function 'read-string) (lambda (&rest _) (pop answers))))
+        (od-insert-formula)))
+    (should (string-match-p "#:title \"Mean\" #:source \"after Rothman\"\\]{\\\\bar{x} = 1}" (buffer-string)))
+    (should-not (string-match-p "#:caption" (buffer-string))))
+  ;; no title: no #:title, and the id proposed is formula-N, one past the largest here
+  (od-test-with "◊formula[#:id \"formula-3\"]{x}\n\n"
+    (goto-char (point-max))
+    (let ((answers (list "" "" "")) proposed)
+      (cl-letf (((symbol-function 'read-string)
+                 (lambda (prompt &optional initial &rest _)
+                   (when (string-prefix-p "Id" prompt) (setq proposed initial))
+                   (if (string-prefix-p "Id" prompt) initial (pop answers)))))
+        (od-insert-formula))
+      (should (equal proposed "formula-4")))
+    (should (string-match-p "◊formula\\[#:id \"formula-4\"\\]{}" (buffer-string)))))
 
 (ert-deftest od-test-insert-panels ()
   "IMG-9: `od-insert-panels' asks how many panels and how they sit, then every image in turn."

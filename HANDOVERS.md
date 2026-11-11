@@ -235,7 +235,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `table-csv` | path | as `table` | no | yes |
 | `sort-key` | value | — | yes | no |
 | `figure` | src | `#:id` (required) `#:title` (required) `#:alt` (required) `#:licence` (required) `#:credit` `#:invert` | caption | yes |
-| `formula` | — | `#:id` (required) `#:title` (required) `#:caption` `#:source` | TeX source, as `m` | yes |
+| `formula` | — | `#:id` (required) `#:title` `#:caption` `#:source` | TeX source, as `m` | yes |
 | `sense` | — | — | yes | no (inside `◊term` only; TERM-9) |
 | `index` | — | `#:kind` (required: `"essay"` or `"entry"`) | no | yes (`/essays` and `/blog` only; KIND-4) |
 | `latest` | count | — | no | yes (the home page only; HOME-1) |
