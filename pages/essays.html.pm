@@ -6,4 +6,6 @@ The essays collected here are sustained arguments, and together they build a cri
 
 Shorter, lower-stakes works of writing are published as ◊link["/blog"]{blog posts}.
 
+◊break{}
+
 ◊index[#:kind "essay"]
