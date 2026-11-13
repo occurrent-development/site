@@ -117,6 +117,18 @@
     (build-error "◊~a #:italic is #t or #f (got ~s)" tag italic))
   italic)
 
+;; LAYOUT-4d: an attribution (#:source) may run to several lines. A newline in
+;; the string (written \n in the brackets) is a line break; each line is
+;; space-normalised, blank lines are dropped, and ◊br{} is not needed (and
+;; cannot be written inside a string).
+(define (source-lines source)
+  (define lines
+    (if (string? source)
+        (filter (λ (l) (not (string=? l "")))
+                (map string-normalize-spaces (string-split source "\n" #:trim? #f)))
+        (list (norm source))))
+  (add-between (if (null? lines) (list "") lines) '(br)))
+
 ;; `◊quote` cannot be a tag: Racket's `quote` would silently swallow it.
 ;; LAYOUT-4b: roman by default, set off by its indent; #:italic #t sets it
 ;; italic. An optional source is set as an epigraph's is. For a quotation
@@ -125,14 +137,14 @@
   (check-italic italic 'blockquote)
   (txexpr 'blockquote `((class ,(if (eq? italic #t) "quote italic" "quote")))
           (append (paragraphs xs)
-                  (if source `((footer ,(norm source))) null))))
+                  (if source `((footer ,@(source-lines source))) null))))
 
 ;; LAYOUT-4a: italic by default; #:italic #f sets it roman.
 (define (epigraph #:source [source #f] #:italic [italic 'default] . xs)
   (check-italic italic 'epigraph)
   (txexpr 'blockquote `((class ,(if (eq? italic #f) "epigraph roman" "epigraph")))
           (append (paragraphs xs)
-                  (if source `((footer ,(norm source))) null))))
+                  (if source `((footer ,@(source-lines source))) null))))
 
 ;; REV-3: ◊changelog{…}, one line per substantive revision, each starting
 ;; with its date: "2026-11-02: Rewrote the second section." The root pass
@@ -236,7 +248,7 @@
          ;; LAYOUT-4b's markup; the cite marked `block`, so the walk records the text
          (txexpr 'blockquote `((class ,(if (eq? italic #t) "quote italic" "quote")))
                  (append (paragraphs xs)
-                         `((footer ,@(if source (list (norm source)) (cite-attribution key loc))
+                         `((footer ,@(if source (source-lines source) (cite-attribution key loc))
                                    ,(txexpr 'od-cite (cons '(block "1") attrs) null)))))
          (txexpr 'od-q attrs (map singles xs)))]))
 

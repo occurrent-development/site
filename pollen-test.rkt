@@ -766,6 +766,19 @@
   (check-regexp-match #rx"Plato’s “Cratylus”"
                       (text (car (find-all (root (epigraph #:source "Plato's \"Cratylus\"" "Motto.")) (tag? 'footer))))))
 
+;; LAYOUT-4d: a newline in #:source is a line break (the block cite shares the helper, untested here)
+(test-case "LAYOUT-4d: a multi-line #:source (epigraph, blockquote)"
+  (for ([make (list (λ (src) (epigraph #:source src "Motto."))
+                    (λ (src) (blockquote #:source src "Quoted.")))])
+    (define footer (car (find-all (make "Heraclitus\nas reported by Plato,  Cratylus 402a") (tag? 'footer))))
+    (check-equal? (get-elements footer)
+                  '("Heraclitus" (br) "as reported by Plato, Cratylus 402a"))
+    ;; one line is as before: a single string, no break
+    (check-equal? (get-elements (car (find-all (make "Plato") (tag? 'footer)))) '("Plato"))
+    ;; blank lines are dropped, not made into empty lines
+    (check-equal? (get-elements (car (find-all (make "A\n\n  \nB") (tag? 'footer))))
+                  '("A" (br) "B"))))
+
 (test-case "LAYOUT-1, 1b, 1c, 1d, 1e: the header's block, its author line, labelled tags, both dates, and the closing rule"
   (define h (header-sample #:title "T" #:published "2026-10-01" #:revised "2026-10-15"
                            #:tags "site, typography" #:epistemic "A sample."))

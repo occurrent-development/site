@@ -15,7 +15,7 @@ the face, the headings, the breaks and the two themes at the size and measure
 the essays will use, so that a change to any of them can be checked in one
 place. Elements that arrive in later phases are listed at the end.}
 
-◊epigraph[#:source "Heraclitus, as reported by Plato, Cratylus 402a"]{You could
+◊epigraph[#:source "Heraclitus\nas reported by Plato, Cratylus 402a"]{You could
 not step twice into the ◊em{same} river.}
 
 A page of prose is a machine for being forgotten. When it works, the reader

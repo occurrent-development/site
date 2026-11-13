@@ -2,15 +2,8 @@
 
 ◊define-meta[title]{Essays}
 
-◊cite["dickinsonEmilyDickinsonComplete1960a" #:block #t #:italic #t]{Tell all the truth but tell it slant---◊br{}
-Success in Circuit lies◊br{}
-Too bright for our infirm Delight◊br{}
-The Truth's superb surprise◊br{}
-As Lightning to the Children eased◊br{}
-With explanation kind◊br{}
-The Truth must dazzle gradually◊br{}
-Or every man be blind---}
+The essays collected here are sustained arguments, and together they build a critique of the paradigm that organises developmental paediatrics. Each is written to be finished but not final: I revise essays as my thinking changes, the version on the site is always the latest, and every earlier version is preserved in the revision history linked at the top of each essay. They are not peer reviewed, but they carry my name, and I have tried to write them as though that matters.
 
-◊break{}
+Shorter, lower-stakes works of writing are published as ◊link["/blog"]{blog posts}.
 
 ◊index[#:kind "essay"]
