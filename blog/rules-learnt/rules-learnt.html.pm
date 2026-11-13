@@ -108,10 +108,7 @@ The point being that, for a newborn, the breathing part (and keeping bub warm) i
 ◊subsection[#:id "tell-people-where-you-are-going"]{42. Tell people where you're going.}
 
 ◊subsection[#:id "value-your-time"]{43. Put a dollar value on your time.}
-This is a very useful exercise; here's how I think you should do it:
-
-
-
+This is a useful exercise, but not as straightforward as it sounds.
 
 ◊subsection[#:id "doubt-the-diagnosis"]{44. Always doubt "the diagnosis".}
 I live by this one. More true for me now than ever.
