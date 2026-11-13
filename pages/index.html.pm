@@ -3,7 +3,7 @@
 ◊define-meta[title]{Occurrent Development}
 ◊define-meta[endmatter]{none}
 
-◊cite["pirsigZenArtMotorcycle1991" #:block #t #:italic #t #:loc "Ch. 14, p. 155"]{When you've got a Chautauqua in your head, it's extremely hard not to inflict it on innocent people.}
+◊epigraph[#:source "Zen and the Art of Motorcycle Maintenance"]{When you've got a Chautauqua in your head, it's extremely hard not to inflict it on innocent people.}
 
 ◊rule{}
 
