@@ -1,10 +1,19 @@
 #lang pollen
 
 ◊define-meta[title]{Lessons Learnt}
-◊define-meta[status]{published}
-◊define-meta[published]{2026-11-07}
-◊define-meta[tags]{advice}
-◊define-meta[toc]{none}
+◊define-meta[subtitle]{} ◊; optional
+◊define-meta[status]{published} ◊; draft · published · revised · superseded
+◊define-meta[published]{2026-11-07} ◊; YYYY-MM-DD
+◊define-meta[tags]{advice} ◊; comma-separated, lowercase
+◊define-meta[author]{Ryan Lucas} ◊; the byline
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{true} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{none} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
+◊define-meta[series]{} ◊; the slug of the series' home post, when this post is part of one
+◊define-meta[part]{} ◊; this post's place in its series: 1, 2, 3 …
+◊define-meta[series-label]{} ◊; on a series' home post: the words of the link back to it
 
 Early in my training (though not as early as I would have liked) I realised that I seemed to keep needing to learn the same lessons over and over again. I decided to start writing them down, and have been doing so for nearly 10 years. I'm not sure it helped, but I did end up with an interesting list. 
 

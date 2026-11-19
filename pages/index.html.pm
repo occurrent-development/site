@@ -1,7 +1,10 @@
 #lang pollen
 
 ◊define-meta[title]{Occurrent Development}
-◊define-meta[endmatter]{none}
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{none} ◊; shown · none
 
 ◊epigraph[#:source "Zen and the Art of Motorcycle Maintenance"]{When you've got a Chautauqua in your head, it's extremely hard not to inflict it on innocent people.}
 

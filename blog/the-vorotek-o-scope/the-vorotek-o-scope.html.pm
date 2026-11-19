@@ -1,10 +1,19 @@
 #lang pollen
 
 ◊define-meta[title]{The VorOtek O-Scope}
-◊define-meta[subtitle]{A Review}
-◊define-meta[status]{published}
-◊define-meta[published]{2026-11-08}
-◊define-meta[tags]{clinical, review, equipment}
+◊define-meta[subtitle]{A Review} ◊; optional
+◊define-meta[status]{published} ◊; draft · published · revised · superseded
+◊define-meta[published]{2026-11-08} ◊; YYYY-MM-DD
+◊define-meta[tags]{clinical, review, equipment} ◊; comma-separated, lowercase
+◊define-meta[author]{Ryan Lucas} ◊; the byline
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{true} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
+◊define-meta[series]{} ◊; the slug of the series' home post, when this post is part of one
+◊define-meta[part]{} ◊; this post's place in its series: 1, 2, 3 …
+◊define-meta[series-label]{} ◊; on a series' home post: the words of the link back to it
 
 I've been using the O-Scope now for over 4 years. I use it daily; it's almost always around my neck and on most days it gets more use than my stethoscope. I have a lot to say about the O-Scope, so I pulled it (and its accessories) out of the ◊link["/blog/whats-in-my-bag"]{What's in My Bag} post to give it its own post.
 

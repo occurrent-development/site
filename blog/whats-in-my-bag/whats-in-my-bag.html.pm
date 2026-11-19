@@ -1,9 +1,19 @@
 #lang pollen
 
 ◊define-meta[title]{What's In My Bag?}
-◊define-meta[status]{published}
-◊define-meta[published]{2026-11-08}
-◊define-meta[tags]{clinical, review, equipment}
+◊define-meta[subtitle]{} ◊; optional
+◊define-meta[status]{published} ◊; draft · published · revised · superseded
+◊define-meta[published]{2026-11-08} ◊; YYYY-MM-DD
+◊define-meta[tags]{clinical, review, equipment} ◊; comma-separated, lowercase
+◊define-meta[author]{Ryan Lucas} ◊; the byline
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{true} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
+◊define-meta[series]{} ◊; the slug of the series' home post, when this post is part of one
+◊define-meta[part]{} ◊; this post's place in its series: 1, 2, 3 …
+◊define-meta[series-label]{} ◊; on a series' home post: the words of the link back to it
 
 I work in public community settings and private practice. I mostly do developmental work, but I try very hard to maintain my skills as a general paediatrician to provide holistic care. I don't do any inpatient work. I need to carry all of my own equipment. Apart from a bed, a set of scales, and a stadiometer, if it's not in my bag I won't have it. As will become apparent, I am an enthusiast for clinical medicine and the tools of that trade. Over the last 12 years I've put together a very comprehensive kit.
 

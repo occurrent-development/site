@@ -1,6 +1,10 @@
 #lang pollen
 
 ◊define-meta[title]{About}
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
 
 ◊section[#:id "me"]{Me}
 I'm a paediatrician in Sydney, Australia. My clinical work focuses almost exclusively on the kinds of problems conventionally called ◊em{developmental} or ◊em{behavioural}, categories that vastly oversimplify what is actually going on.

@@ -5,7 +5,11 @@ publishes it; preview with make serve at /pages/policies.html. TODO(ryan) commen
 mark everything still to write; see SITE-DOCS.md.}
 
 ◊define-meta[title]{Policies}
-◊define-meta[unlisted]{yes}
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{false} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
 
 ◊section[#:id "ai-policy"]{AI policy}
 

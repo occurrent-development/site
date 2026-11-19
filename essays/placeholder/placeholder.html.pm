@@ -1,10 +1,19 @@
 #lang pollen
 
 ◊define-meta[title]{Placeholder}
-◊define-meta[subtitle]{An essay that exists to fill a row of the index}
-◊define-meta[status]{published}
-◊define-meta[published]{2026-10-14}
-◊define-meta[tags]{philosophy, site}
+◊define-meta[subtitle]{An essay that exists to fill a row of the index} ◊; optional
+◊define-meta[status]{published} ◊; draft · published · revised · superseded
+◊define-meta[published]{2026-10-14} ◊; YYYY-MM-DD
+◊define-meta[tags]{philosophy, site} ◊; comma-separated, lowercase
+◊define-meta[author]{Ryan Lucas} ◊; the byline
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{true} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
+◊define-meta[series]{} ◊; the slug of the series' home post, when this post is part of one
+◊define-meta[part]{} ◊; this post's place in its series: 1, 2, 3 …
+◊define-meta[series-label]{} ◊; on a series' home post: the words of the link back to it
 
 ◊epistemic{A placeholder. Nothing here is claimed.}
 

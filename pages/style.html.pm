@@ -6,8 +6,12 @@ make serve at /pages/style.html. STYLE.md is untouched and stays
 authoritative until this page replaces it.}
 
 ◊define-meta[title]{Manual of Style}
-◊define-meta[subtitle]{House style for everything on the site and in its repository}
-◊define-meta[unlisted]{yes}
+◊define-meta[subtitle]{House style for everything on the site and in its repository} ◊; optional
+◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{false} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
 
 ◊;{A page-local helper, not a tag: it prints the lozenge itself, so that
 code samples can show Pollen syntax.}
