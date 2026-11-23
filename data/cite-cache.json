@@ -1,4 +1,69 @@
 {
+ "judtMemoryChalet2011": {
+  "full": {
+   "": [
+    "Tony Judt, ",
+    [
+     "em",
+     {},
+     "The Memory Chalet"
+    ],
+    " (William Heinemann Ltd; Vintage, 2011)."
+   ]
+  },
+  "short": {
+   "": [
+    "Judt, ",
+    [
+     "em",
+     {},
+     "The Memory Chalet"
+    ],
+    "."
+   ]
+  },
+  "bib": [
+   "Judt, Tony. ",
+   [
+    "em",
+    {},
+    "The Memory Chalet"
+   ],
+   ". William Heinemann Ltd. Vintage, 2011."
+  ],
+  "order": 30,
+  "doi": null,
+  "url": null,
+  "csl": {
+   "ISBN": "978-0-09-955559-9",
+   "author": [
+    {
+     "family": "Judt",
+     "given": "Tony"
+    }
+   ],
+   "id": "judtMemoryChalet2011",
+   "issued": {
+    "date-parts": [
+     [
+      2011
+     ]
+    ]
+   },
+   "language": "en-US",
+   "original-publisher": "William Heinemann Ltd",
+   "publisher": "Vintage",
+   "publisher-place": "New York",
+   "title": "The Memory Chalet",
+   "type": "book"
+  },
+  "title": "The Memory Chalet",
+  "authors": [
+   "Judt"
+  ],
+  "year": "2011",
+  "type": "Book"
+ },
  "tufteVisualDisplayQuantitative2001": {
   "full": {
    "": [

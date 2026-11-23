@@ -9,6 +9,11 @@
   "file": "blog/whats-in-my-bag/img/craniometer.jpg",
   "invert": false
  },
+ "167830afbd1d478812e703fd76e40486b5a309e52c7a9a76a29fb4a274254b2d": {
+  "checked": "2026-11-23",
+  "file": "blog/my-process-how-claude-helps-me-write/img/claude-1.jpg",
+  "invert": true
+ },
  "1dcffb3ced9fa5cb8395c04853bf586f8056b545e4f2a7389edb8ea3e420ca4c": {
   "checked": "2026-11-03",
   "file": "pages/img/2026-11-02-lucas-pillow-specimen-ball-a.jpg",
@@ -18,6 +23,16 @@
   "checked": "2026-11-07",
   "file": "blog/whats-in-my-bag/img/vorotek-promotional.jpg",
   "invert": true
+ },
+ "37f43bc94823c0103e2415cb8342a0b3df493e0f48d48164aa10ead6d388d7b8": {
+  "checked": "2026-11-23",
+  "file": "blog/my-process-how-claude-helps-me-write/img/claude-2.jpg",
+  "invert": true
+ },
+ "406e057c08fcfc6715284a9cd32fc61f78cb0f9e016e3f70328a5d617985e7ee": {
+  "checked": "2026-11-23",
+  "file": "blog/my-process-how-claude-helps-me-write/img/judt-books.jpg",
+  "invert": false
  },
  "46c199afd1ce771b69e3df9b98629f41883c3aca05f9896e70f2ab957aae2250": {
   "checked": "2026-11-09",
@@ -39,10 +54,20 @@
   "file": "essays/zen-and-the-art-of-banana-dissection/img/banana-3.jpg",
   "invert": false
  },
+ "79e7ab09eb7587ae9869bb7441537c5b4b97511f696fab0d24b31a511827d8fd": {
+  "checked": "2026-11-23",
+  "file": "blog/my-process-how-claude-helps-me-write/img/claude-3.jpg",
+  "invert": true
+ },
  "a39f437144c6630380383c141596a4214103510283ce3aa8a84ccf7ea4eed70a": {
   "checked": "2026-11-06",
   "file": "pages/img/2026-11-05-lucas-pillow-specimen-pillar.jpg",
   "invert": false
+ },
+ "a6cbae1019969a77d7487c0ab2ed8c6512b130fadf7b4538e0e9660367e80b89": {
+  "checked": "2026-11-23",
+  "file": "blog/my-process-how-claude-helps-me-write/img/mbs-research.jpg",
+  "invert": true
  },
  "a82b279326c3902d87d64f2aea2e6e7dc3f566957388acd16cd72dff08e5c8ed": {
   "checked": "2026-11-07",
