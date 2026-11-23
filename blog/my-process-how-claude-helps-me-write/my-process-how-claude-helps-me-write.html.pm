@@ -7,7 +7,7 @@
 ◊define-meta[tags]{workflows} ◊; comma-separated, lowercase
 ◊define-meta[author]{Ryan Lucas} ◊; the byline
 ◊; ◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
-◊define-meta[listed]{false} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[listed]{true} ◊; true · false (false: not in the indexes, the front page or the feed)
 ◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
 ◊define-meta[backlinks]{shown} ◊; shown · none
 ◊define-meta[endmatter]{shown} ◊; shown · none
