@@ -46,7 +46,7 @@
          pollen/core
          pollen/pagetree
          (only-in pollen/template ->html)
-         (only-in "../lib/util.rkt" text-of published? output->url check-post-slugs post-kind site-value)
+         (only-in "../lib/util.rkt" text-of published? output->url check-post-slugs post-kind site-value listed? meta-value)
          "../lib/walk.rkt"
          (only-in "../lib/cite.rkt" cite-keys cite-key-known? cite-facts)
          (only-in "../pollen.rkt" reference-card format-date)
@@ -72,9 +72,7 @@
 (define (class? x c)
   (and (txexpr? x) (attrs-have-key? x 'class) (member c (string-split (attr-ref x 'class))) #t))
 
-(define (meta-text metas k)
-  (define v (select-from-metas k metas))
-  (and v (string-trim (if (string? v) v (text-of v)))))
+(define (meta-text metas k) (meta-value metas k))   ; an empty line is absent (META-1)
 
 (define (write-json-file path v)
   (call-with-output-file path #:exists 'replace (λ (o) (write-json v o #:indent 1) (newline o))))
@@ -395,7 +393,8 @@
 (define site (string-trim (site-value 'url) "/" #:left? #f))
 (define (stamp iso) (string-append iso "T00:00:00Z"))
 (define feed-posts
-  (for/list ([p (in-list pages)] #:when (post-kind (hash-ref p 'src)))
+  (for/list ([p (in-list pages)] #:when (post-kind (hash-ref p 'src))
+             #:when (listed? (get-metas (hash-ref p 'src))))   ; LIST-1: an unlisted post is not in the feed
     (define metas (get-metas (hash-ref p 'src)))
     (define abstract
       (string-normalize-spaces
@@ -405,7 +404,8 @@
     (hasheq 'url (hash-ref p 'url) 'title (hash-ref p 'title) 'kind (post-kind (hash-ref p 'src))
             'published (meta-text metas 'published)
             'author (or (meta-text metas 'author) (site-value 'author))
-            'abstract abstract)))
+            ;; DESC-1: the post's description is its summary; without one, its abstract
+            'abstract (or (meta-text metas 'description) abstract))))
 (define (kind-category k)
   `(category ((term ,(if (eq? k 'entry) "blog" "essay")) (label ,(if (eq? k 'entry) "Blog entry" "Essay")))))
 (define feed-entries
@@ -454,8 +454,39 @@
      o)
     (newline o)))
 
+;; FILE-2: a published post's downloads, and only those, as (source . public-name).
+;; A draft's files are not published (DRAFT-2), and a file in a published
+;; post's files/ that no ◊download names stays behind, with a warning.
+(define (rel f) (path->string (find-relative-path (simple-form-path (current-directory)) (simple-form-path f))))
+(define downloads
+  (remove-duplicates
+   (for*/list ([p (in-list pages)]
+               #:when (post-kind (hash-ref p 'src))
+               [a (in-list (find-all (hash-ref p 'doc) (λ (x) (and (eq? (get-tag x) 'a) (class? x "download")))))])
+     (define href (attr-ref a 'href))
+     (define-values (dir _name _d?) (split-path (simple-form-path (hash-ref p 'src))))
+     (cons (rel (build-path dir "files" (cadr (regexp-match #px"/files/([^/]+)$" href))))
+           (substring href 1)))))
+(for ([p (in-list pages)] #:when (post-kind (hash-ref p 'src)))
+  (define-values (dir _name _d?) (split-path (simple-form-path (hash-ref p 'src))))
+  (define fdir (build-path dir "files"))
+  (when (directory-exists? fdir)
+    (for ([f (in-list (directory-list fdir))]
+          #:unless (regexp-match? #rx"^\\.|~$" (path->string f))
+          #:unless (assoc (rel (build-path fdir f)) downloads))
+      (warn "~a: ~a is in files/ but no ◊download names it, so it is not published (FILE-2)" (hash-ref p 'src) f))))
+;; FILE-6: a published file is a promise. data/files.json keeps every name
+;; ever published; one gone from the tree is a warning.
+(let* ([f (build-path "data" "files.json")]
+       [now (sort (map (λ (d) (string-append "/" (cdr d))) downloads) string<?)]
+       [promised (if (file-exists? f) (call-with-input-file f read-json) null)])
+  (for ([u (in-list promised)] #:unless (member u now))
+    (warn "~a was published and is gone: a published file is a promise (FILE-6). Restore it, or delete its line from data/files.json if you mean to break the link" u))
+  (call-with-output-file f #:exists 'replace
+    (λ (o) (write-json (sort (remove-duplicates (append promised now)) string<?) o) (newline o))))
+
 ;; DRAFT-2: what `make` publishes, as "rendered-file public-name" lines:
-;; the pages, every work's page (BIB-1) and the feed (REV-4).
+;; the pages, every work's page (BIB-1), the feed (REV-4) and the downloads (FILE-2).
 (call-with-output-file (build-path "data" "publish.txt") #:exists 'replace
   (λ (o) (for ([p (in-list pages)])
            (fprintf o "~a ~a\n" (hash-ref p 'out)
@@ -463,7 +494,8 @@
                         (string-append (substring (hash-ref p 'url) 1) ".html"))))
          (for ([k (in-list ref-keys)])
            (fprintf o "build/references/~a.html references/~a.html\n" k k))
-         (fprintf o "build/feed.xml feed.xml\n")))
+         (fprintf o "build/feed.xml feed.xml\n")
+         (for ([d (in-list downloads)]) (fprintf o "~a ~a\n" (car d) (cdr d)))))
 
 (unless (zero? errors) (exit 1))
 (printf "validate: ~a pages published, ~a drafts held back, ~a internal links, ~a works, ~a feed items\n"

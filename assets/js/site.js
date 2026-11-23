@@ -170,8 +170,10 @@ function clean(node) {
   const c = node.cloneNode(true);
   c.removeAttribute("id");
   for (const e of c.querySelectorAll("[id]")) e.removeAttribute("id");
-  for (const e of c.querySelectorAll(".back, .self, .aside[hidden], .stub, .toc-mark, .expand, .sticky-head")) e.remove();
+  for (const e of c.querySelectorAll(".back, .self, .aside[hidden], .stub, .toc-mark, .expand, .exhibit-open, .sticky-head")) e.remove();
   for (const e of c.querySelectorAll(".in-margin")) { e.classList.remove("in-margin"); e.removeAttribute("style"); }   // margin notes, run in again
+  for (const e of c.querySelectorAll(".caption-more")) e.remove();   // IMG-3b: a copy's caption is whole
+  for (const e of c.querySelectorAll(".exhibit-caption")) e.classList.remove("is-folded", "is-foldable", "is-open");
   return c;
 }
 
@@ -733,9 +735,86 @@ function setupExhibits() {
   for (const fig of article?.querySelectorAll(".exhibit") || []) {
     if (fig.dataset.kind === "formula") continue;   // FORMULA-1: a formula has no Expand; it scrolls in its box
     const label = fig.querySelector(".exhibit-label")?.textContent.replace(/\u00A0/g, " ") || "";
+    // TABLE-8: a collapsed table is, in the column, a button that opens it
+    if (fig.classList.contains("collapsed")) {
+      const { rows, cols } = fig.dataset;
+      fig.querySelector(".exhibit-body")?.append(
+        el("button", { type: "button", class: "exhibit-open expand-open", "aria-label": `Show ${label}`.trim(), "aria-haspopup": "dialog" },
+          icon(TABLE),
+          el("span", { class: "exhibit-open-what" }, "Show the table"),
+          cols && rows ? el("span", { class: "exhibit-open-size" }, `${cols} columns, ${rows} rows`) : null));
+      continue;
+    }
     const b = el("button", { type: "button", class: "expand", "aria-label": `Expand ${label}`.trim(), title: "Expand" }, icon(EXPAND));
     fig.querySelector(".exhibit-body")?.append(b);
   }
+}
+const TABLE = "M1.5 2.5h9v7h-9zM1.5 5h9M1.5 7.5h9M4.5 2.5v7";
+
+// TABLE-9: a table marked #:landscape, opened on a phone held upright, is
+// turned: where the browser lets a page lock the orientation (Android, in
+// full screen) it is locked to landscape; elsewhere (iOS has no such
+// lock) the reader is asked to turn the phone, and the request goes when
+// they do, or when they tap it away.
+const portrait = matchMedia("(orientation: portrait)");
+async function toLandscape(box) {
+  if (!touch.matches || !portrait.matches) return;
+  try {
+    if (!box.requestFullscreen || !screen.orientation?.lock) throw 0;
+    await box.requestFullscreen({ navigationUI: "hide" });
+    await screen.orientation.lock("landscape");
+    return;
+  } catch {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  }
+  if (lightbox?.box !== box) return;
+  box.append(el("button", { type: "button", class: "lb-turn" },
+    el("span", { class: "lb-turn-icon", "aria-hidden": "true" }),
+    el("span", {}, "Turn your phone sideways to read this table")));
+}
+function leaveLandscape() {
+  try { screen.orientation?.unlock?.(); } catch { /* not locked */ }
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+
+// IMG-3b: a caption longer than three lines is folded to three, with More
+// under it. More, or a click on the folded words (not a link in them),
+// unfolds it in place, and Less folds it again; in tiers L and XL whatever
+// is below it in the margin moves down to make room (positionMargin). It is
+// measured at every layout, since the margin and the column set it at
+// different widths. Without scripts, in print, in the lightbox and in a
+// popup the caption is whole.
+function setupCaptions() {
+  for (const c of article?.querySelectorAll(".exhibit-caption") || []) {
+    if (!c.id) c.id = `caption-${++seq}`;
+    const b = el("button", { type: "button", class: "caption-more", "aria-expanded": "false", "aria-controls": c.id }, "More");
+    b.hidden = true;
+    c.classList.add("is-folded");
+    c.after(b);
+  }
+}
+function measureCaptions() {
+  for (const c of article?.querySelectorAll(".exhibit-caption") || []) {
+    const b = c.nextElementSibling;
+    if (!b?.matches(".caption-more")) continue;
+    const lh = parseFloat(getComputedStyle(c).lineHeight);
+    const long = c.classList.contains("is-open")
+      ? c.getBoundingClientRect().height > 3.5 * lh
+      : c.scrollHeight > c.clientHeight + 1;
+    if (!long && c.classList.contains("is-open")) setCaption(c, false);
+    c.classList.toggle("is-foldable", long);
+    b.hidden = !long;
+  }
+}
+function setCaption(c, open) {
+  c.classList.toggle("is-open", open);
+  c.classList.toggle("is-folded", !open);
+  const b = c.nextElementSibling;
+  if (b?.matches(".caption-more")) { b.setAttribute("aria-expanded", String(open)); b.textContent = open ? "Less" : "More"; }
+}
+function toggleCaption(c) {
+  setCaption(c, !c.classList.contains("is-open"));
+  positionMargin();
 }
 
 function openLightbox(fig, from) {
@@ -752,6 +831,10 @@ function openLightbox(fig, from) {
   for (const btn of body.querySelectorAll("th button.sort")) { btn.querySelector(".sort-mark")?.remove(); btn.replaceWith(...btn.childNodes); }
   // a table keeps its booktabs rules, at body size whatever its size in the text
   if (fig.classList.contains("table-wrap")) stage.classList.add("is-table", "table-wrap");
+  // IMG-8a: a table is no wider than about 12em a column (50em at least), so
+  // a long text column wraps at a readable width rather than across the window
+  const cols = body.querySelector("thead tr")?.cells.length;
+  if (cols) stage.style.setProperty("--cols", cols);
   stage.append(...body.childNodes);
   const meta = fig.querySelector(".exhibit-meta");
   const box = el("div", { class: "lightbox", role: "dialog", "aria-modal": "true", "aria-labelledby": id, tabindex: "-1" },
@@ -766,12 +849,14 @@ function openLightbox(fig, from) {
   root.style.overflow = "hidden";
   lightbox = { box, shade, from };
   box.querySelector(".lb-close").focus({ preventScroll: true });
+  if (fig.hasAttribute("data-landscape")) toLandscape(box);
 }
 
 function closeLightbox() {
   if (!lightbox) return;
   const { box, shade, from } = lightbox;
   lightbox = null;
+  leaveLandscape();
   box.remove();
   shade.remove();
   root.style.overflow = "";
@@ -931,12 +1016,17 @@ function revealFromUrl() {
 document.addEventListener("click", (e) => {
   if (lightbox) {
     if (e.target.closest(".lb-close") || e.target.closest(".lightbox-shade")) { closeLightbox(); return; }
+    if (e.target.closest(".lb-turn")) { e.target.closest(".lb-turn").remove(); return; }
     // touch: a tap on the figure shows or hides the words over it
     if (touch.matches && e.target.closest(".lightbox") && !e.target.closest("a, button")) lightbox.box.classList.toggle("show-words");
     return;
   }
-  const ex = e.target.closest(".expand");
+  const ex = e.target.closest(".expand, .exhibit-open");
   if (ex) { e.preventDefault(); openLightbox(ex.closest(".exhibit"), ex); return; }
+  const more = e.target.closest(".caption-more");
+  if (more) { toggleCaption(more.previousElementSibling); return; }
+  const cap = e.target.closest("article .exhibit-caption.is-foldable.is-folded");
+  if (cap && !e.target.closest("a, button") && !String(getSelection?.() || "")) { toggleCaption(cap); return; }
   if (e.target.closest("[data-theme-toggle]")) { setTheme(THEMES[(THEMES.indexOf(theme()) + 1) % 3]); return; }
   if (e.target.closest(".size-down")) { setSize(size() - 1); return; }
   if (e.target.closest(".size-up")) { setSize(size() + 1); return; }
@@ -1115,6 +1205,11 @@ function setupMargin() {
     const t = circleFor(a);
     if (L) {
       a.hidden = false;
+      // the stub goes inside its circle's no-wrap span: a positioned box just
+      // after the span is a place to break the line, so a paragraph's last
+      // word was set alone on a justified line, with the stub's empty line below
+      const nw = a.previousSibling;
+      if (nw?.nodeType === 1 && nw.classList.contains("nw")) nw.append(a);
       a.classList.add("in-margin", "stub");
       a.tabIndex = 0;
       a.setAttribute("role", "button");
@@ -1372,8 +1467,12 @@ function positionMargin() {
   // fixed items (figure words) where they belong unless the
   // header's block is there, in which case below it; stubs after the one
   // above, clear of every fixed item.
+  // IMG-3b: an unfolded caption can reach the next figure's words, which then
+  // move down below it, as a stub would.
   const headerZones = headerItems.map((i) => [i.top, i.top + i.h]);
-  for (const it of items) if (it.fixed) it.y = it.header ? it.top : clear(it.top, it.h, headerZones);
+  const placed = [...headerZones];
+  for (const it of items) if (it.fixed && !it.header) { it.y = clear(it.top, it.h, placed); placed.push([it.y, it.y + it.h]); }
+  for (const it of items) if (it.header) it.y = it.top;
   const fixedZones = items.filter((i) => i.fixed).map((i) => [i.y, i.y + i.h]);
   let last = -Infinity;
   for (const it of items) {
@@ -1405,6 +1504,7 @@ function scheduleLayout() {
     restyle();
     const t = tier();
     if (t !== currentTier) { setupMargin(); currentTier = t; setupTocHeading.rewatch?.(); pinsForTier(); }
+    measureCaptions();
     positionMargin();
     placeBar();
     refreshToc();
@@ -1774,6 +1874,7 @@ setupTocTitles();
 setupTocHeading();
 setupScratch();
 setupExhibits();
+setupCaptions();
 scheduleLayout();
 document.fonts?.ready.then(scheduleLayout);
 new ResizeObserver(scheduleLayout).observe(page);

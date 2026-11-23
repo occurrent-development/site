@@ -87,9 +87,15 @@
            [sep? (λ (r) (and (pair? r) (andmap (λ (c) (and (= (length c) 1) (string? (car c))
                                                            (regexp-match? separator-rx (car c))))
                                                r)))])
-      ;; separators after the one under the header only group rows in the source
+      ;; TABLE-7: a separator in the body draws a hairline above the row after
+      ;; it; it reaches table-element as the symbol 'rule, and several in a row
+      ;; are one
       (if (>= (length rows) 2)
-          (list* (first rows) (second rows) (filter (λ (r) (not (sep? r))) (drop rows 2)))
+          (list* (first rows) (second rows)
+                 (let loop ([rs (drop rows 2)] [prev-rule? #t])
+                   (cond [(null? rs) null]
+                         [(sep? (car rs)) (if prev-rule? (loop (cdr rs) #t) (cons 'rule (loop (cdr rs) #t)))]
+                         [else (cons (car rs) (loop (cdr rs) #f))])))
           rows)))
   (unless (>= (length rows) 2) (build-error "table: needs a header row and a separator row"))
   (define header (first rows))
@@ -147,18 +153,29 @@
 (define (make-table header aligns body
                     #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f]
                     #:size [size "normal"] #:width [width #f]
-                    #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f])
+                    #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f]
+                    #:collapsed [collapsed #f] #:landscape [landscape #f])
   (unless (member size sizes) (build-error "table: #:size must be one of ~a" (string-join sizes ", ")))
+  (for ([v (list collapsed landscape)] [n '("#:collapsed" "#:landscape")])
+    (unless (boolean? v) (build-error "table ~s: ~a is #t or #f" id n)))
   (when width (build-error "table ~s: a table takes no #:width; it is always column width, and Expand shows it larger (IMG-2)" id))
   (make-exhibit "table" id title
                 (list
                  `(div ((class "table-scroll") (tabindex "0") (role "region")
                         (aria-labelledby ,(string-append (or id "") "-title")))
                        ,(table-element header aligns body
-                                       #:sortable sortable #:align align #:row-headers row-headers)))
+                                       #:sortable sortable #:align align #:row-headers row-headers
+                                       #:groups #t)))
                 (or caption null)
                 (or source null)
-                #:class (format "table-wrap size-~a" size)))
+                #:class (format "table-wrap size-~a~a" size (if collapsed " collapsed" ""))
+                ;; TABLE-8: a collapsed table is a button in the column that opens it
+                ;; (the script says how big it is); TABLE-9: landscape on a phone
+                #:attrs (append (if collapsed
+                                    `((data-rows ,(number->string (length (filter (λ (r) (and (pair? r) (ormap pair? (cdr r)))) body))))   ; group headings are not rows of data
+                                      (data-cols ,(number->string (length header))))
+                                    null)
+                                (if landscape '((data-landscape "")) null))))
 
 ;; The <table> itself, for every table on the site: pipe and CSV tables, and
 ;; the home page's index (INDEX-1a), so none can drift from the others.
@@ -170,8 +187,25 @@
 (define (table-element header aligns body
                        #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f]
                        #:class [cls #f] #:row-attrs [row-attrs #f]
-                       #:head-attrs [head-attrs #f] #:col-classes [col-classes #f])
+                       #:head-attrs [head-attrs #f] #:col-classes [col-classes #f]
+                       #:groups [groups? #f])
   (define ncols (length header))
+  ;; TABLE-7: 'rule marks a hairline above the next row (a trailing one is
+  ;; dropped: the foot has its rule); a row with words in its first cell
+  ;; alone is a group's heading, one cell across the table
+  (define rule-above
+    (let loop ([b body] [r? #f])
+      (cond [(null? b) null]
+            [(eq? (car b) 'rule) (loop (cdr b) #t)]
+            [else (cons r? (loop (cdr b) #f))])))
+  (set! body (filter pair? body))
+  (define (group-row? r)
+    ;; only an authored table has groups: a generated one (an index, the
+    ;; bibliography) may have a row with its first cell alone filled
+    (and groups? (> ncols 1) (= (length r) ncols) (pair? (car r)) (andmap null? (cdr r))))
+  (define grouped? (or (ormap values rule-above) (ormap group-row? body)))
+  (when (and grouped? (eq? sortable #t))
+    (build-error "table: a table with group headings or rules inside it cannot be sortable; sorting would scatter its groups (TABLE-7)"))
   (for ([r (in-list body)] [i (in-naturals 1)])
     (unless (= (length r) ncols)
       (build-error "table: row ~a has ~a cells, the header has ~a: ~s"
@@ -185,23 +219,28 @@
         [align (case (string-ref align i) [(#\l) "left"] [(#\c) "center"] [(#\r) "right"]
                  [else (build-error "table: #:align letters are l, c and r")])]
         [a a]
-        [(and (pair? body) (andmap (λ (r) (let ([c (list-ref r i)]) (or (null? c) (numeric-cell? c)))) body)
-              (ormap (λ (r) (pair? (list-ref r i))) body))
+        [(let ([rows (filter (λ (r) (not (group-row? r))) body)])
+           (and (pair? rows) (andmap (λ (r) (let ([c (list-ref r i)]) (or (null? c) (numeric-cell? c)))) rows)
+                (ormap (λ (r) (pair? (list-ref r i))) rows)))
          "right"]
         [else #f])))
   (define (cell-attrs i)
     (define classes (filter values (list (let ([a (list-ref col-aligns i)]) (and a (string-append "a-" a)))
                                          (and col-classes (list-ref col-classes i)))))
     (if (null? classes) null `((class ,(string-join classes)))))
-  (define sortable? (if (eq? sortable 'auto) (>= (length body) 5) sortable))
+  (define sortable? (if (eq? sortable 'auto) (and (not grouped?) (>= (length body) 5)) sortable))
   `(table ,(append (if cls `((class ,cls)) null) (if sortable? '((data-sortable "")) null))
           (thead (tr ,@(for/list ([c (in-list header)] [i (in-naturals)])
                          `(th ,(append '((scope "col")) (cell-attrs i)
                                        (if head-attrs (or (list-ref head-attrs i) null) null))
                               ,@c))))
-          (tbody ,@(for/list ([r (in-list body)] [j (in-naturals)])
-                     `(tr ,(if row-attrs (list-ref row-attrs j) null)
-                          ,@(for/list ([c (in-list r)] [i (in-naturals)])
-                              (if (and row-headers (= i 0))
-                                  `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
-                                  `(td ,(cell-attrs i) ,@c))))))))
+          (tbody ,@(for/list ([r (in-list body)] [j (in-naturals)] [rule? (in-list rule-above)])
+                     (define classes (filter values (list (and rule? "rule-above") (and (group-row? r) "group"))))
+                     `(tr ,(append (if (null? classes) null `((class ,(string-join classes))))
+                                   (if row-attrs (list-ref row-attrs j) null))
+                          ,@(if (group-row? r)
+                                `((th ((scope "colgroup") (colspan ,(number->string ncols))) ,@(car r)))
+                                (for/list ([c (in-list r)] [i (in-naturals)])
+                                  (if (and row-headers (= i 0))
+                                      `(th ,(append '((scope "row")) (cell-attrs i)) ,@c)
+                                      `(td ,(cell-attrs i) ,@c)))))))))

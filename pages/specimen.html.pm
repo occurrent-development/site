@@ -1,11 +1,15 @@
 #lang pollen
 
 ◊define-meta[title]{Specimen}
-◊define-meta[subtitle]{Every element the site can render, set as an essay would be}
+◊define-meta[subtitle]{Every element the site can render, set as an essay would be} ◊; optional
+◊define-meta[published]{2026-10-09} ◊; YYYY-MM-DD
+◊define-meta[tags]{site, typography} ◊; comma-separated, lowercase
+◊; ◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊define-meta[listed]{false} ◊; true · false (false: not in the indexes, the front page or the feed)
+◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
+◊define-meta[backlinks]{shown} ◊; shown · none
+◊define-meta[endmatter]{shown} ◊; shown · none
 ◊define-meta[specimen]{yes}
-◊define-meta[published]{2026-10-09}
-◊define-meta[tags]{site, typography}
-◊define-meta[unlisted]{yes}
 
 ◊epistemic{A test page. Its claims are about its own typesetting and are
 checked by looking at it.}
@@ -485,7 +489,10 @@ in the order they appear on this page:
 
 ◊table[#:id "lines" #:title "The twenty lines counted, at 36.5 em" #:size
 "small" #:caption "Mean 88.6 characters. Lines beginning mid-word continue a
-hyphenated word."]{
+hyphenated word. A caption that runs beyond three lines, as this one does, is
+folded to three, with More under it; More, or a click on the words, unfolds it
+in place, and whatever is below it in the margin moves down to make room
+(IMG-3b). The calibration table's caption above is short, so it has no More."]{
 | Line | Opens with | Characters |
 |---|---|---|
 | 1 | The width of | 88 |
@@ -561,6 +568,29 @@ expression scrolls inside its box:
 A heading takes an expression at its own size. An expression whose braces do
 not balance is written with Pollen's other delimiters, a bar inside each
 brace, as this one is: ◊m|{\left\{ x : x > 0 \right.}|.
+
+◊section[#:id "code" #:short "Code"]{Code}
+
+Code in a sentence, such as ◊code{\documentclass}, is set in Libertinus Mono.
+A few lines of code stand as a block in the same face, ragged and
+unhyphenated, with every line break and indent kept (CODE-1, CODE-2):
+
+◊codeblock{
+\documentclass[a4paper,twoside]{rdl-essay}
+\addbibresource{refs.bib}
+
+\begin{document}
+  \section{Introduction}
+  "Straight quotes" -- and double hyphens -- stay as typed.
+\end{document}
+}
+
+A line wider than the column wraps, breaking inside a word only where it
+must:
+
+◊codeblock{
+\newcommand{\itemlink}[1]{\href{https://www9.health.gov.au/mbs/fullDisplay.cfm?type=item&q=#1}{item~#1}}
+}
 
 ◊section[#:id "to-come" #:short "Still to come"]{Still to come}
 ◊summary{What later phases add to the site, and to this page.}

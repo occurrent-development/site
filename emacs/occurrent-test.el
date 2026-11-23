@@ -281,6 +281,34 @@ one, wraps the region as the TeX, and the ids list sees a formula."
     (call-interactively #'od-fill-paragraph)
     (should (equal (buffer-string) "One line of a hard wrapped paragraph.\n\n◊section[#:id \"s\"]{Next}\n"))))
 
+(ert-deftest od-test-ref-with-text ()
+  "◊ref takes optional link text; od-insert-ref makes the region the text (IMG-7a)."
+  (od-test-errors-are "◊figure[\"a.png\" #:id \"x\" #:title \"T\" #:alt \"a\" #:licence \"own\"]{c}\n\nSee ◊ref[\"x\"]{the chart} and ◊ref[\"x\"].\n" nil)
+  (od-test-with "See the chart.\n"
+    (search-forward "the chart") (set-mark (match-beginning 0)) (activate-mark)
+    (cl-letf (((symbol-function 'od--id-candidates) (lambda (&rest _) '(("Figure: T" . "x"))))
+              ((symbol-function 'completing-read) (lambda (&rest _) "Figure: T")))
+      (od-insert-ref))
+    (should (equal (buffer-string) "See ◊ref[\"x\"]{the chart}.\n"))))
+
+(ert-deftest od-test-codeblock ()
+  "◊codeblock: inserted on its own lines, its body in the code face, never filled (CODE-1)."
+  (od-test-with "Text.\n"
+    (goto-char (point-max))
+    (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "code block")))
+      (od-insert-block))
+    (insert "\\documentclass{article}")
+    (should (equal (buffer-string) "Text.\n\n◊codeblock{\n\\documentclass{article}\n}\n")))
+  (let ((text "◊codeblock{\n\\begin{document}\n  Hello.\n\\end{document}\n}\n"))
+    (od-test-with text
+      (setq od-file-kind-override 'essay)
+      (font-lock-flush) (font-lock-ensure)
+      (should (memq 'od-code-face (od-test-faces-at "Hello.")))
+      (should (equal (od-test-errors) nil))
+      (search-forward "Hello")
+      (call-interactively #'od-fill-paragraph)
+      (should (equal (buffer-string) text)))))
+
 (ert-deftest od-test-fill-list-item ()
   (od-test-with "◊list{\n- A first item that is long enough to need wrapping at a narrow fill column.\n}\n"
     (setq-local od-soft-wrap nil)

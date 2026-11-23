@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>◊(page-title metas)</title>
-◊when/splice[(select-from-metas 'unlisted metas)]{<meta name="robots" content="noindex">
-}<meta name="color-scheme" content="light dark">
+◊(head-description metas)<meta name="color-scheme" content="light dark">
 <link rel="icon" href="/assets/brand/logo.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">

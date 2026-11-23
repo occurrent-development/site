@@ -226,15 +226,16 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 | `term` | id | `#:mark` | yes | no |
 | `aside` `margin` `sc` `em` `strong` `code` | — | — | yes | no |
 | `anchor` | id | — | no | no |
-| `ref` | id of a figure or table in this file | — | no | no |
+| `ref` | id of a figure or table in this file | `#:panel` | optional: the link text, printed instead of the label (SPEC IMG-7a) | no |
 | `br` `break` `latex` | — | — | no | `break` yes |
 | `blockquote` | — | `#:source` `#:italic` (LAYOUT-4b) | yes | yes |
 | `epigraph` | — | `#:source` `#:italic` (LAYOUT-4a) | yes | yes |
+| `codeblock` | — | — | code, text only (the bar form, as `m`, for unbalanced braces or a `◊`; SPEC CODE-1) | yes |
 | `list` | — | `#:start` `#:columns` | yes | yes |
 | `table` | — | `#:id` (required) `#:title` (required) `#:caption` `#:source` `#:size` `#:sortable` `#:align` `#:row-headers` | yes | yes |
 | `table-csv` | path | as `table` | no | yes |
 | `sort-key` | value | — | yes | no |
-| `figure` | src | `#:id` (required) `#:title` (required) `#:alt` (required) `#:licence` (required) `#:credit` `#:invert` | caption | yes |
+| `figure` | src | `#:id` (required) `#:title` (required) `#:alt` (required) `#:licence` (required) `#:credit` `#:invert` `#:width` `#:narrow` (SPEC IMG-2a) | caption | yes |
 | `formula` | — | `#:id` (required) `#:title` `#:caption` `#:source` | TeX source, as `m` | yes |
 | `sense` | — | — | yes | no (inside `◊term` only; TERM-9) |
 | `index` | — | `#:kind` (required: `"essay"` or `"entry"`) | no | yes (`/essays` and `/blog` only; KIND-4) |
@@ -250,7 +251,7 @@ The highlighter, the completer and the checker all read **one table**, `od-vocab
 
 **VOCAB-3 (MUST) Sync test.** `pollen-test.rkt` gains a test that reads `emacs/occurrent.el`, extracts the tag names with `:built t` from `od-vocabulary`, and asserts the set equals the tag functions `pollen.rkt` provides (the `provide` form minus the template helpers and `root`). `make test` therefore fails when the two drift. Keep `od-vocabulary` a plain quoted list with one entry per line so the Racket side can parse it with a regexp.
 
-**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published tags specimen unlisted` (`abstract` and `epistemic` became tags on 2026-10-15, SPEC SRC-4a, so as meta keys they are errors); glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
+**VOCAB-4 (MUST)** Meta keys are a second small table, by file kind: essays and pages take `title subtitle status published tags author description listed toc backlinks endmatter series part series-label specimen` (META-1; `unlisted` became `listed` on 2026-11-19, LIST-1) (`abstract` and `epistemic` became tags on 2026-10-15, SPEC SRC-4a, so as meta keys they are errors); glossary files take `term aliases see-also added`. `status` values are `draft published revised superseded` (`essay-statuses` in `lib/util.rkt`).
 
 **VOCAB-5 (MUST) A command for every tag.** Each entry also names its insert command (`:command`), so the vocabulary is the one place that says what `C-c o` can do (SPEC EMACS-6). Every `:built t` entry must name a command that exists; TEST-1 checks it. The unbuilt tags name theirs too, and those commands `user-error` with "not built yet" until the flag flips. *Added 2026-10-20.*
 

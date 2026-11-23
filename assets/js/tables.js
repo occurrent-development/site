@@ -280,5 +280,5 @@ if (index) tagFilter(index);
 
 for (const table of document.querySelectorAll(".table-wrap table")) {
   if (table.matches("[data-sortable]")) makeSortable(table);
-  if (table.tBodies[0]?.rows.length >= LONG) stickyHeader(table);
+  if (table.tBodies[0]?.rows.length >= LONG && !table.closest(".collapsed")) stickyHeader(table);   // TABLE-8: never shown in the column
 }

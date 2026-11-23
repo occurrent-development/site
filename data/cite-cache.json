@@ -1,4 +1,69 @@
 {
+ "tufteVisualDisplayQuantitative2001": {
+  "full": {
+   "": [
+    "Edward R. Tufte, ",
+    [
+     "em",
+     {},
+     "The Visual Display of Quantitative Information"
+    ],
+    ", Second edition (Graphics press, 2001)."
+   ]
+  },
+  "short": {
+   "": [
+    "Tufte, ",
+    [
+     "em",
+     {},
+     "The Visual Display of Quantitative Information"
+    ],
+    "."
+   ]
+  },
+  "bib": [
+   "Tufte, Edward R. ",
+   [
+    "em",
+    {},
+    "The Visual Display of Quantitative Information"
+   ],
+   ". Second edition. Graphics press, 2001."
+  ],
+  "order": 36,
+  "doi": null,
+  "url": null,
+  "csl": {
+   "ISBN": "978-0-9613921-4-7",
+   "author": [
+    {
+     "family": "Tufte",
+     "given": "Edward R."
+    }
+   ],
+   "edition": "Second edition",
+   "id": "tufteVisualDisplayQuantitative2001",
+   "issued": {
+    "date-parts": [
+     [
+      2001
+     ]
+    ]
+   },
+   "language": "en-US",
+   "publisher": "Graphics press",
+   "publisher-place": "Cheshire, Connecticut",
+   "title": "The Visual Display of Quantitative Information",
+   "type": "book"
+  },
+  "title": "The Visual Display of Quantitative Information",
+  "authors": [
+   "Tufte"
+  ],
+  "year": "2001",
+  "type": "Book"
+ },
  "dickinsonEmilyDickinsonComplete1960a": {
   "full": {
    "": [
@@ -25,7 +90,7 @@
    ],
    ", 5. print, edited by Thomas Herbert Johnson. Little, Brown Comp, 1960."
   ],
-  "order": 1,
+  "order": 18,
   "doi": null,
   "url": null,
   "csl": {
@@ -107,7 +172,7 @@
    ],
    "."
   ],
-  "order": 7,
+  "order": 31,
   "doi": "10.1097/INF.0000000000001189",
   "url": "https://doi.org/10.1097/INF.0000000000001189",
   "csl": {
@@ -225,7 +290,7 @@
    ],
    "."
   ],
-  "order": 11,
+  "order": 37,
   "doi": "10.1007/s00431-024-05544-0",
   "url": "https://doi.org/10.1007/s00431-024-05544-0",
   "csl": {
@@ -319,7 +384,7 @@
    ],
    "."
   ],
-  "order": 0,
+  "order": 6,
   "doi": "10.1542/peds.2008-2624",
   "url": "https://doi.org/10.1542/peds.2008-2624",
   "csl": {
@@ -433,7 +498,7 @@
    ],
    "."
   ],
-  "order": 6,
+  "order": 29,
   "doi": "10.1136/jnnp.74.1.7",
   "url": "https://doi.org/10.1136/jnnp.74.1.7",
   "csl": {
@@ -512,7 +577,7 @@
    ],
    "."
   ],
-  "order": 5,
+  "order": 22,
   "doi": "10.1111/pde.12097",
   "url": "https://doi.org/10.1111/pde.12097",
   "csl": {
@@ -631,7 +696,7 @@
    ],
    "."
   ],
-  "order": 3,
+  "order": 20,
   "doi": "10.1093/acprof:oso/9780198524021.003.0012",
   "url": "https://doi.org/10.1093/acprof:oso/9780198524021.003.0012",
   "csl": {
@@ -665,82 +730,8 @@
   "year": "1996",
   "type": "Chapter"
  },
- "tufteVisualDisplayQuantitative2001": {
-  "full": {
-   "": [
-    "Edward R. Tufte, ",
-    [
-     "em",
-     {},
-     "The Visual Display of Quantitative Information"
-    ],
-    ", Second edition (Graphics press, 2001)."
-   ]
-  },
-  "short": {
-   "": [
-    "Tufte, ",
-    [
-     "em",
-     {},
-     "The Visual Display of Quantitative Information"
-    ],
-    "."
-   ]
-  },
-  "bib": [
-   "Tufte, Edward R. ",
-   [
-    "em",
-    {},
-    "The Visual Display of Quantitative Information"
-   ],
-   ". Second edition. Graphics press, 2001."
-  ],
-  "order": 10,
-  "doi": null,
-  "url": null,
-  "csl": {
-   "ISBN": "978-0-9613921-4-7",
-   "author": [
-    {
-     "family": "Tufte",
-     "given": "Edward R."
-    }
-   ],
-   "edition": "Second edition",
-   "id": "tufteVisualDisplayQuantitative2001",
-   "issued": {
-    "date-parts": [
-     [
-      2001
-     ]
-    ]
-   },
-   "language": "en-US",
-   "publisher": "Graphics press",
-   "publisher-place": "Cheshire, Connecticut",
-   "title": "The Visual Display of Quantitative Information",
-   "type": "book"
-  },
-  "title": "The Visual Display of Quantitative Information",
-  "authors": [
-   "Tufte"
-  ],
-  "year": "2001",
-  "type": "Book"
- },
  "pirsigZenArtMotorcycle1991": {
   "full": {
-   "Ch. 14, p. 155": [
-    "Robert M. Pirsig, ",
-    [
-     "em",
-     {},
-     "Zen and the Art of Motorcycle Maintenance: An Inquiry into Values"
-    ],
-    " (Vintage, 1991), Ch. 14, p. 155."
-   ],
    "ch. 1": [
     "Robert M. Pirsig, ",
     [
@@ -761,15 +752,6 @@
    ]
   },
   "short": {
-   "Ch. 14, p. 155": [
-    "Pirsig, ",
-    [
-     "em",
-     {},
-     "Zen and the Art of Motorcycle Maintenance"
-    ],
-    ", Ch. 14, p. 155."
-   ],
    "ch. 1": [
     "Pirsig, ",
     [
@@ -798,7 +780,7 @@
    ],
    ". Vintage, 1991."
   ],
-  "order": 9,
+  "order": 35,
   "doi": null,
   "url": null,
   "csl": {
@@ -881,7 +863,7 @@
    ],
    " 28, no. 16 (2006)."
   ],
-  "order": 2,
+  "order": 19,
   "doi": null,
   "url": null,
   "csl": {
@@ -946,7 +928,7 @@
    ],
    " Harvard University Press, 2000."
   ],
-  "order": 4,
+  "order": 21,
   "doi": null,
   "url": null,
   "csl": {

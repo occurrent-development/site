@@ -13,7 +13,8 @@
 (provide build-error warn text-of words id-pattern check-id
          tag? has-class? source-path source-dir project-file
          WJ visually-hidden essay-statuses essay-source? post-source? post-kind published?
-         output->url parse-tags site-value source-urls reserved-slugs check-post-slugs)
+         output->url parse-tags site-value source-urls reserved-slugs check-post-slugs
+         meta-value listed?)
 
 (define (build-error fmt . args)
   (raise-user-error (string-append "build error: " (where) (apply format fmt args))))
@@ -142,3 +143,20 @@
       [(hash-ref seen slug #f)
        => (λ (other) (cons (format "~a: the slug ~s is already used by ~a; slugs are unique across essays and the blog (KIND-1)" src slug other) errs))]
       [else (hash-set! seen slug src) errs])))
+
+;; META-1: a setting's value as trimmed text, or #f when the line is absent or
+;; empty. Every post's preamble carries every setting (META-1), so an empty
+;; line is a setting left at its default, never a value.
+(define (meta-value metas key)
+  (define v (and metas (select-from-metas key metas)))
+  (define s (and v (string-trim (if (string? v) v (text-of v)))))
+  (and s (not (equal? s "")) s))
+
+;; LIST-1: a page is listed (in the indexes, the front page's recent posts and
+;; the feed) unless its preamble says ◊define-meta[listed]{false}. Anything
+;; but true or false is an error, so a typo cannot unlist a post by accident.
+(define (listed? metas)
+  (define v (meta-value metas 'listed))
+  (cond [(or (not v) (equal? v "true")) #t]
+        [(equal? v "false") #f]
+        [else (build-error "◊define-meta[listed] is true or false (got ~s) (LIST-1)" v)]))

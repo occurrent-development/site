@@ -30,16 +30,18 @@
          "lib/graph.rkt"
          "lib/maths.rkt"
          (only-in "lib/exhibits.rkt" exhibit-kind-label)
-         (only-in xml string->xexpr))
+         (only-in xml string->xexpr xexpr->string))
 
 (provide root
          ;; headings (§8)
          section subsection subsubsection summary
          ;; standard elements (§3.3)
-         em strong sc code blockquote epigraph br anchor latex
+         em strong sc code codeblock blockquote epigraph br anchor latex
          ;; mathematics, pre-rendered at `make refresh` (MATH-1)
          m
-         (rename-out [section-break break]) rule
+         (rename-out [section-break break]) rule series-list
+         ;; a post's own files, offered for download (§9.4)
+         download
          ;; annotations (§4–7)
          link cite term sense aside margin
          ;; the essay header's text (LAYOUT-1, SRC-4a)
@@ -55,7 +57,7 @@
          ;; the reference card, for tools/validate.rkt (BIB-8); a locator as it prints
          reference-card locator-label
          ;; used by the template
-         site-css font-preloads head-script asset-url specimen? specimen-css
+         site-css font-preloads head-script head-description asset-url specimen? specimen-css
          page-title essay-header doc-body format-date revised-date site-menu page-class)
 
 (module setup racket/base
@@ -100,6 +102,32 @@
 (define (em . xs) (txexpr 'em null xs))
 (define (strong . xs) (txexpr 'strong null xs))
 (define (code . xs) (txexpr 'code null xs))
+
+;; CODE-1: ◊codeblock{…}, lines of code as a block, kept as typed. Text only;
+;; ◊codeblock|{…}| for code whose braces do not balance or that holds a ◊.
+;; The blank lines the braces stand on go, as do the indentation every line
+;; shares and the spaces at each line's end. `pre` is a block tag and one of
+;; the typography pass's excluded tags, so nothing later touches the text.
+(define (codeblock . xs)
+  (for ([x (in-list xs)] #:unless (string? x))
+    (build-error "◊codeblock holds only text, not ◊~a: write the code as typed, and ◊codeblock|{…}| if it holds a ◊ (CODE-1)"
+                 (if (txexpr? x) (get-tag x) x)))
+  (define (blank-line? l) (regexp-match? #px"^\\s*$" l))
+  (define (drop-blank ls) (dropf ls blank-line?))
+  (define lines
+    (reverse (drop-blank (reverse (drop-blank
+      (for/list ([l (in-list (string-split (string-append* xs) "\n" #:trim? #f))])
+        (string-trim l #:left? #f)))))))
+  (when (null? lines) (build-error "◊codeblock is empty (CODE-1)"))
+  (define indent
+    (apply min (for/list ([l (in-list lines)] #:unless (blank-line? l))
+                 (string-length (car (regexp-match #px"^[ \t]*" l))))))
+  (define body
+    (string-join (for/list ([l (in-list lines)])
+                   (if (blank-line? l) "" (substring l indent)))
+                 "\n"))
+  `(pre ((class "code")) (code ,body)))
+
 (define (sc . xs) (txexpr 'span '((class "sc")) xs)) ; TYPE-11: manual small caps
 (define (br) '(br))
 ;; TYPE-17: the LaTeX logo in the text face's own letters, kerned by CSS;
@@ -191,6 +219,86 @@
   (unless (null? (filter (λ (x) (not (and (string? x) (regexp-match? #px"^\\s*$" x)))) xs))
     (build-error "◊rule{} takes no text: write ◊rule{}"))
   '(hr ((class "break rule"))))
+;; SERIES-1, SERIES-2: a series is written in the preamble, not by hand. A
+;; part names its series, the slug of the series' home post, and its place in
+;; it: ◊define-meta[series]{specialists-inquiry} and ◊define-meta[part]{3}.
+;; The build writes the links between the parts at the top and the foot of
+;; each (Previous on the left, the whole series in the middle, Next on the
+;; right), and ◊series-list{} on the home post lists the parts in order.
+
+;; Every post's source: (folder slug path).
+(define (post-sources)
+  (for*/list ([folder (in-list '("essays" "blog"))]
+              [d (in-list (let ([p (project-file folder)]) (if (directory-exists? p) (directory-list p) null)))]
+              [slug (in-value (path->string d))]
+              [f (in-value (project-file folder slug (string-append slug ".html.pm")))]
+              #:when (file-exists? f))
+    (list folder slug f)))
+(define (post-url folder slug) (string-append (if (equal? folder "blog") "/blog/" "/") slug))
+(define (same-file? a b) (equal? (simple-form-path a) (simple-form-path b)))
+;; a draft that does not build yet is no part of anyone's series
+(define (safe-metas f) (with-handlers ([exn:fail? (λ (e) (hasheq))]) (get-metas f)))
+
+;; The parts of series NAME, as (part url title), in order. The page being
+;; rendered is read from its own metas, never through get-metas, which would
+;; load it again. A built page leaves out drafts, so a published part never
+;; links to one (DRAFT-2); the preview (`make serve') shows them.
+(define (series-members name)
+  (define here (source-path))
+  (define preview? (getenv "OD_PREVIEW"))
+  (define parts
+    (for*/list ([s (in-list (post-sources))]
+                [metas (in-value (if (and here (same-file? (third s) here)) (current-metas) (safe-metas (third s))))]
+                #:when (equal? (meta-value metas 'series) name)
+                #:when (or preview? (published? (third s) (or (meta-value metas 'status) ""))))
+      (define part (meta-value metas 'part))
+      (define n (and part (string->number part)))
+      (unless (exact-positive-integer? n)
+        (build-error "~a is in the series ~s, but its ◊define-meta[part] is ~s: a whole number from 1 (SERIES-2)"
+                     (second s) name (or part "empty")))
+      (list n (post-url (first s) (second s)) (or (meta-value metas 'title) (second s)))))
+  (define sorted (sort parts < #:key first))
+  (for ([a (in-list sorted)] [b (in-list (if (pair? sorted) (cdr sorted) null))] #:when (= (first a) (first b)))
+    (build-error "two posts are part ~a of the series ~s: ~a and ~a (SERIES-2)" (first a) name (second a) (second b)))
+  sorted)
+
+;; The series' home post: (url label), or a build error.
+(define (series-home name)
+  (define s (findf (λ (s) (equal? (second s) name)) (post-sources)))
+  (unless s (build-error "◊define-meta[series]{~a}: there is no post with the slug ~a to be the series' home (SERIES-2)" name name))
+  (define here (source-path))
+  (define metas (if (and here (same-file? (third s) here)) (current-metas) (get-metas (third s))))
+  (list (post-url (first s) (second s)) (or (meta-value metas 'series-label) "The whole series")))
+
+;; The navigation for the page being rendered, or #f when it is in no series.
+(define (series-nav)
+  (define name (meta-value (current-metas) 'series))
+  (and name
+       (let* ([members (series-members name)]
+              [here (output->url (regexp-replace #rx"\\.pm$" (path->string (find-relative-path (simple-form-path (current-project-root)) (simple-form-path (source-path)))) ""))]
+              [i (index-where members (λ (m) (equal? (second m) here)))]
+              [home (series-home name)])
+         (unless (meta-value (current-metas) 'part)
+           (build-error "◊define-meta[series]{~a} needs ◊define-meta[part]: this post's place in the series (SERIES-2)" name))
+         (define (link-to m prefix) (and m (link (second m) (string-append prefix (third m)))))
+         (define prev (and i (> i 0) (list-ref members (sub1 i))))
+         (define next (and i (< (add1 i) (length members)) (list-ref members (add1 i))))
+         (define (cell cls x) `(span ((class ,cls)) ,@(if x (list x) null)))
+         `(nav ((class "series") (aria-label "Parts of the series"))
+               ,(cell "series-prev" (link-to prev "Previous: "))
+               ,(cell "series-whole" (link (first home) (second home)))
+               ,(cell "series-next" (link-to next "Next: "))))))
+
+;; ◊series-list{}: on a series' home post, its parts in order, as a numbered
+;; list of links by title (SERIES-2).
+(define (series-list . xs)
+  (unless (andmap (λ (x) (and (string? x) (regexp-match? #px"^\\s*$" x))) xs)
+    (build-error "◊series-list{} takes no text: the parts come from their preambles (SERIES-2)"))
+  (define here (source-path))
+  (define slug (and here (cadr (or (regexp-match #px"([^/]+)\\.html\\.pm$" (path->string here)) '(#f #f)))))
+  (define members (series-members slug))
+  (when (null? members) (build-error "◊series-list{}: no post names ~s as its series (SERIES-2)" slug))
+  (parse-list (append* (for/list ([m (in-list members)]) (list "1. " (link (second m) (third m)) "\n")))))
 
 ;; ---------------------------------------------------------------------------
 ;; Annotations (§4–7). Tags emit markers; the root pass resolves them in one
@@ -320,21 +428,25 @@
 
 (define (table #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f]
                #:size [size "normal"] #:width [width #f]
-               #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f] . xs)
+               #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f]
+               #:collapsed [collapsed #f] #:landscape [landscape #f] . xs)
   (define-values (header aligns body) (parse-pipe-table xs))
   (make-table header aligns body
               #:id id #:title (and title (list (norm title)))
               #:caption (and caption (list (norm caption))) #:source (and source (list (norm source)))
-              #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers))
+              #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers
+              #:collapsed collapsed #:landscape landscape))
 
 (define (table-csv path #:id [id #f] #:title [title #f] #:caption [caption #f] #:source [source #f]
                    #:size [size "normal"] #:width [width #f]
-                   #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f])
+                   #:sortable [sortable 'auto] #:align [align #f] #:row-headers [row-headers #f]
+               #:collapsed [collapsed #f] #:landscape [landscape #f])
   (define-values (header aligns body) (read-csv-table path))
   (make-table header aligns body
               #:id id #:title (and title (list (norm title)))
               #:caption (and caption (list (norm caption))) #:source (and source (list (norm source)))
-              #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers))
+              #:size size #:width width #:sortable sortable #:align align #:row-headers row-headers
+              #:collapsed collapsed #:landscape landscape))
 
 ;; TABLE-5: the value a cell sorts by, when its text would mislead.
 (define (sort-key value . display)
@@ -342,10 +454,10 @@
   (txexpr 'span `((data-sort ,value)) display))
 
 (define (figure src #:id [id #f] #:title [title #f] #:alt [alt #f] #:licence [licence #f] #:credit [credit #f]
-                #:width [width #f] #:invert [invert 'auto] . caption)
+                #:width [width #f] #:invert [invert 'auto] #:narrow [narrow #f] . caption)
   (make-figure src caption #:id id #:title (and title (list (norm title)))
                #:alt (norm alt) #:licence licence #:credit (norm credit)
-               #:width width #:invert invert))
+               #:width width #:invert invert #:narrow narrow))
 
 ;; FORMULA-1: a displayed expression framed as a figure or table is: numbered
 ;; ("Formula 1"), titled, with an optional comment (#:caption) and source
@@ -376,12 +488,16 @@
 
 ;; IMG-7: ◊ref[id] prints the label of a figure or table on this page
 ;; ("Figure 2"), as a same-page link; the root pass fills in the number.
-(define (ref id #:panel [panel #f])
+;; With a body, ◊ref["id"]{the chart below}, the body is the link's text and
+;; no label is printed; the id is still checked and the popup is the same.
+(define (ref id #:panel [panel #f] . text)
   (check-id id 'ref)
   ;; IMG-9: #:panel "b" prints "Figure 2B"; the root pass checks the letter
   (when (and panel (not (and (string? panel) (regexp-match? #px"^[A-Fa-f]$" panel))))
     (build-error "◊ref ~s: #:panel takes one letter, a to f, as in ◊ref[~s #:panel \"b\"] (IMG-9)" id id))
-  (txexpr 'od-ref `((target ,id) ,@(if panel `((panel ,(string-downcase panel))) null)) null))
+  (forbid text '(od-link od-ref od-cite od-aside od-margin od-term) "◊ref's link text")
+  (txexpr 'od-ref `((target ,id) ,@(if panel `((panel ,(string-downcase panel))) null))
+          (if (regexp-match? #px"^\\s*$" (text-of text)) null text)))
 
 ;; ---------------------------------------------------------------------------
 ;; Headings are markers (SECT-2); the root pass wraps them into sections.
@@ -391,7 +507,7 @@
   (when (null? title) (build-error "~a ~s has no title" name id))
   (txexpr (string->symbol (format "h~a" (add1 level)))
           `((data-level ,(number->string level)) (id ,id)
-            ,@(if short `((data-short ,short)) null))
+            ,@(if short `((data-short ,(curl-text short))) null))   ; TYPE-16: an attribute misses the curling pass
           title))
 
 (define section (heading-marker 1 'section))
@@ -471,13 +587,15 @@
   (values nested (reverse toc)))
 
 ;; TOC-1: levels 1–2, only when there are at least three level-1 sections.
-(define (make-toc entries)
+(define (make-toc entries #:always [always? #f])
   (define (link e)
     (match-define (list _ id title short summary) e)
     `(a ((href ,(string-append "#" id)) ,@(if summary `((title ,summary)) null))
         ,@(if short (list short) title)))
   (define tops (filter (λ (e) (= (first e) 1)) entries))
-  (and (>= (length tops) 3)
+  ;; TOC-1: three top-level sections; TOC-3: `always' asks for it from one
+  ;; section or subsection
+  (and (if always? (pair? (filter (λ (e) (<= (first e) 2)) entries)) (>= (length tops) 3))
        `(nav ((class "toc") (aria-label "Contents"))
           (div ((class "toc-inner"))   ; stays in view in tier XL (TOC-2)
              (p ((class "toc-title")) "Contents")
@@ -721,6 +839,61 @@
     [(regexp-match? #px"^#[a-z0-9-]+$" href)
      `(a ((class "link same") (href ,href)) ,@(with-mark kids 'od-dir))]
     [else (build-error "◊link target ~s is not http(s)://…, /slug, /blog/slug, either with #id, /references/key, or #id" href)]))
+
+;; §9.4, FILE-1…4: ◊download[file]{label}, a file from the post's own files/
+;; folder, offered for the reader to keep. One link: the label, the download
+;; mark bound to its last word, then a muted note of the type and size, read
+;; from the file (never typed). No popup (FILE-3): the class is not one the
+;; popups take. `make serve` serves the source tree, so the preview's href is
+;; the file where it sits; the built page's is its published URL (FILE-1).
+(define download-types '(("pdf" . "PDF") ("csv" . "CSV") ("tar.xz" . "TAR.XZ")))
+;; STYLE.md §7.1: YYYY[-MM[-DD]]-surname[-…].ext, lowercase Latin alphanumerics
+(define download-name-rx #px"^\\d{4}(?:-\\d{2}(?:-\\d{2})?)?(?:-[a-z0-9]+)+\\.(?:pdf|csv|tar\\.xz)$")
+(define (download-size bytes)
+  ;; → (values shown spoken): 980 bytes, 4.2 KB, 18 KB, 1.2 MB (decimal units, as Finder shows)
+  (define (fmt n unit word)
+    (define r (if (< n 10) (/ (round (* n 10)) 10.0) (round n)))
+    (define num (if (integer? r) (number->string (inexact->exact r)) (real->decimal-string r 1)))
+    (values (string-append num " " unit) (string-append num " " word)))
+  (cond [(< bytes 1000) (values (format "~a bytes" bytes) (format "~a bytes" bytes))]
+        [(< bytes 1000000) (fmt (/ bytes 1000.0) "KB" "kilobytes")]
+        [else (fmt (/ bytes 1000000.0) "MB" "megabytes")]))
+(define (download file #:note [note #f] . label)
+  (unless (string? file)
+    (build-error "◊download needs a file name, as in ◊download[\"2026-11-16-lucas-data.csv\"]{The data}"))
+  (when (or (null? label) (regexp-match? #px"^\\s*$" (text-of label)))
+    (build-error "◊download ~s has no label: say what the file is, and its date or version (FILE-6)" file))
+  (define src (source-path))
+  (define kind (and src (post-kind src)))
+  (unless kind (build-error "◊download ~s: only a post (an essay or a blog entry) offers files (FILE-1)" file))
+  (define ext (cond [(regexp-match? #px"\\.tar\\.xz$" file) "tar.xz"]
+                    [(regexp-match #px"\\.([^.]+)$" file) => cadr]
+                    [else ""]))
+  (define type (cond [(assoc (string-downcase ext) download-types) => cdr]
+                     [else (build-error "◊download ~s: a download is a .pdf, .csv or .tar.xz (FILE-4)" file)]))
+  (unless (regexp-match? download-name-rx file)
+    (build-error "◊download ~s: name it as STYLE.md §7.1 says, lowercase and dated, as in 2026-11-16-lucas-item-110.csv (FILE-1)" file))
+  (define path (build-path (source-dir) "files" file))
+  (unless (file-exists? path)
+    (build-error "◊download ~s: there is no such file in this post's files/ folder (FILE-2)" file))
+  (define bytes (file-size path))
+  (when (> bytes 10000000)
+    (build-error "◊download ~s is ~a MB: over 10 MB a file goes to R2, not the repository (FILE-4, FILE-8)" file (quotient bytes 1000000)))
+  (when (> bytes 2000000)
+    (warn "◊download ~s is over 2 MB; the repository is public and keeps every version for ever (FILE-4)" file))
+  (define slug (cadr (regexp-match #px"([^/]+)\\.html\\.pm$" (path->string src))))
+  (define base (if (eq? kind 'entry) (string-append "/blog/" slug) (string-append "/" slug)))
+  (define url (string-append base "/files/" file))
+  (define href (if (getenv "OD_PREVIEW")
+                   (string-append (if (eq? kind 'entry) "/blog/" "/essays/") slug "/files/" file)
+                   url))
+  (define-values (shown spoken) (download-size bytes))
+  `(a ((class "link download") (href ,href) (download "") (type ,(if (equal? type "CSV") "text/csv" (if (equal? type "PDF") "application/pdf" "application/x-xz")))
+       (data-url ,(string-append (site-value 'url) url))
+       (aria-label ,(format "~a, download, ~a, ~a" (string-normalize-spaces (text-of label)) type spoken)))
+      ,@(with-mark label 'download)
+      " "
+      (span ((class "download-note")) ,(string-append type " · " shown))))
 
 ;; BIB-5: a work's page, from its References and Bibliography entries: a → alone,
 ;; named, as the ↩ beside it is.
@@ -1244,17 +1417,28 @@
                                  (if (= n 0) "that figure has no panels"
                                      (format "that figure's panels are A to ~a" (string (integer->char (+ 64 n)))))))
                   (string-upcase panel)]))
-         (link (string-append "#" id) `(span ((class "exhibit-ref")) ,(string-append label letter)))]
+         (if (null? (get-elements x))
+             (link (string-append "#" id) `(span ((class "exhibit-ref")) ,(string-append label letter)))
+             ;; IMG-7a: the writer's words instead of the label
+             (apply link (string-append "#" id) (get-elements x)))]
         [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
         [else x]))))
 
 ;; IMG-1: the first figure loads eagerly; the rest lazily.
 (define (eager-first-image doc)
   (define done #f)
+  (define (eager x)
+    (cond [((tag? 'img) x) (txexpr 'img (filter (λ (a) (not (eq? (car a) 'loading))) (get-attrs x)) null)]
+          [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map eager (get-elements x)))]
+          [else x]))
   (let walk ([x doc])
     (cond
-      [(and (not done) ((tag? 'img) x)) (set! done #t)
-       (txexpr 'img (filter (λ (a) (not (eq? (car a) 'loading))) (get-attrs x)) null)]
+      ;; IMG-2a: a figure with a narrow version: both of its images, since
+      ;; which one shows depends on the window
+      [(and (not done) (txexpr? x) (equal? (attr-ref x 'class #f) "fig-variants")
+            (pair? (find-all x (tag? 'img))))
+       (set! done #t) (eager x)]
+      [(and (not done) ((tag? 'img) x)) (set! done #t) (eager x)]
       [(txexpr? x) (txexpr (get-tag x) (get-attrs x) (map walk (get-elements x)))]
       [else x])))
 
@@ -1266,10 +1450,24 @@
 (define (mark-el? x)
   (or (has-class? x "mark") (has-class? x "circle") (has-class? x "circle-link")))
 
+;; FILE-3: a download ends with its note (type and size) after the mark, so
+;; "chart↓ CSV · 3.6 KB." would leave the full stop after the note. Look past
+;; the note, and the space before it, to the .nw span: the punctuation goes
+;; between the word and the mark there, as MARK-3a says, and the note follows.
+(define (download-note? x) (and (txexpr? x) (has-class? x "download-note")))
+(define (split-note els)   ; → (values core tail), tail being the note and its space
+  (let loop ([core els] [tail '()])
+    (cond [(null? core) (values core tail)]
+          [(download-note? (last core)) (loop (drop-right core 1) (cons (last core) tail))]
+          [(and (pair? tail) (string? (last core)) (regexp-match? #px"^\\s*$" (last core)))
+           (loop (drop-right core 1) (cons (last core) tail))]
+          [else (values core tail)])))
+
 (define (ends-with-mark? x)
   (and (txexpr? x)
        (or (has-class? x "nw")
-           (let ([els (get-elements x)]) (and (pair? els) (ends-with-mark? (last els)))))))
+           (let-values ([(core _) (split-note (get-elements x))])
+             (and (pair? core) (ends-with-mark? (last core)))))))
 
 ;; Put the punctuation into the .nw span that ends x, before its mark.
 (define (push-punct x p)
@@ -1286,7 +1484,9 @@
                   (list WJ))]
          [_ (values word null)]))
      (txexpr (get-tag x) (get-attrs x) (append word* (list `(span ((class "punct")) ,p)) wj marks))]
-    [else (txexpr (get-tag x) (get-attrs x) (append (drop-right els 1) (list (push-punct (last els) p))))]))
+    [else
+     (define-values (core tail) (split-note els))
+     (txexpr (get-tag x) (get-attrs x) (append (drop-right core 1) (list (push-punct (last core) p)) tail))]))
 
 (define (hidden-copy? x) (and (txexpr? x) (attrs-have-key? x 'hidden)))
 
@@ -1313,6 +1513,10 @@
   (for ([k '(abstract epistemic)])
     (when (and (current-metas) (select-from-metas k (current-metas)))
       (build-error "◊define-meta[~a] is now ◊~a{…}, written in the body (SRC-4a)" k k)))
+  ;; LIST-1: `unlisted' was replaced by `listed' on 2026-11-19
+  (when (and (current-metas) (select-from-metas 'unlisted (current-metas)))
+    (build-error "◊define-meta[unlisted] is now ◊define-meta[listed]{false} (LIST-1)"))
+  (listed? (current-metas))   ; checks the value
   ;; KIND-1: the kind comes from the folder, never from a meta
   (when (and (current-metas) (select-from-metas 'kind (current-metas)))
     (build-error "◊define-meta[kind] is not allowed: a post's kind comes from its folder, essays/ or blog/ (KIND-1)"))
@@ -1375,7 +1579,12 @@
   (define toc-off? (equal? (let ([v (and (current-metas) (select-from-metas 'toc (current-metas)))])
                              (and v (string-trim (format "~a" v))))
                            "none"))
-  (define toc (and (not ref-key) (not toc-off?) (make-toc toc-entries)))   ; TOC-1, KIND-3 (2026-11-09): entries have contents as essays do
+  (define toc-always? (equal? (let ([v (and (current-metas) (select-from-metas 'toc (current-metas)))])
+                                (and v (string-trim (format "~a" v))))
+                              "always"))
+  (when (and toc-always? (null? (filter (λ (e) (<= (first e) 2)) toc-entries)))
+    (warn "◊define-meta[toc]{always}, but the page has no sections, so it has no contents (TOC-3)"))
+  (define toc (and (not ref-key) (not toc-off?) (make-toc toc-entries #:always toc-always?)))   ; TOC-1, KIND-3 (2026-11-09): entries have contents as essays do
   ;; LAYOUT-1c, §17: the header closes itself, so a break straight after it
   ;; is a style error
   (when (and header (pair? nested) (has-class? (car nested) "break"))
@@ -1387,17 +1596,27 @@
   (define endmatter? (not (equal? (let ([v (and (current-metas) (select-from-metas 'endmatter (current-metas)))])
                                     (and v (string-trim (format "~a" v))))
                                   "none")))
+  ;; VAL-4a: ◊define-meta[backlinks]{none} drops the Backlinks section alone;
+  ;; links to the page are still recorded, and the rest of the end matter stays
+  (define backlinks? (not (equal? (let ([v (and (current-metas) (select-from-metas 'backlinks (current-metas)))])
+                                    (and v (string-trim (format "~a" v))))
+                                  "none")))
   ;; BIB-7: the cover, first in the article, so that it floats beside the header
   ;; (tier M), stands above it (S) or sits in the left margin, following the page (L, XL)
   (define ref-cover
     (let ([c (and ref-key (reference-cover ref-key))])
       (and c `(div ((class "ref-cover") (style ,(attr-ref c 'style))) ,c))))
+  ;; SERIES-2: a part of a series has the links between the parts at its top,
+  ;; after the header, and at its foot, after a rule
+  (define nav (series-nav))
   (define annotated (append (annotate (append (if ref-cover (list ref-cover) null)
                                               (if header (list (car numbered)) null)
-                                              epigraphs (if toc (list toc) null) body)
+                                              (if nav (list nav) null)
+                                              epigraphs (if toc (list toc) null) body
+                                              (if nav (list '(hr ((class "break rule"))) nav) null))
                                       #:endmatter? endmatter?)
                             ;; CITE-10: … Bibliography · Backlinks · Changelog
-                            (if endmatter? (backlinks-section) null)
+                            (if (and endmatter? backlinks?) (backlinks-section) null)
                             (if (and endmatter? (pair? changelogs)) (list (changelog-section (car changelogs))) null)))
   ;; MATH-1: a display expression alone in its paragraph is its own block
   (define doc (lift-display-maths (eager-first-image (bind-punctuation (bind-circles (render-circles (set-directions (txexpr 'root null annotated))))))))
@@ -1827,6 +2046,7 @@
               [metas (in-value (get-metas src))]
               [published (in-value (select-from-metas 'published metas))]
               #:when published
+              #:when (listed? metas)   ; LIST-1: an unlisted post is out of the indexes and the front page
               #:when (published? src (string-trim (format "~a" (or (select-from-metas 'status metas) "")))))
     (define pub (string-trim (format "~a" published)))
     (define revised (revised-date src))
@@ -2017,6 +2237,27 @@
    "\n"))
 
 (define (head-script) (string-trim (file->string files:head-js)))
+
+;; DESC-1: the page's description, for search results, link previews and the
+;; feed's summary; with it, Open Graph's title, URL and type, so a shared link
+;; shows the page's own title and summary rather than what an app guesses.
+;; No description, no description tag: the first paragraph is what a search
+;; engine falls back to anyway.
+(define (head-description metas)
+  (define d (meta-value metas 'description))
+  (define title (meta-value metas 'title))
+  (define here (select-from-metas 'here-path metas))
+  (define rel (and here (path->string (find-relative-path (simple-form-path (current-project-root))
+                                                          (simple-form-path (format "~a" here))))))
+  (define url (and rel (string-append (string-trim (site-value 'url) "/" #:left? #f)
+                                      (output->url (regexp-replace #rx"\\.pm$" rel "")))))
+  (define (m attr k v) (string-append (xexpr->string `(meta ((,attr ,k) (content ,v)))) "\n"))
+  (string-append
+   (if d (string-append (m 'name "description" d) (m 'property "og:description" d)) "")
+   (if title (m 'property "og:title" title) "")
+   (if url (m 'property "og:url" url) "")
+   (m 'property "og:type" (if (and rel (post-kind rel)) "article" "website"))
+   (m 'property "og:site_name" "Occurrent Development")))
 ;; PERF-2: scripts are cached for a year, so their URL carries a content hash.
 (define (asset-url rel)
   (define f (project-file rel))

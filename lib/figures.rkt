@@ -73,7 +73,7 @@
 
 (define (make-figure src caption
                      #:id id #:title title #:alt alt #:licence licence #:credit credit
-                     #:width width #:invert invert)
+                     #:width width #:invert invert #:narrow [narrow #f])
   (unless (string? alt)
     (build-error "figure ~s needs #:alt (use #:alt \"\" for a decorative image)" src))
   (check-licence (format "figure ~s" src) licence)
@@ -81,12 +81,30 @@
     (build-error "figure ~s needs #:credit (licence ~a)" src licence))
   (define fraction (check-width (format "figure ~s" src) width))
   (define-values (path entry) (image-entry "figure" src))
+  (define (image path entry fraction)
+    (if (hash-ref entry 'svg #f) (inline-svg path alt) (picture entry alt #:fraction fraction)))
+  ;; IMG-2a: #:narrow names a second version of the image, drawn for a phone's
+  ;; column. Both are in the page; CSS shows the narrow one in tier S (and in
+  ;; a portrait lightbox) and the main one everywhere else, print included.
+  ;; Same alt, licence, credit and classification: it is the same figure.
+  (unless (or (not narrow) (string? narrow))
+    (build-error "figure ~s: #:narrow is the path of the phone version, as in #:narrow \"img/…-narrow.svg\" (IMG-2a)" src))
+  (when (and narrow (equal? narrow src))
+    (build-error "figure ~s: #:narrow names the same file as the figure (IMG-2a)" src))
+  (define body
+    (if narrow
+        (let-values ([(npath nentry) (image-entry "figure" narrow)])
+          `(div ((class "fig-variants"))
+                (div ((class "fig-variant") (data-variant "wide")) ,(image path entry (or fraction 1)))
+                ;; below tier M the fraction is dropped (IMG-2): the column's width
+                (div ((class "fig-variant") (data-variant "narrow")) ,(image npath nentry 1))))
+        (image path entry (or fraction 1))))
   (define label (licence-label licence))
   (define credit-line
     (filter values (list (and credit (if (string? credit) credit (text-of credit)))
                          label)))
   (make-exhibit "figure" id title
-                (list (if (hash-ref entry 'svg #f) (inline-svg path alt) (picture entry alt #:fraction (or fraction 1))))
+                (list body)
                 caption
                 (if (null? credit-line) null (list (string-join credit-line " · ")))
                 #:class "figure"

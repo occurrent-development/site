@@ -99,6 +99,7 @@ Each item says **why it's deferred** — usually because it needs design iterati
 - Full-text search across essays: worth revisiting past ~15 essays; a build-time index plus a small client script.
 - A tag or topic index: *partly built 2026-10-14*, as the tag filter on the home page (INDEX-3). Separate pages per tag, with descriptions, wait for the same threshold.
 - Print and PDF: **decided 2026-10-22, not parked.** A print stylesheet and a built PDF per post with footnotes are Phase 4 (SPEC §10.7, PRINT-1…8, D15). Recorded here because "PDF export" was listed as deferred under item 17.
+- Code listings: syntax colouring, line numbers and a copy button for `◊codeblock` (SPEC CODE-3). *Parked 2026-11-23*: the posts so far show a few lines at a time, read as type; colour would need a script or a palette for each theme. Revisit if a post needs long listings.
 - Mathematics: **decided 2026-10-20, not parked.** The LaTeX logo is a Phase 2 tag (SPEC TYPE-17); inline maths is Phase 3, pre-rendered in Libertinus Math by LuaLaTeX at `make refresh` (SPEC MATH-1). KaTeX and MathJax were considered and rejected because they set maths in their own faces beside the text face. Recorded here so the choice is not reopened.
 
 ## 17. Interactive figures: beyond the v1 frame

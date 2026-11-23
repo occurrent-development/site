@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Ask the Wayback Machine to keep a copy of every external URL (CARD-5).
-Part of `make refresh`; never run by `make` (BUILD-2) or by the reader's
-browser.
+Run by `make refresh-wayback` and by `od-publish`, not by `make refresh`: the
+Archive is slow, and a refresh should take seconds (changed 2026-11-23).
+Never run by `make` (BUILD-2) or by the reader's browser.
 
 The URLs are every ◊link["http…"] target in a non-draft source, and every
 cited work's DOI or URL in the committed citation cache. For each one
@@ -9,13 +10,17 @@ data/link-meta.json does not yet give a `wayback` for, ask the availability
 API for an existing snapshot, and failing that ask for a new one
 (web.archive.org/save/…); record the snapshot's URL as `wayback`. Cards and
 reference pages then show "Wayback copy" (CARD-3). A network failure, a
-refusal or a rate limit is a warning and leaves the entry as it was: the
-next refresh tries again. A draft's URLs are never sent: link-meta.json is
+refusal or a rate limit is a warning and leaves the entry as it was. The
+failure is noted in data/wayback-failures.local.json (not committed), and the
+URL is skipped for a week; `--all` tries every URL again now. Each snapshot is
+written to link-meta.json as soon as it is made, so stopping the run (Ctrl-C)
+loses nothing already done. A draft's URLs are never sent: link-meta.json is
 committed, and a draft's links stay private until it is published (CITE-5a).
 
-Run from the repository root: python3 tools/wayback.py
+Run from the repository root: python3 tools/wayback.py [--all]
 """
 
+import datetime
 import json
 import pathlib
 import re
@@ -28,6 +33,10 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 META = ROOT / "data" / "link-meta.json"
 CACHE = ROOT / "data" / "cite-cache.json"
+FAILURES = ROOT / "data" / "wayback-failures.local.json"
+RETRY_AFTER = datetime.timedelta(days=7)
+CHECK_TIMEOUT = 20   # seconds: is there a snapshot already?
+SAVE_TIMEOUT = 60    # seconds: make one
 SKIP_DIRS = {"public", "compiled", ".git", "node_modules", "support", "tests", "build"}
 LINK = re.compile(r'◊link\[\s*"(https?://[^"]+)"')
 DRAFT = re.compile(r"◊define-meta\[status\]\{\s*draft\s*\}")
@@ -51,7 +60,7 @@ def external_urls():
     return list(dict.fromkeys(urls))
 
 
-def get(url, timeout=60):
+def get(url, timeout=CHECK_TIMEOUT):
     req = urllib.request.Request(url, headers={"User-Agent": AGENT})
     return urllib.request.urlopen(req, timeout=timeout)
 
@@ -68,7 +77,7 @@ def existing(url):
 
 def save(url):
     """Ask for a new snapshot; its URL, or None."""
-    with get("https://web.archive.org/save/" + url, timeout=180) as r:
+    with get("https://web.archive.org/save/" + url, timeout=SAVE_TIMEOUT) as r:
         loc = r.headers.get("Content-Location")
         final = r.geturl()
     if loc and loc.startswith("/web/"):
@@ -78,27 +87,57 @@ def save(url):
     return None
 
 
+def load(path):
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def write(path, data):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
 def main():
-    meta = json.loads(META.read_text(encoding="utf-8")) if META.exists() else {}
-    todo = [u for u in external_urls() if not meta.get(u, {}).get("wayback")]
+    retry_all = "--all" in sys.argv[1:]
+    meta = load(META)
+    failures = load(FAILURES)
+    today = datetime.date.today()
+    todo, skipped = [], 0
+    for u in external_urls():
+        if meta.get(u, {}).get("wayback"):
+            continue
+        last = failures.get(u)
+        if not retry_all and last and today - datetime.date.fromisoformat(last) < RETRY_AFTER:
+            skipped += 1
+            continue
+        todo.append(u)
     if not todo:
-        print("wayback: every external URL has a snapshot")
+        print("wayback: every external URL has a snapshot"
+              + (f", or failed in the last week ({skipped}; --all to retry)" if skipped else ""))
         return
+    print(f"wayback: {len(todo)} URL{'' if len(todo) == 1 else 's'} to try, up to {CHECK_TIMEOUT + SAVE_TIMEOUT} s each"
+          + (f"; {skipped} failed in the last week, skipped (--all to retry)" if skipped else ""))
     saved = 0
-    for url in todo:
+    for i, url in enumerate(todo, 1):
+        print(f"wayback: [{i}/{len(todo)}] {url}", flush=True)
         try:
             snap = existing(url) or save(url)
         except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
-            print(f"wayback: warning: {url}: {e}; try again at the next refresh")
-            continue
+            snap, why = None, str(e)
+        else:
+            why = "no snapshot was made"
         if not snap:
-            print(f"wayback: warning: {url}: no snapshot was made; try again at the next refresh")
+            print(f"wayback: warning: {url}: {why}; skipped until {today + RETRY_AFTER}")
+            failures[url] = today.isoformat()
+            write(FAILURES, failures)
             continue
         meta.setdefault(url, {})["wayback"] = snap
+        write(META, meta)
+        if failures.pop(url, None):
+            write(FAILURES, failures)
         saved += 1
         print(f"wayback: {url} → {snap}")
         time.sleep(2)   # the save API rate-limits anonymous callers
-    META.write_text(json.dumps(meta, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wayback: {saved} of {len(todo)} new snapshots recorded in data/link-meta.json")
 
 

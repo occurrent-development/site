@@ -45,7 +45,7 @@ Each file marks the gaps with `TODO(ryan)` comments, and the comments carry the 
 ## Going live
 
 1. `grep -rn "TODO(ryan)\|CONFLICT\|ON ADOPTION" pages/` returns nothing.
-2. Remove `◊define-meta[unlisted]{yes}` from each draft.
+2. Set `◊define-meta[listed]` to `true` on each draft (it was `unlisted`, LIST-1).
 3. Replace `pages/about.html.pm` with `pages/about-hub.html.pm` (rename it to `about.html.pm`, so `/about` and its anchors stay).
 4. Add `pages/me.html`, `pages/policies.html`, `pages/style.html` and `pages/using-this-site.html` to `index.ptree`.
 5. Run `make test`, then `make serve` and read every page in both themes.

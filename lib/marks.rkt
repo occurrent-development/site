@@ -16,6 +16,7 @@
         'xref "link to another page"
         'up   "link to an earlier section"
         'down "link to a later section"
+        'download "download"   ; FILE-3, D19
         'od-dir "link"))   ; placeholder until the root pass knows up or down
 
 (define (mark kind)

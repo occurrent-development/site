@@ -42,6 +42,8 @@ local.mk
 /data/anchors.json
 /data/links.json
 /data/links.local.json
+# URLs the Wayback Machine refused lately (tools/wayback.py): skipped for a week
+/data/wayback-failures.local.json
 /data/anchors-deployed.json
 /data/publish.txt
 /build/

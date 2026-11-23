@@ -143,8 +143,10 @@
     (let walk ([x e] [anc '()])
       (when (txexpr? x)
         (define anc* (cons x anc))
-        ;; VAL-4: a link to another page of the site
-        (when (and (eq? (get-tag x) 'a) (class? x "xref") (not (class? x "to-ref")))
+        ;; VAL-4: a link to another page of the site; SERIES-1: not a series'
+        ;; links, which are navigation, not a page's citing of another
+        (when (and (eq? (get-tag x) 'a) (class? x "xref") (not (class? x "to-ref"))
+                   (not (findf (λ (a) (class? a "series")) anc)))
           (match-define (list _ path frag) (regexp-match #px"^([^#]*)(?:#(.*))?$" (attr-ref x 'href)))
           (unless (or (equal? path url) (regexp-match? #rx"^/references/" path))
             (set! links (cons (cons path (hasheq 'from url 'section (or (section-of anc) 'null) 'id (or frag 'null)

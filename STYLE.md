@@ -1,6 +1,6 @@
 # occurrentdevelopment.com — Manual of Style
 
-Status: draft 1.2 · Owner: Ryan · Last revised: 2026-11-03 · Modelled on [gwern.net/style-guide](https://gwern.net/style-guide)
+Status: draft 1.3 · Owner: Ryan · Last revised: 2026-11-16 · Modelled on [gwern.net/style-guide](https://gwern.net/style-guide)
 
 This is the house style for everything on the site and in its repository: prose, markup, metadata, files, and the look of the thing. `SPEC.md` is the build brief and says what the build *enforces*; this manual says what a writer *chooses*. Where a rule here is also a requirement there, the ID follows it in parentheses (`TYPE-16`).
 
@@ -85,6 +85,7 @@ The whole thing on one screen. Each line is expanded below.
 - **Primary sources.** Prefer the paper to the press release, the DOI to the publisher URL, the author's page to a mirror. Prefer a Wikipedia link only for a thing whose Wikipedia article is the best short introduction.
 - **`#:note`** on any external link a reader might wonder about before clicking: what it is, why it is there, and when it was read if that matters. One sentence. (It feeds the link card, `CARD-1`.)
 - **Internal links** are same-page (`#id`) or cross-essay (`/slug#id`); the build types them and fails on a broken target (`LINK-1`, `LINK-2`). Link to the most specific anchor that exists.
+- **Download labels** (`◊download`, `FILE-3`) say what the file is and when it is from, never *click here* or *download*: *The paper as submitted, 16 November 2026*; *The data behind Table 2*. The build adds the type and size, so do not type them. A file that merely restates the essay is a courtesy copy and the label says so (*A printable copy of this essay as at 16 November 2026*); the post's own PDF (`PRINT-2`) is the better way to offer that.
 - **Never** copy or archive someone else's page or image (principle 8). Quote, cite and link.
 
 ### 4.5 Citations and quotations
@@ -224,7 +225,7 @@ The general filename pattern is `YYYY[-MM[-DD]]-SURNAME1[-SURNAME2...][-TOOL[-TO
 
 **Here**, the pattern applies to *files*, not pages:
 
-- **Pages are slugs** (§6.3), never dated. The pattern governs everything else you name by hand: images in `essays/<slug>/img/` and `blog/<slug>/img/`, CSVs beside an essay, shared images in `img/`, anything in `support/`, and any document offered for download.
+- **Pages are slugs** (§6.3), never dated. The pattern governs everything else you name by hand: images in `essays/<slug>/img/` and `blog/<slug>/img/`, CSVs beside an essay, shared images in `img/`, anything in `support/`, and any file offered for download, which lives in `files/` beside the essay (`FILE-1`), for example `2026-11-16-lucas-lifecourse-paper.pdf`.
 - **Surname.** Your own photograph, figure or data: `lucas`. A figure redrawn after someone else's: their surname, and the credit says "after" (`IMG-6`). No identifiable author: the closest entity (`nswhealth`, `abs`), else `anonymous`.
 - **Tool and topic.** `2026-10-14-lucas-omnigraffle-taxonomy-mammals.svg`; `2026-lucas-photo-retina.jpg`; `2026-abs-census-table-age.csv`. A generated image names the model and date (§7.4).
 - **Exceptions to lowercase**, and the only ones: Better BibTeX keys, which are case-preserved and pinned (`BIB-2`) and so name `refs/covers/<key>.jpg` and `/references/<key>`; and files the build writes with a content hash (`assets/fonts/*.woff2`, `assets/img/*`), which are never hand-named and never committed where generated. Everything a person types is lowercase.
@@ -248,7 +249,7 @@ The general filename pattern is `YYYY[-MM[-DD]]-SURNAME1[-SURNAME2...][-TOOL[-TO
 - **Prose.** Source `.pm` (Pollen) for pages and `.md` for repository documents; served as `.html`. §6; `.org` is not used in the repository (§9).
 - **Raster image.** Source `.jpg` (photographs) or `.png` (screenshots, line art with flat colour); served as `.avif`, `.webp` and the source format, in variants (`IMG-1`). No WebP or AVIF *sources*: they are outputs. No HEIC, TIFF, BMP, GIF (a GIF is a video).
 - **Vector image.** Source `.svg`, hand-cleaned, `currentColor` for strokes; inlined (`IMG-5`). No `.pdf` figures; export to SVG.
-- **Document.** Source `.pdf`; served as is. PDF/A where the tool offers it. Never `.docx`, `.doc`, `.djvu`, `.epub` for anything published.
+- **Document.** Source `.pdf`; served as is, from the post's `files/` and offered with `◊download` (`SPEC.md` §9.4). PDF/A where the tool offers it. Never `.docx`, `.doc`, `.djvu`, `.epub` for anything published. **Strip or check the metadata before the first commit** (author, title, creator, producer, any file path, comments, tracked changes): `exiftool -all= file.pdf`, or re-export from the source; the repository is public and its history permanent, so a later cleanup does not take the old metadata out (`FILE-5`). The first page carries the date or version, and so does the link's label. Over 2 MB, ask whether it needs to be that big (images downsampled, fonts subsetted); over 10 MB it does not belong in the repository (`FILE-4`).
 - **Data.** Source `.csv`, UTF-8, comma-separated, header row, one table per file; rendered by `◊table-csv`. No `.xlsx`, `.tsv`, `.ods`. Dates ISO, decimals with a full stop, no thousands separators.
 - **Audio.** Source `.mp3`, mono, 64–80 kbps, −19 LUFS / −1 dBTP (`AUDIO-2`); served as is, from R2. Never committed (`AUDIO-1`). No `.m4a`, `.ogg`, `.wav` served.
 - **Video.** Source `.mp4` (H.264 + AAC); served as is. Only inside an interactive figure's fallback; no autoplay, no loop.

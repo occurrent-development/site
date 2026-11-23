@@ -269,18 +269,23 @@ An unreadable cache counts as holding every form, so this never blocks."
 
 (defvar od--terms-cache nil "(DIR-MTIME . TERMS); TERMS is a list of (ID HEADWORD ALIASES).")
 
+(defconst od--meta-prefix "^\\(?:◊; *\\)?"
+  "Start of a preamble line, which may be a setting left at its default:
+commented out, since Pollen refuses ◊define-meta with an empty value (META-1).")
+
 (defun od--meta (name)
   "Return the value of meta NAME in this buffer, trimmed, or nil (VOCAB-4)."
   (save-excursion
     (goto-char (point-min))
     (when (re-search-forward (format "◊define-meta\\[%s\\]{\\([^}]*\\)}" name) nil t)
-      (string-trim (match-string 1)))))
+      (let ((v (string-trim (match-string 1))))   ; META-1: empty is absent
+        (and (not (string-empty-p v)) v)))))
 
 (defun od--terms ()
   "Return the glossary's terms, each (ID HEADWORD ALIASES) (EMACS-3).
 They are read from glossary/ and cached until a file there changes."
   (let* ((dir (od--file "glossary"))
-         (files (and (file-directory-p dir) (directory-files dir t "\\.pm\\'")))
+         (files (and (file-directory-p dir) (directory-files dir t "\\`[^.].*\\.pm\\'")))
          (stamp (mapcar (lambda (f) (file-attribute-modification-time (file-attributes f))) files)))
     (if (and od--terms-cache (equal (car od--terms-cache) (cons files stamp)))
         (cdr od--terms-cache)
@@ -455,7 +460,7 @@ then blog entries under their own heading (KIND-6)."
 (defun od--site-pm-files ()
   "Every .pm file of the site, skipping support/, public/ and compiled/ (EDIT-6)."
   (cl-remove-if (lambda (f) (string-match-p "/\\(support\\|public\\|compiled\\)/" f))
-                (directory-files-recursively (od-root) "\\.pm\\'")))
+                (directory-files-recursively (od-root) "\\`[^.].*\\.pm\\'")))
 
 (defun od--used-urls ()
   "Return the external URLs linked anywhere on the site, to complete (EDIT-3)."
@@ -579,6 +584,13 @@ With a prefix argument ITALIC, add #:italic #t."
   (interactive "P")
   (od--insert-block (if italic "◊blockquote[#:italic #t]{" "◊blockquote{") "}"))
 
+(defun od-insert-codeblock ()
+  "Insert ◊codeblock{…} on its own lines, each brace on a line of its own (CODE-1).
+The region, if any, becomes the code. Code whose braces do not balance, or
+that holds a ◊, goes in ◊codeblock|{…}| instead: change the braces by hand."
+  (interactive)
+  (od--insert-block "◊codeblock{\n" "\n}"))
+
 (defun od--enclosing-tag-name (pos)
   "The name of the innermost tag whose body or brackets contain POS, or nil."
   (save-excursion
@@ -668,6 +680,15 @@ Refuses before a heading: a heading already marks the turn (§17)."
   (od--open-line-for-block)
   (insert (if rule "◊rule{}\n" "◊break{}\n"))
   (unless (or (eobp) (looking-at-p "[ \t]*$")) (insert "\n")))
+
+(defun od-insert-series-list ()
+  "Insert ◊series-list{}: on a series' home post, its parts in order (SERIES-2).
+The parts name the series in their own preambles, with
+◊define-meta[series] and ◊define-meta[part]; the build writes the links
+between them."
+  (interactive)
+  (od--open-line-for-block)
+  (insert "◊series-list{}\n"))
 
 (defun od-insert-rule ()
   "Insert ◊rule{}, the quieter section break (LAYOUT-4e); see `od-insert-break'."
@@ -800,7 +821,8 @@ every insert command does (EMACS-2), and a prefix argument reaches it."
 (defun od-insert-link ()
   "Insert a ◊link, a ◊ref or an ◊anchor: everything that points, or is pointed at.
 A link goes to this page, to another page of this site, or to the web (§8).
-A figure or table is referred to by number (`od-insert-ref'). An anchor
+A figure or table is referred to by number (`od-insert-ref'); a file of the
+post's own is offered with `od-insert-download' (§9.4). An anchor
 \(`od-insert-anchor') is the place a link on this page points at; it may
 stand inside an ◊aside (ASIDE-9)."
   (interactive)
@@ -808,7 +830,8 @@ stand inside an ◊aside (ASIDE-9)."
                         ("this site" . od-insert-link-essay)
                         ("other site" . od-insert-link-external)
                         ("figure, table or formula" . od-insert-ref)
-                        ("anchor" . od-insert-anchor))))
+                        ("anchor" . od-insert-anchor)
+                        ("file to download" . od-insert-download))))
 
 (defun od-glossary ()
   "The glossary: insert a ◊term, make a new term, or open a term's file (§7).
@@ -821,7 +844,7 @@ A prefix argument reaches `od-insert-term': the term gets a ◊sense (TERM-9)."
 (defun od-insert-element ()
   "Insert an element of the page, chosen from a menu.
 A heading, figure, panels, table, formula, summary, aside, margin note,
-section break or rule."
+section break, rule or a series' list of parts."
   (interactive)
   (od--menu "Insert" '(("section" . od-insert-section)
                        ("figure" . od-insert-figure)
@@ -832,15 +855,17 @@ section break or rule."
                        ("aside" . od-insert-aside)
                        ("margin note" . od-insert-margin)
                        ("break" . od-insert-break)
-                       ("rule" . od-insert-rule))))
+                       ("rule" . od-insert-rule)
+                       ("series list" . od-insert-series-list))))
 
 (defun od-insert-block ()
-  "Insert a block of text: a ◊list, a ◊blockquote or an ◊epigraph.
-See §3.4 and LAYOUT-4c."
+  "Insert a block of text: a ◊list, a ◊blockquote, an ◊epigraph or a ◊codeblock.
+See §3.4, LAYOUT-4c and CODE-1."
   (interactive)
   (od--menu "Block" '(("list" . od-insert-list)
                       ("block quotation" . od-insert-blockquote)
-                      ("epigraph" . od-insert-epigraph))))
+                      ("epigraph" . od-insert-epigraph)
+                      ("code block" . od-insert-codeblock))))
 
 ;;; Mathematics (MATH-1) --------------------------------------------------------
 
@@ -972,7 +997,7 @@ expression would run into."
     (and (not (if forward (eobp) (bobp)))
          (progn (beginning-of-line)
                 (not (looking-at-p (concat "[ \t]*\\(}\\|◊\\(define-meta\\|section\\|subsection\\|subsubsection\\|summary\\|"
-                                           "break\\|rule\\|list\\|figure\\|panels\\|formula\\|table\\|blockquote\\|epigraph\\|changelog\\)\\_>\\)")))))))
+                                           "break\\|rule\\|list\\|figure\\|panels\\|formula\\|table\\|blockquote\\|epigraph\\|codeblock\\|changelog\\)\\_>\\)")))))))
 
 (defun od-toggle-math ()
   "Flip the ◊m around point between inline and on its own line (MATH-1).
@@ -1136,8 +1161,9 @@ error instead of opening a browser on a dead port."
 ;;;###autoload
 (defun od-refresh ()
   "Run the whole `make refresh' (BUILD-3): citation caches, covers, the
-mathematics (MATH-1), the dark-mode classification of new figures and
-Wayback snapshots of new external links.  `od-publish' runs it too; `od-preview' runs only the
+mathematics (MATH-1) and the dark-mode classification of new figures.
+Wayback snapshots are `make refresh-wayback' (CARD-5), which `od-publish'
+runs after it.  `od-publish' runs this too; `od-preview' runs only the
 citation part when a page needs it.  The server, if running, is restarted
 afterwards so it reads the new caches."
   (interactive)
@@ -1152,11 +1178,16 @@ afterwards so it reads the new caches."
 ;;; Figures and tables (IMG-7) ---------------------------------------------------
 
 (defun od-insert-ref ()
-  "Insert ◊ref[\"id\"] for a figure, table or formula in this file."
+  "Insert ◊ref[\"id\"] for a figure, table or formula in this file.
+With an active region, the region becomes the link's text, ◊ref[\"id\"]{region},
+and no \"Figure 2\" is printed (IMG-7a)."
   (interactive)
-  (let ((cands (od--id-candidates '(figure table formula))))
+  (let ((cands (od--id-candidates '(figure table formula)))
+        (text (od--region-text)))
     (unless cands (user-error "No figure, table or formula with an #:id in this file"))
-    (insert (format "◊ref[\"%s\"]" (cdr (assoc (completing-read "Figure, table or formula: " cands nil t) cands))))))
+    (let ((id (cdr (assoc (completing-read "Figure, table or formula: " cands nil t) cands))))
+      (when text (delete-region (region-beginning) (region-end)) (deactivate-mark))
+      (insert (format "◊ref[\"%s\"]" id) (if text (format "{%s}" text) "")))))
 
 ;;; Tags (INDEX-3) --------------------------------------------------------------
 
@@ -1182,10 +1213,10 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
                        (string-join (delete-dups (mapcar (lambda (s) (downcase (string-trim s))) chosen)) ", "))))
     (save-excursion
       (goto-char (point-min))
-      (if (re-search-forward "^◊define-meta\\[tags\\]{[^}]*}$" nil t)
+      (if (re-search-forward (concat od--meta-prefix "◊define-meta\\[tags\\]{[^}\n]*}") nil t)   ; META-1: a comment may follow
           (replace-match line t t)
         (goto-char (point-min))
-        (while (re-search-forward "^◊define-meta\\[" nil t) (forward-line 1))
+        (while (re-search-forward (concat od--meta-prefix "◊define-meta\\[") nil t) (forward-line 1))
         (unless (bolp) (insert "\n"))
         (insert line "\n")))))
 
@@ -1221,6 +1252,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (abstract      :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag)
     (epistemic     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-tag :not (entry))
     (link          :pos target :kw (note title author date)                              :req ()                    :body t   :block nil :built t :command od-insert-link)
+    (download      :pos file   :kw (note)                                                :req ()                    :body t   :block nil :built t :command od-insert-download)
     (cite          :pos key    :kw (loc note block italic source)                        :req ()                    :body opt :block nil :built t :command od-insert-cite)
     (term          :pos id     :kw (mark)                                                :req ()                    :body t   :block nil :built t :command od-glossary)
     (sense         :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-glossary :inside term)
@@ -1231,19 +1263,21 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
     (strong        :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (code          :pos nil    :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-wrap)
     (anchor        :pos id     :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-link)
-    (ref           :pos id     :kw (panel)                                               :req ()                    :body nil :block nil :built t :command od-insert-link)
+    (ref           :pos id     :kw (panel)                                               :req ()                    :body opt :block nil :built t :command od-insert-link)
     (br            :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
     (break         :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
     (rule          :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-element)
+    (series-list   :pos nil    :kw ()                                                    :req ()                    :body nil :block t   :built t :command od-insert-series-list)
     (latex         :pos nil    :kw ()                                                    :req ()                    :body nil :block nil :built t :command od-insert-tag)
     (m             :pos nil    :kw (display)                                             :req ()                    :body t   :block nil :built t :command od-math)
     (blockquote    :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
     (epigraph      :pos nil    :kw (source italic)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
+    (codeblock     :pos nil    :kw ()                                                    :req ()                    :body t   :block t   :built t :command od-insert-block)
     (list          :pos nil    :kw (start columns)                                       :req ()                    :body t   :block t   :built t :command od-insert-block)
-    (table         :pos nil    :kw (id title caption source size sortable align row-headers) :req (id title)        :body t   :block t   :built t :command od-insert-element)
-    (table-csv     :pos path   :kw (id title caption source size sortable align row-headers) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
+    (table         :pos nil    :kw (id title caption source size sortable align row-headers collapsed landscape) :req (id title)        :body t   :block t   :built t :command od-insert-element)
+    (table-csv     :pos path   :kw (id title caption source size sortable align row-headers collapsed landscape) :req (id title)        :body nil :block t   :built t :command od-insert-tag)
     (sort-key      :pos value  :kw ()                                                    :req ()                    :body t   :block nil :built t :command od-insert-tag)
-    (figure        :pos src    :kw (id title alt licence credit invert width)            :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
+    (figure        :pos src    :kw (id title alt licence credit invert width narrow)     :req (id title alt licence) :body t  :block t   :built t :command od-insert-element)
     (formula       :pos nil    :kw (id title caption source)                             :req (id)               :body t   :block t   :built t :command od-insert-formula)
     (panels        :pos nil    :kw (id title licence credit columns width)               :req (id title licence)    :body t   :block t   :built t :command od-insert-element)
     (panel         :pos src    :kw (alt licence credit invert)                           :req (alt)                 :body t   :block t   :built t :command od-insert-tag :inside panels)
@@ -1276,7 +1310,7 @@ Replaces the ◊define-meta[tags] line, or adds one after the other meta lines."
 ;; VOCAB-4: meta keys by kind of file. A post's kind is never a meta: the
 ;; folder decides it (KIND-1), so `kind' is in no list.
 (defconst od-meta-keys
-  '((essay    . (title subtitle status published tags specimen unlisted endmatter toc))
+  '((essay    . (title subtitle status published tags author description listed toc backlinks endmatter series part series-label specimen))
     (glossary . (term aliases see-also added status)))
   "Allowed ◊define-meta keys: `essay' for pages and posts, `glossary' for terms.")
 
@@ -2099,7 +2133,7 @@ The tag starts at AT and its name ends at NAME-END."
           ("subsubsection" (od--face-under ib ie 'od-heading-3-face))
           ((or "aside" "margin") (od--face-under ib ie 'od-aside-face))
           ("term" (od--face-under ib ie 'od-term-face))
-          ("code" (od--face-under ib ie 'od-code-face))
+          ((or "code" "codeblock") (od--face-under ib ie 'od-code-face))
           ((or "epigraph" "blockquote") (od--face-under ib ie 'od-quote-face))
           ("list" (od--fontify-list ib ie))
           ("table" (od--fontify-pipes ib ie))
@@ -2214,9 +2248,15 @@ breaking it."
   "Fill this paragraph; with `od-soft-wrap', join it onto one line (EDIT-1a).
 JUSTIFY is passed on to `fill-paragraph'."
   (interactive (list (and current-prefix-arg 'full)))
-  (if od-soft-wrap
-      (let ((fill-column most-positive-fixnum)) (fill-paragraph justify t))
-    (fill-paragraph justify t)))
+  (cond
+   ((od--in-codeblock-p) t)              ; CODE-1: code is kept as typed
+   (od-soft-wrap
+    (let ((fill-column most-positive-fixnum)) (fill-paragraph justify t)))
+   (t (fill-paragraph justify t))))
+
+(defun od--in-codeblock-p (&optional pos)
+  "Non-nil when POS (default point) is in the body of a ◊codeblock (CODE-1)."
+  (equal (od--enclosing-tag-name (or pos (point))) "codeblock"))
 
 (defun od--adaptive-fill ()
   "Return the fill prefix for a list item, so it wraps under its text (EDIT-1)."
@@ -2226,6 +2266,7 @@ JUSTIFY is passed on to `fill-paragraph'."
 (defun od--fill-nobreak-p ()
   "EDIT-1: never break a meta line, nor an argument group outside a string."
   (or (od--meta-line-p)
+      (od--in-codeblock-p)                ; CODE-1: auto-fill never breaks code
       (let ((ppss (syntax-ppss)))
         (and (nth 1 ppss) (eq (char-after (nth 1 ppss)) ?\[) (not (nth 3 ppss))))))
 
@@ -2376,6 +2417,64 @@ FOLDER is essays (the default) or blog."
   "Slugs the site keeps for its own pages (KIND-1; `reserved-slugs' in util.rkt).")
 
 ;;;###autoload
+;; META-1: every setting a post's preamble carries, in order: (KEY DEFAULT
+;; COMMENT). A new post is given every one, at its default, with its options
+;; in a comment after it, so a post shows what can be set; a setting added
+;; here appears in every new post, and `od-update-settings' adds it to an old
+;; one. An empty value is a setting left at its default (lib/util.rkt,
+;; `meta-value'). DEFAULT nil: `od-new-essay' supplies the value.
+(defconst od-settings
+  '((title nil "")
+    (subtitle "" "optional")
+    (status "draft" "draft · published · revised · superseded")
+    (published nil "YYYY-MM-DD")
+    (tags "" "comma-separated, lowercase")
+    (author "Ryan Lucas" "the byline")
+    (description "" "one sentence for search results, link previews and the feed")
+    (listed "true" "true · false (false: not in the indexes, the front page or the feed)")
+    (toc "auto" "auto · always · none (auto: contents from three sections)")
+    (backlinks "shown" "shown · none")
+    (endmatter "shown" "shown · none")
+    (series "" "the slug of the series' home post, when this post is part of one")
+    (part "" "this post's place in its series: 1, 2, 3 …")
+    (series-label "" "on a series' home post: the words of the link back to it"))
+  "The settings of a post's preamble, with defaults and options (META-1).")
+
+(defun od--setting-line (key value)
+  "The preamble line setting KEY to VALUE, with its options in a comment (META-1).
+An empty VALUE is written commented out: Pollen refuses a meta with no value."
+  (let ((comment (nth 2 (assq key od-settings))))
+    (concat (if (string-empty-p (or value "")) "◊; " "")
+            (format "◊define-meta[%s]{%s}" key value)
+            (if (and comment (not (string-empty-p comment))) (concat " ◊; " comment) "")
+            "\n")))
+
+(defun od-update-settings ()
+  "Give this post's preamble every setting in `od-settings' (META-1).
+A setting missing from it is added at its default after the last
+◊define-meta line; one already there keeps its value and gains its
+comment if it has none."
+  (interactive)
+  (unless (memq (od-file-kind) '(essay entry))
+    (user-error "Only a post's preamble carries every setting (META-1)"))
+  (save-excursion
+    (dolist (s od-settings)
+      (let* ((key (car s)) (default (nth 1 s)) (comment (nth 2 s))
+             (rx (format "%s◊define-meta\\[%s]{[^}\n]*}\\(.*\\)$" od--meta-prefix (regexp-quote (symbol-name key)))))
+        (goto-char (point-min))
+        (cond
+         ((re-search-forward rx nil t)
+          (unless (or (string-empty-p comment) (string-match-p "◊;" (match-string 1)))
+            (end-of-line)
+            (insert " ◊; " comment)))
+         (default
+          (let ((last nil))
+            (goto-char (point-min))
+            (while (re-search-forward (concat od--meta-prefix "◊define-meta\\[") nil t) (setq last (line-end-position)))
+            (if last (progn (goto-char last) (insert "\n")) (goto-char (point-min)) (forward-line 2))
+            (insert (string-trim-right (od--setting-line key default) "\n"))
+            (unless last (insert "\n")))))))))
+
 (defun od-new-essay (&optional entry)
   "Start an essay or a blog entry, as a draft (EDIT-6, KIND-6).
 It makes a folder with the .pm file, img/ and support/, under essays/
@@ -2407,13 +2506,14 @@ draft and is kept out of git until `od-publish' (DRAFT-E1)."
     (with-temp-file (expand-file-name "support/notes.md" dir)
       (insert title "\n"))
     (with-temp-file file
-      (insert "#lang pollen\n\n"
-              (format "◊define-meta[title]{%s}\n" title)
-              "◊define-meta[subtitle]{}\n"
-              "◊define-meta[status]{draft}\n"
-              (format "◊define-meta[published]{%s}\n" (format-time-string "%Y-%m-%d"))
-              "◊define-meta[tags]{}\n\n"
-              (if (equal kind "entry") "" "◊epistemic{}\n\n◊abstract{}\n\n")))
+      (insert "#lang pollen\n\n")
+      ;; META-1: every setting, at its default, with its options
+      (dolist (s od-settings)
+        (insert (od--setting-line (car s) (pcase (car s)
+                                            ('title title)
+                                            ('published (format-time-string "%Y-%m-%d"))
+                                            (_ (nth 1 s))))))
+      (insert "\n" (if (equal kind "entry") "" "◊epistemic{}\n\n◊abstract{}\n\n")))
     (find-file file)
     (goto-char (point-max))
     (message "Draft %s/%s/ started; git cannot see it until C-c o P" folder slug)))
@@ -2444,6 +2544,24 @@ Returns the keyword text to append, \" #:width 0.5\", or an empty string."
                 (let ((x (string-to-number w))) (and (>= x 0.25) (<= x 1))))
            (format " #:width %s" w))
           (t (user-error "Width is a fraction of the column from 0.25 to 1, as in 0.5 (IMG-2)")))))
+
+(defun od-insert-download ()
+  "Insert ◊download[\"file\"]{label}, a file from the post's files/ (§9.4).
+Offers the files in the post's files/ folder, making the folder on first
+use; a file must be there, named as STYLE.md §7.1 says, before it can be
+offered (FILE-1, FILE-2).  Point ends in the label."
+  (interactive)
+  (unless (and buffer-file-name (string-match-p "/\\(essays\\|blog\\)/[^/]+/[^/]+\\.html\\.pm\\'" buffer-file-name))
+    (user-error "Only a post (an essay or a blog entry) offers downloads (FILE-1)"))
+  (let* ((dir (expand-file-name "files/" (file-name-directory buffer-file-name)))
+         (_ (make-directory dir t))
+         (files (seq-filter (lambda (f) (string-match-p "\\.\\(pdf\\|csv\\|tar\\.xz\\)\\'" f))
+                            (directory-files dir nil "\\`[^.]"))))
+    (unless files
+      (user-error "No .pdf, .csv or .tar.xz in %s yet: put the file there first" (abbreviate-file-name dir)))
+    (let ((file (completing-read "File: " files nil t)))
+      (insert (format "◊download[\"%s\"]{" file))
+      (save-excursion (insert "}")))))
 
 (defun od-insert-figure ()
   "Insert a complete ◊figure: image, title, id, alt text and licence (EDIT-7)."
@@ -2642,7 +2760,7 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
 (defconst od-email "ryan@occurrentdevelopment.com" "The only address commits may carry.")
 (defconst od--forbidden-rx "\\(-Notes\\.md\\|\\.docx\\|\\.graffle\\|\\.tex\\)\\'"
   "Files that never enter the public repository (BUILD-3a).")
-(defconst od--caches '("refs/refs.bib" "data/cite-cache.json" "data/math-cache.json" "data/invert.json" "data/link-meta.json")
+(defconst od--caches '("refs/refs.bib" "data/cite-cache.json" "data/math-cache.json" "data/invert.json" "data/link-meta.json" "data/files.json")
   "The committed caches `make refresh' updates (BUILD-3).")
 
 (defun od--git (&rest args)
@@ -2698,10 +2816,10 @@ With a prefix argument FULL, run the whole `make', as CI does (CHECK-2)."
   "Set ◊define-meta[KEY] to VALUE, adding the line after the others if absent."
   (save-excursion
     (goto-char (point-min))
-    (if (re-search-forward (format "^◊define-meta\\[%s\\]{[^}\n]*}" (regexp-quote key)) nil t)
+    (if (re-search-forward (format "%s◊define-meta\\[%s\\]{[^}\n]*}" od--meta-prefix (regexp-quote key)) nil t)
         (replace-match (format "◊define-meta[%s]{%s}" key value) t t)
       (goto-char (point-min))
-      (while (re-search-forward "^◊define-meta\\[" nil t) (forward-line 1))
+      (while (re-search-forward (concat od--meta-prefix "◊define-meta\\[") nil t) (forward-line 1))
       (insert (format "◊define-meta[%s]{%s}\n" key value)))))
 
 (defun od--ptree-add (slug &optional folder)
@@ -2799,7 +2917,7 @@ history."
     (save-buffer)
     (od--ptree-add slug folder)
     (let ((buf (current-buffer)))
-      (od--run "make refresh && make"
+      (od--run "make refresh && make refresh-wayback && make"
                (lambda (ok)
                  (if (not ok)
                      (message "make failed: see *od-check*. Nothing is staged.")
@@ -2899,10 +3017,10 @@ Never a post's support/ folder (BUILD-3a)."
       (dolist (dir (and (file-directory-p (od--file folder))
                         (directory-files (od--file folder) t "\\`[^.]")))
         (when (file-directory-p dir)
-          (setq files (append files (directory-files dir t "\\.pm\\'"))))))
+          (setq files (append files (directory-files dir t "\\`[^.].*\\.pm\\'"))))))
     (dolist (folder '("pages" "glossary" "references"))
       (when (file-directory-p (od--file folder))
-        (setq files (append files (directory-files (od--file folder) t "\\.pm\\'")))))
+        (setq files (append files (directory-files (od--file folder) t "\\`[^.].*\\.pm\\'")))))
     (cl-remove-if (lambda (f) (string-match-p "/support/" (file-relative-name f root))) files)))
 
 (defun od--rewrite-links (old-url new-url)

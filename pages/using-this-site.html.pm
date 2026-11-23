@@ -5,7 +5,7 @@ publishes it; preview with make serve at /pages/using-this-site.html. TODO(ryan)
 mark everything still to write; see SITE-DOCS.md.}
 
 ◊define-meta[title]{Using this site}
-◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊; ◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
 ◊define-meta[listed]{false} ◊; true · false (false: not in the indexes, the front page or the feed)
 ◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
 ◊define-meta[backlinks]{shown} ◊; shown · none

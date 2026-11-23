@@ -405,6 +405,41 @@
   (check-true (fails? (λ () (apply table #:id "t" #:title "T" #:width 0.5 rows))))
   (check-true (fails? (λ () (apply table #:id "Bad Id" #:title "T" rows)))))
 
+(test-case "IMG-7a: ◊ref with a body links its words, with no label"
+  (define fig (figure "pages/img/landscape.jpg" #:id "land" #:title "T" #:alt "a" #:licence "own" "c"))
+  (define (links doc) (find-all doc (λ (x) (and ((tag? 'a) x) (has-class* x "same")))))
+  ;; no body: the label, as before
+  (check-equal? (length (find-all (root fig "\n\n" "See " (ref "land") ".") (λ (x) (has-class* x "exhibit-ref")))) 1)
+  ;; a body: its words are the link's text, and no label is printed
+  (define doc (root fig "\n\n" "See " (ref "land" "the " (em "landscape")) "."))
+  (check-equal? (find-all doc (λ (x) (has-class* x "exhibit-ref"))) null)
+  (define l (last (links doc)))
+  (check-equal? (attr-ref l 'href) "#land")
+  (check-true (regexp-match? #rx"the landscape" (text-of l)))
+  (check-equal? (length (find-all l (tag? 'em))) 1)
+  ;; an empty body is no body; the id is still checked; no link inside a link
+  (check-equal? (length (find-all (root fig "\n\n" (ref "land" " ")) (λ (x) (has-class* x "exhibit-ref")))) 1)
+  (check-true (fails? (λ () (root fig "\n\n" (ref "nowhere" "words")))))
+  (check-true (fails? (λ () (ref "land" (link "https://example.org" "x"))))))
+
+(test-case "IMG-2a: #:narrow sets a phone version beside the figure's image"
+  (define (fig narrow) (figure "pages/img/landscape.jpg" #:id "f" #:title "T" #:alt "a" #:licence "own"
+                               #:width 0.5 #:narrow narrow "c"))
+  (define f (fig "pages/img/occurrent-continuant.svg"))
+  (define vs (find-all f (λ (x) (has-class* x "fig-variant"))))
+  (check-equal? (map (λ (v) (attr-ref v 'data-variant)) vs) '("wide" "narrow"))
+  ;; the main version keeps #:width's sizes; the narrow one, an SVG here, is inlined
+  (check-equal? (attr-ref (car (find-all (first vs) (tag? 'img))) 'sizes)
+                "(min-width: 48.75rem) 22.812rem, calc(100vw - 3.125rem)")
+  (check-equal? (length (find-all (second vs) (λ (x) (has-class* x "figure-svg")))) 1)
+  ;; a figure without one has no wrapper
+  (check-equal? (find-all (figure "pages/img/landscape.jpg" #:id "g" #:title "T" #:alt "a" #:licence "own" "c")
+                          (λ (x) (has-class* x "fig-variants")))
+                null)
+  (check-true (fails? (λ () (fig "pages/img/no-such-file.svg"))))
+  (check-true (fails? (λ () (fig "pages/img/landscape.jpg"))))
+  (check-true (fails? (λ () (fig 'narrow)))))
+
 (test-case "IMG-2 (1.27): #:width is a fraction of the column, 0.25 to 1, on figures and panel figures"
   (define (fig w) (figure "pages/img/landscape.jpg" #:id "f" #:title "T" #:alt "a" #:licence "own" #:width w "c"))
   (define half (fig 0.5))
@@ -578,7 +613,7 @@
 ;; the highlighter never calls a working tag an error, nor the reverse.
 (test-case "VOCAB-3: od-vocabulary's built tags are exactly the tags pollen.rkt provides"
   (define template-helpers
-    '(root site-css font-preloads head-script asset-url specimen? specimen-css page-title
+    '(root site-css font-preloads head-script head-description asset-url specimen? specimen-css page-title
       essay-header doc-body format-date revised-date site-menu page-class
       reference-card locator-label))   ; for tools/validate.rkt and the tests (BIB-8), not tags
   ;; tags with keyword arguments are exported as syntax, so read both lists
@@ -708,6 +743,16 @@
   (check-true (fails? (λ () (blockquote #:italic "yes" "Quoted."))))
   ;; the TOC still follows an epigraph set roman
   (check-equal? (get-tag (car (get-elements (root (epigraph #:italic #f "Motto."))))) 'blockquote))
+
+(test-case "CODE-1: ◊codeblock keeps its lines and indentation, and drops the brace lines"
+  (check-equal? (codeblock "\n" "  \\documentclass{article}" "\n" "    \\usepackage{x}  " "\n" "\n" "  end" "\n")
+                '(pre ((class "code")) (code "\\documentclass{article}\n  \\usepackage{x}\n\nend")))
+  ;; through the root pass: a block, not a paragraph; quotes and dashes as typed (CODE-2)
+  (define doc (root "Before." "\n\n" (codeblock "\n" "x = \"a\" -- 'b'" "\n") "\n\n" "After."))
+  (check-equal? (find-all doc (tag? 'pre)) (list '(pre ((class "code")) (code "x = \"a\" -- 'b'"))))
+  (check-equal? (map get-tag (get-elements doc)) '(p pre p))
+  (check-true (fails? (λ () (codeblock "\n" "   " "\n"))))
+  (check-true (fails? (λ () (codeblock "a " (em "b"))))))
 
 (test-case "INDEX-1a: the index is a table with four cells in every row"
   ;; two fixture pages are listed (tests/essays/listed)

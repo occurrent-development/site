@@ -7,7 +7,7 @@ authoritative until this page replaces it.}
 
 ◊define-meta[title]{Manual of Style}
 ◊define-meta[subtitle]{House style for everything on the site and in its repository} ◊; optional
-◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
+◊; ◊define-meta[description]{} ◊; one sentence for search results, link previews and the feed
 ◊define-meta[listed]{false} ◊; true · false (false: not in the indexes, the front page or the feed)
 ◊define-meta[toc]{auto} ◊; auto · always · none (auto: contents from three sections)
 ◊define-meta[backlinks]{shown} ◊; shown · none

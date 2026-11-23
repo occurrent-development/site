@@ -258,6 +258,41 @@ code {
   hyphens: manual;
   -webkit-hyphens: manual;
 }
+/* CODE-1, CODE-2: ◊codeblock, lines of code as typed. Ragged, never
+   hyphenated, in Mono at code's size; a 2px rule in the stub colour at its
+   left, as a formula's box (ASIDE-3). A line wider than the column wraps,
+   breaking anywhere if it must (a long URL), so nothing scrolls sideways.
+   At most 20 lines show; a longer block scrolls inside itself. */
+pre.code {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  font-family: "Libertinus Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.86em;                    /* code's size, set here so the line height is the Mono's */
+  margin: calc(var(--parskip, 1em) / 0.86) 0;
+  padding: 0.3em 0 0.3em calc(1em / 0.86);
+  border-left: 2px solid var(--stub-rule);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: calc(20 * 1.4em + 0.6em);   /* 20 lines and the padding (box-sizing) */
+  overflow-x: hidden;
+  overflow-y: auto;
+  text-align: left;
+  text-indent: 0;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  line-height: 1.4;
+  tab-size: 2;
+}
+pre.code > code {
+  font-size: 1em;                       /* the block already set it */
+  font-variant-ligatures: none;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+/* CODE-4: on paper a block that fits on a page is not split. */
+@media print {
+  pre.code { break-inside: avoid; max-height: none; overflow: visible; }
+}
 
 blockquote { margin: 1em 0 1em 1.5em; }
 /* LAYOUT-4b: a block quotation is roman, set off by its indent; #:italic #t
@@ -782,6 +817,15 @@ a .punct { color: var(--text); }
 .m-xref { --m: var(--m-xref); }
 .m-up   { --m: var(--m-up); }
 .m-down { --m: var(--m-down); }
+.m-download { --m: var(--m-download); }
+/* FILE-3: a download's note, its type and size, muted at aside size, part
+   of the one link. FILE-7: on paper the mark goes and the full URL follows,
+   muted and smaller. */
+.download-note { color: var(--text-muted); font-size: 0.85em; font-variant-numeric: lining-nums; white-space: nowrap; }
+@media print {
+  a.download .mark { display: none; }
+  a.download::after { content: " " attr(data-url); color: var(--text-muted); font-size: 0.85em; overflow-wrap: anywhere; }
+}
 a:visited .mark { background-color: var(--accent-visited); }   /* MARK-5 */
 
 .circle {
@@ -920,6 +964,16 @@ figure.figure img, figure.figure svg { display: block; width: 100%; height: auto
   .exhibit[data-width] > .exhibit-body { width: auto; }
 }
 figure.figure .figure-svg { color: var(--text); }
+/* IMG-2a: a figure with #:narrow carries both versions. The main one shows
+   everywhere (popups and print included), the narrow one in tier S instead,
+   on screen only. The hidden raster is lazy, so it is never fetched. */
+.fig-variant[data-variant="narrow"] { display: none; }
+@media screen {
+  @container page (width < 39em) {
+    .fig-variant[data-variant="wide"] { display: none; }
+    .fig-variant[data-variant="narrow"] { display: block; }
+  }
+}
 .table-wrap .exhibit-title { padding-right: 2.4em; }   /* room for Expand above the table */
 
 /* IMG-9: a figure of lettered panels. Equal columns, one per panel up to
@@ -1031,6 +1085,46 @@ figure.figure .figure-svg { color: var(--text); }
 .expand:hover, .expand:focus-visible { color: var(--accent); }
 .table-wrap .expand { top: -2.1em; right: -0.4em; background: none; }   /* above the table's top rule */
 
+/* TABLE-8: a collapsed table, with scripts, is in the column a button that
+   opens it in the lightbox: a hairline box the width of the column with
+   the table glyph, "Show the table" and its size, muted, in the label's
+   type. Without scripts, and in print, the table is set in full. */
+.exhibit-open { display: none; }
+.js article .exhibit.collapsed > .exhibit-body > .table-scroll { display: none; }
+.js article .exhibit.collapsed > .exhibit-body > .exhibit-open {
+  appearance: none; display: flex; align-items: center; gap: 0.6em; width: 100%;
+  padding: 0.7em 0.9em; border: 1px solid var(--rule); border-radius: 3px; background: none;
+  font-family: var(--sans); font-size: 0.78em; line-height: 1.3; color: var(--text); text-align: left; cursor: pointer;
+}
+.exhibit-open svg { flex: none; width: 1.6em; height: 1.6em; color: var(--text-muted); }
+.exhibit-open-size { margin-left: auto; color: var(--text-muted); font-variant-numeric: lining-nums; }
+.js article .exhibit.collapsed > .exhibit-body > .exhibit-open:hover,
+.js article .exhibit.collapsed > .exhibit-body > .exhibit-open:focus-visible { border-color: var(--accent); }
+.exhibit-open:hover svg, .exhibit-open:focus-visible svg { color: var(--accent); }
+.table-wrap.collapsed .exhibit-title { padding-right: 0; }   /* no Expand above it */
+@media print {
+  .js article .exhibit.collapsed > .exhibit-body > .table-scroll { display: block; }
+  .js article .exhibit.collapsed > .exhibit-body > .exhibit-open { display: none; }
+}
+
+/* TABLE-9: asked to turn the phone (where the page cannot lock it): a
+   panel over the table, gone in landscape or on a tap. */
+.lb-turn { display: none; }
+@media (orientation: portrait) {
+  .lightbox > .lb-turn {
+    appearance: none; border: 0; position: absolute; inset: 0; z-index: 3;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em;
+    padding: 2em; background: var(--bg); color: var(--text);
+    font: inherit; font-size: 1rem; text-align: center; cursor: pointer;
+  }
+}
+.lb-turn-icon {
+  width: 2.2em; height: 3.4em; border: 2px solid currentColor; border-radius: 0.4em;
+  animation: lb-turn 1.6s ease-in-out infinite alternate;
+}
+@keyframes lb-turn { from { transform: rotate(0); } to { transform: rotate(-90deg); } }
+@media (prefers-reduced-motion: reduce) { .lb-turn-icon { animation: none; transform: rotate(-90deg); } }
+
 /* IMG-3a: every credit line (a figure's #:credit, a table's #:source) is
    set alike, and unlike a caption: muted, italic, smaller, its own line. */
 .credit {
@@ -1042,6 +1136,44 @@ figure.figure .figure-svg { color: var(--text); }
   margin-top: 0.3em;
 }
 .credit em { font-style: normal; }
+
+/* SERIES-1: the links between a series' parts, at the top and the foot of
+   each, in three columns: Previous flush left, the whole centred, Next flush
+   right, at aside size so a long title wraps in its own column. Below tier
+   M the three stack, each on its own line, as the column is too narrow. */
+.series {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 0 1.5em; align-items: baseline;
+  margin: 1.5em 0; font-size: 0.85em; line-height: 1.4; text-indent: 0; hyphens: manual; -webkit-hyphens: manual;
+}
+.series + p, .series + section > p:first-of-type { text-indent: 0; }
+.series-prev { text-align: left; }
+.series-whole { text-align: center; }
+.series-next { text-align: right; }
+@container page (width < 39em) {
+  .series { grid-template-columns: minmax(0, 1fr); gap: 0.35em; }
+  .series-prev, .series-whole, .series-next { text-align: left; }
+  .series > span:empty { display: none; }
+}
+
+/* IMG-3b: a caption beyond three lines is folded to three (the script adds
+   is-folded, so without it every caption is whole), with More under it in
+   the accent, set as Backlinks' More is; the folded words unfold on a
+   click too. Print shows every caption whole. */
+.exhibit-caption.is-folded {
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+}
+.exhibit-caption.is-folded.is-foldable { cursor: pointer; }
+.caption-more {
+  appearance: none; display: block; margin: 0.15em 0 0; padding: 0;
+  border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer;
+}
+.caption-more[hidden] { display: none; }
+.caption-more:hover, .caption-more:focus-visible { text-decoration: underline; }
+@media print {
+  .exhibit-caption.is-folded { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
+  .caption-more { display: none; }
+}
 
 /* IMG-4: in dark mode, invertible images are inverted; others dimmed.
    Invertible images are blended, so their white (black once inverted)
@@ -1081,6 +1213,12 @@ figure.figure .figure-svg { color: var(--text); }
 .table-wrap thead th { font-weight: 400; font-variant-caps: small-caps; letter-spacing: 0.03em; vertical-align: bottom; }
 .table-wrap tbody th { font-weight: 400; font-style: italic; }
 .table-wrap tbody tr:hover { background: color-mix(in srgb, var(--selection) 45%, transparent); }
+/* TABLE-7: a group's heading runs across the table, set as written (an ◊em
+   in it is italic, not flipped back to roman); a separator in the source's
+   body is a hairline above the row after it, the header's hairline again. */
+.table-wrap tbody tr.group th { font-style: normal; text-align: left; padding-top: 0.6em; }
+.table-wrap tbody tr.group:hover { background: none; }
+.table-wrap tbody tr.rule-above { border-top: 1px solid var(--rule); }
 .a-right { text-align: right; }
 .a-center { text-align: center; }
 .size-small table { font-size: 0.85em; }
@@ -1740,9 +1878,18 @@ th.is-filtered .tag-menu-button { color: var(--accent); }
 .lb-stage picture { display: contents; }
 .lb-stage img, .lb-stage .figure-svg { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .lb-stage .figure-svg { width: 100%; height: 100%; color: var(--text); }
+/* IMG-2a: in the lightbox, the version that fits the window's shape: the
+   narrow one in a portrait window (a phone held upright), else the main one */
+.lb-stage .fig-variants, .lb-stage .fig-variant[data-variant="wide"] { display: contents; }
+.lb-stage .fig-variant[data-variant="narrow"] { display: none; }
+@media (orientation: portrait) {
+  .lb-stage .fig-variant[data-variant="wide"] { display: none; }
+  .lb-stage .fig-variant[data-variant="narrow"] { display: contents; }
+}
 .lb-stage.is-table { align-items: flex-start; justify-content: flex-start; }
 .lb-stage .panels { width: min(100%, 150vh); }   /* IMG-9: the grid keeps its width; three 4:3 panels fit the height */
 .lb-stage .table-scroll { overflow: visible; background: none; margin: 0 auto; }
+.lb-stage .table-scroll { width: 100%; max-width: max(50em, var(--cols, 99) * 12em); }   /* IMG-8a */
 .lb-stage.table-wrap { margin: 0; }
 .lb-stage.table-wrap table { font-size: 1em; }
 

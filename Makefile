@@ -6,7 +6,9 @@
 #   make test-emacs  the Emacs mode's tests (needs Emacs 29+)
 #   make serve     Pollen project server on http://localhost:8080, drafts' graph merged
 #   make refresh   update the committed caches (BUILD-3): refs.bib, cite-cache.json,
-#                  covers, math-cache.json, invert.json, and Wayback snapshots in link-meta.json
+#                  covers, math-cache.json, invert.json
+#   make refresh-wayback  Wayback snapshots of new external links in link-meta.json
+#                  (slow: the Archive; od-publish runs it, CARD-5)
 #   make refresh-cites  only refs.bib, cite-cache.json and covers (no network)
 #   make refresh-math   only math-cache.json: each ◊m set by LuaLaTeX (no network)
 #   make clean     remove everything the build generates
@@ -37,7 +39,7 @@ IMG_SRC   := $(shell find pages essays blog -path '*/img/*' -type f 2>/dev/null)
 # Files that must never reach public/ (BUILD-3a).
 FORBIDDEN := -name '*-Notes.md' -o -name '*.docx' -o -name '*.graffle' -o -name '*.tex'
 
-.PHONY: all test test-browser test-emacs render publish serve refresh refresh-cites refresh-math clean
+.PHONY: all test test-browser test-emacs render publish serve refresh refresh-cites refresh-math refresh-wayback clean
 
 all: test publish test-browser
 
@@ -78,6 +80,14 @@ INDEXES := pages/index.html.pm pages/about.html.pm pages/essays.html.pm pages/bl
 # rendered again; `make` is always as good as a full rebuild.
 render: $(FONTS) $(IMAGES)
 	touch $(INDEXES)
+	@# SERIES-2: a part's links name its neighbours' titles and the home post lists
+	@# every part, so all the posts of a series are rendered again each time
+	@grep -rlE --include='*.html.pm' '◊series-list|define-meta\[series\]\{[a-z]' essays blog 2>/dev/null | xargs touch 2>/dev/null || true
+	@# FILE-3: a download's size is read at render, so a post whose files/ has
+	@# changed since it was last touched is rendered again (Pollen caches by mtime)
+	@for d in $$(find essays blog -mindepth 2 -maxdepth 2 -type d -name files 2>/dev/null); do \
+	  p=$$(dirname "$$d"); s="$$p/$$(basename "$$p").html.pm"; \
+	  if [ -f "$$s" ] && [ -n "$$(find "$$d" -type f -newer "$$s")" ]; then touch "$$s"; fi; done
 	$(RACO) make tools/validate.rkt && racket tools/validate.rkt --graph && racket tools/validate.rkt
 	$(RACO) pollen render -p index.ptree
 	$(RACO) pollen render -p build/references/index.ptree
@@ -87,6 +97,7 @@ publish: render
 	rm -rf public
 	mkdir -p public/assets/fonts public/assets/icons public/assets/img public/assets/js public/data
 	while read src dest; do mkdir -p "public/$$(dirname "$$dest")"; cp "$$src" "public/$$dest"; done < data/publish.txt
+	$(PYTHON) tools/files.py
 	cp assets/fonts/*.woff2 public/assets/fonts/
 	cp assets/icons/*.svg public/assets/icons/
 	mkdir -p public/assets/brand && cp assets/brand/* public/assets/brand/
@@ -108,7 +119,12 @@ serve: $(FONTS) $(IMAGES)
 
 refresh: refresh-cites refresh-math
 	$(PYTHON) tools/invert.py
-	$(PYTHON) tools/wayback.py
+
+# Wayback snapshots (CARD-5), apart from refresh because the Archive is slow:
+# up to 80 s a URL. A URL that fails is skipped for a week (ARGS=--all to
+# retry now). `od-publish` runs it; run it by hand whenever you like.
+refresh-wayback:
+	$(PYTHON) tools/wayback.py $(ARGS)
 
 # The citation caches alone (CITE-5): pandoc and local files, no network.
 # `od-preview` runs this when a page cites a work at a locator not yet cached.

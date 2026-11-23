@@ -34,6 +34,7 @@ WIDTHS = [480, 800, 1200, 1600, 2400]
 COVER_WIDTHS = [320, 480, 640, 960, 1280]
 WARN_BYTES = 2 * 1024 * 1024
 FIGURE = re.compile(r'◊(?:figure|panel)\[\s*"([^"]+)"')   # not ◊panels[, which has no source
+NARROW = re.compile(r'#:narrow\s+"([^"]+)"')                  # a figure's phone version (IMG-2a)
 
 
 def sources():
@@ -43,7 +44,8 @@ def sources():
             continue
         if pm.name.startswith(".#") or not pm.is_file():   # Emacs lock files
             continue
-        for src in FIGURE.findall(pm.read_text(encoding="utf-8")):
+        text = pm.read_text(encoding="utf-8")
+        for src in FIGURE.findall(text) + NARROW.findall(text):
             path = (pm.parent / src).resolve()
             if not path.exists():
                 sys.exit(f"images: {pm.relative_to(ROOT)}: no file {src}")
